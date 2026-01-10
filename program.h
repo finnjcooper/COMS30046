@@ -1,4 +1,6 @@
+#pragma once
 #include <vector>
+
 using namespace std;
 
 enum Opcode {
@@ -14,6 +16,7 @@ struct Instruction {
 	Opcode op;
 	int rd;
 	int rs;
+	int imm;
 };
 
 struct Program {
