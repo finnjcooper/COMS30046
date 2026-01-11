@@ -1,5 +1,9 @@
 #pragma once
 #include <vector>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <cstdint>
 
 using namespace std;
 
@@ -9,21 +13,19 @@ enum Opcode {
 	CMP,
 	LD, LDI, ST, STI,
 	JMP, BR, BLT, BGT, BEQ,
-	HALT
+	HALT, NOP
 };
 
 struct Instruction {
 	Opcode op;
-	int rd;
-	int rs;
-	int imm;
-};
-
-struct Program {
-	vector<Instruction> instructions;
+	uint8_t rd;
+	uint8_t rs1;
+	uint8_t rs2;
+	uint32_t imm;
 };
 
 class Loader {
 public:
-	static Program sampleProgram();
+	static vector<Instruction> sampleProgram();
+	static vector<uint8_t> fromBinary(const string& filename);
 };

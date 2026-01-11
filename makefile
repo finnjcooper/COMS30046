@@ -4,36 +4,47 @@ CXX = g++
 CFLAGS = \
   -march=rv32i \
   -mabi=ilp32 \
+  -mno-relax \
   -O0 \
   -ffreestanding \
+  -fno-pic \
   -fno-builtin \
   -fno-stack-protector \
-  -nostdlib
+  -nostdlib \
+  -nostartfiles \
+  -T test/linker.ld
 
 CXXFLAGS = -I src -std=c++26 -g
 
 
-SRCS := src/cpu.cpp src/alu.cpp src/memory.cpp src/registers.cpp src/program.cpp
-OBJS := $(patsubst src/%.cpp, build/%.o, $(SRCS))
+CSRCS := test/test.c
+CASMS := test/start.s $(patsubst test/%.c, test/%.s, $(CSRCS))
 
+CXXSRCS := src/cpu.cpp src/alu.cpp src/memory.cpp src/registers.cpp src/program.cpp
+CXXOBJS := $(patsubst src/%.cpp, build/%.o, $(CXXSRCS))
 
-default: cpu
+default: run
 
 build/%.o: src/%.cpp | build
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $^ -o $@
 
-cpu: $(OBJS)
-	$(CXX) $(OBJS) -o build/$@.exe
+test/%.s: test/%.c
+	$(RISCV_GCC) $(CFLAGS) -S $^ -o $@
 
-build:
-	mkdir -p build
+cpu: $(CXXOBJS) | bench
+	$(CXX) $^ -o build/$@.exe
+
+bench: $(CASMS) | build
+	$(RISCV_GCC) $(CFLAGS) $^ -o build/$@.elf
+	riscv64-unknown-elf-objcopy -O binary --only-section=.text build/$@.elf build/$@.bin
 
 
 run: cpu
 	build/cpu.exe
 
-test: test/test.c
-	$(RISCV_GCC) -S $< -o test/$@.s $(CFLAGS)
+	
+build:
+	mkdir -p build
 
 clean:
 	rm -rf build

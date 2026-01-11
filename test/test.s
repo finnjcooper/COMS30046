@@ -1,5 +1,6 @@
 	.file	"test.c"
 	.option nopic
+	.option norelax
 	.attribute arch, "rv32i2p1"
 	.attribute unaligned_access, 0
 	.attribute stack_align, 16
@@ -25,5 +26,5 @@ main:
 	addi	sp,sp,32
 	jr	ra
 	.size	main, .-main
-	.ident	"GCC: (GNU) 15.1.0"
+	.ident	"GCC: (Arch User Repository) 14.2.0"
 	.section	.note.GNU-stack,"",@progbits
