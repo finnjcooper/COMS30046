@@ -136,7 +136,6 @@ private:
 				break;
 		}
 	}
-
 };
 
 int main() {
