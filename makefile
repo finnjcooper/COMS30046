@@ -11,8 +11,8 @@ CFLAGS = \
   -fno-builtin \
   -fno-stack-protector \
   -nostdlib \
-  -nostartfiles \
-  -T test/linker.ld
+  -nostartfiles
+#   -T test/linker.ld
 
 CXXFLAGS = -I src -std=c++26 -g
 
@@ -20,7 +20,7 @@ CXXFLAGS = -I src -std=c++26 -g
 CSRCS := test/test.c
 CASMS := test/start.s $(patsubst test/%.c, test/%.s, $(CSRCS))
 
-CXXSRCS := src/cpu.cpp src/alu.cpp src/memory.cpp src/registers.cpp src/program.cpp
+CXXSRCS := src/cpu.cpp src/alu.cpp src/memory.cpp src/registers.cpp src/instruction.cpp src/decoder.cpp src/main.cpp
 CXXOBJS := $(patsubst src/%.cpp, build/%.o, $(CXXSRCS))
 
 default: run
@@ -31,7 +31,7 @@ build/%.o: src/%.cpp | build
 test/%.s: test/%.c
 	$(RISCV_GCC) $(CFLAGS) -S $^ -o $@
 
-cpu: $(CXXOBJS) | bench
+cpu: $(CXXOBJS)
 	$(CXX) $^ -o build/$@.exe
 
 bench: $(CASMS) | build
@@ -39,12 +39,15 @@ bench: $(CASMS) | build
 	riscv64-unknown-elf-objcopy -O binary --only-section=.text build/$@.elf build/$@.bin
 
 
-run: cpu
-	build/cpu.exe
+run: cpu | bench
+	build/cpu.exe build/bench.elf
 
-	
 build:
-	mkdir -p build
+	mkdir build
 
 clean:
+ifeq ($(OS), Windows_NT)
+	rmdir /s /q build
+else
 	rm -rf build
+endif

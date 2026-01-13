@@ -1,11 +1,9 @@
 #include "memory.h"
-#include <iomanip>
 
 Memory::~Memory() = default;
 Memory::Memory() { mem = unordered_map<uint8_t, uint8_t>(); }
 Memory::Memory(vector<uint8_t> init) {
 	mem = unordered_map<uint8_t, uint8_t>();
-	cout << init.size() << endl;
 	for (size_t i = 0; i < init.size(); i++) {
 		mem[i] = init[i];
 	}

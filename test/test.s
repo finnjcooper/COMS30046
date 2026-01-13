@@ -20,11 +20,18 @@ main:
 	lw	a4,-20(s0)
 	lw	a5,-24(s0)
 	add	a5,a4,a5
+	sw	a5,-28(s0)
+ #APP
+# 6 "test/test.c" 1
+	ebreak
+# 0 "" 2
+ #NO_APP
+	lw	a5,-28(s0)
 	mv	a0,a5
 	lw	ra,28(sp)
 	lw	s0,24(sp)
 	addi	sp,sp,32
 	jr	ra
 	.size	main, .-main
-	.ident	"GCC: (Arch User Repository) 14.2.0"
+	.ident	"GCC: (GNU) 15.1.0"
 	.section	.note.GNU-stack,"",@progbits

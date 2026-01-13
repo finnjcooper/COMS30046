@@ -8,12 +8,16 @@
 using namespace std;
 
 enum Opcode {
-	ADD, ADDI,
-	SUB, SUBI,
-	CMP,
-	LD, LDI, ST, STI,
-	JMP, BR, BLT, BGT, BEQ,
-	HALT, NOP
+	ADD, SUB, SLL, SLT, SLTU, XOR, SRL, SRA, OR, AND,
+	ADDI, SLTI, SLTIU, XORI, ORI, ANDI,
+	SLLI, SRLI, SRAI,
+	LB, LH, LW, LBU, LHU,
+	SB, SH, SW,
+	BEQ, BNE, BLT, BGE, BLTU, BGEU,
+	JAL, JALR,
+	LUI, AUIPC,
+	ECALL, EBREAK,
+	INVALID
 };
 
 struct Instruction {

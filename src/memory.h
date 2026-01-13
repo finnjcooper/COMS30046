@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <bitset>
 #include <iostream>
+#include <iomanip>
 
 using namespace std;
 
@@ -20,4 +21,24 @@ public:
 
 private:
 	unordered_map<uint8_t, uint8_t> mem;
+};
+
+class Stack {
+public:
+	~Stack() = default;
+	Stack() = default;
+
+	void push(uint8_t value) { data.push_back(value); }
+	uint8_t pop() {
+		if (data.empty()) {
+			cerr << "Stack underflow!" << endl;
+			return 0;
+		}
+		uint8_t value = data.back();
+		data.pop_back();
+		return value;
+	}
+
+private:
+	vector<uint8_t> data;
 };
