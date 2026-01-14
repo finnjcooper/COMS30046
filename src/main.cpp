@@ -1,10 +1,12 @@
 #include "cpu.h"
+#include "loader.h"
+#include "renderer.h"
 
 int main(int argc, char* argv[]) {
 	auto prog = Loader::fromElf(argv[1]);
 
 	CPU cpu(prog);
-	// cpu.imem.print32();
+	Renderer renderer;
 
 	cout << endl << "Starting CPU... Press enter to step." << endl;
 	
@@ -14,8 +16,8 @@ int main(int argc, char* argv[]) {
 	}
 
 	for (int i = 0; i < RegisterFile::NUM_REGISTERS; i++) {
-		cout << "x" << i << ": " << cpu.regs.read(i) << " ";;
+		cout << "x" << i << ": " << cpu.regs.read(i) << " ";
 	}
 
 	return 0;
-}
+};

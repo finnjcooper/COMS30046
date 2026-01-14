@@ -2,17 +2,15 @@ RISCV_GCC = riscv64-unknown-elf-gcc
 CXX = g++
 
 CFLAGS = \
-  -march=rv32i \
-  -mabi=ilp32 \
-  -mno-relax \
-  -O0 \
-  -ffreestanding \
-  -fno-pic \
-  -fno-builtin \
-  -fno-stack-protector \
-  -nostdlib \
-  -nostartfiles \
-  -T test/linker.ld
+	-march=rv32i \
+	-mabi=ilp32 -mno-relax \
+	-O0 \
+	-ffreestanding \
+	-fno-pic \
+	-fno-builtin \
+	-fno-stack-protector \
+	-nostdlib -nostartfiles \
+	-T test/linker.ld
 
 CXXFLAGS = -I src -std=c++26 -g
 
@@ -20,7 +18,7 @@ CXXFLAGS = -I src -std=c++26 -g
 CSRCS := test/test.c
 CASMS := test/start.s $(patsubst test/%.c, test/%.s, $(CSRCS))
 
-CXXSRCS := src/cpu.cpp src/alu.cpp src/memory.cpp src/registers.cpp src/instruction.cpp src/decoder.cpp src/main.cpp
+CXXSRCS := src/main.cpp
 CXXOBJS := $(patsubst src/%.cpp, build/%.o, $(CXXSRCS))
 
 default: run
@@ -36,6 +34,7 @@ cpu: $(CXXOBJS)
 
 bench: $(CASMS) | build
 	$(RISCV_GCC) $(CFLAGS) $^ -o build/$@.elf
+	riscv64-unknown-elf-objdump -d build/bench.elf > build/bench.asm
 # 	riscv64-unknown-elf-objcopy -O binary --only-section=.text build/$@.elf build/$@.bin
 
 

@@ -1,10 +1,5 @@
 #pragma once
 #include <vector>
-#include <string>
-#include <iostream>
-#include <fstream>
-#include <cstdint>
-#include "elfio/elfio.hpp"
 
 using namespace std;
 
@@ -28,12 +23,6 @@ struct Instruction {
 };
 
 struct Program {
-	vector<uint8_t> memory;
+	vector<uint8_t> instrs;
 	uint32_t entryPoint;
-};
-
-class Loader {
-public:
-	static Program fromBinary(const string& filename);
-	static Program fromElf(const string& filename);
 };

@@ -7,11 +7,5 @@ int main() {
 		c[i] = a[i] + b[i];
 	}
 
-	// int a = 6;
-	// int b = 7;
-	// int c = a + b;
-
-    __asm__ volatile ("ebreak");
-
-	return 0;
+	return c[2];
 }

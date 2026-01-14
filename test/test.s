@@ -51,12 +51,7 @@ main:
 	lw	a4,-20(s0)
 	li	a5,2
 	ble	a4,a5,.L3
- #APP
-# 14 "test/test.c" 1
-	ebreak
-# 0 "" 2
- #NO_APP
-	li	a5,0
+	lw	a5,-48(s0)
 	mv	a0,a5
 	lw	ra,60(sp)
 	lw	s0,56(sp)
