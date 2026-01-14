@@ -11,8 +11,8 @@ CFLAGS = \
   -fno-builtin \
   -fno-stack-protector \
   -nostdlib \
-  -nostartfiles
-#   -T test/linker.ld
+  -nostartfiles \
+  -T test/linker.ld
 
 CXXFLAGS = -I src -std=c++26 -g
 
@@ -36,7 +36,7 @@ cpu: $(CXXOBJS)
 
 bench: $(CASMS) | build
 	$(RISCV_GCC) $(CFLAGS) $^ -o build/$@.elf
-	riscv64-unknown-elf-objcopy -O binary --only-section=.text build/$@.elf build/$@.bin
+# 	riscv64-unknown-elf-objcopy -O binary --only-section=.text build/$@.elf build/$@.bin
 
 
 run: cpu | bench

@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <cstdint>
+#include "elfio/elfio.hpp"
 
 using namespace std;
 
@@ -22,13 +23,17 @@ enum Opcode {
 
 struct Instruction {
 	Opcode op;
-	uint8_t rd;
-	uint8_t rs1;
-	int32_t rs2;
+	uint8_t rd, rs1, rs2;
+	int32_t imm;
+};
+
+struct Program {
+	vector<uint8_t> memory;
+	uint32_t entryPoint;
 };
 
 class Loader {
 public:
-	static vector<Instruction> sampleProgram();
-	static vector<uint8_t> fromBinary(const string& filename);
+	static Program fromBinary(const string& filename);
+	static Program fromElf(const string& filename);
 };

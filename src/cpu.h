@@ -9,8 +9,8 @@
 class CPU {
 public:
 	~CPU() = default;
-	CPU(vector<uint8_t> imem_init) : imem(Memory(imem_init)), dmem(Memory(64 * 1024)) {}
-	CPU(vector<uint8_t> imem_init, vector<uint8_t> dmem_init) : imem(Memory(imem_init)), dmem(Memory(dmem_init)) {}
+	CPU(Program prog) : imem(Memory(prog.memory)), dmem(Memory(64 * 1024)), pc(prog.entryPoint) { regs.write(2, 64 * 1024); }
+	CPU(Program prog, vector<uint8_t> data) : imem(Memory(prog.memory)), dmem(Memory(data)), pc(prog.entryPoint) { regs.write(2, data.size()); }
 
 	RegisterFile regs = RegisterFile();
 	ALU alu = ALU();
