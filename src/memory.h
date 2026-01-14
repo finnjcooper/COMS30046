@@ -10,17 +10,21 @@ using namespace std;
 
 class Memory {
 public:
-	Memory();
+	Memory(size_t size);
 	Memory(vector<uint8_t> init);
 	~Memory();
 
-	void store(uint8_t addr, uint8_t value);
-	uint8_t load8(uint8_t addr);
-	uint32_t load32(uint8_t addr);
-	void print();
+	void storeb(uint32_t addr, uint8_t value);
+	void storeh(uint32_t addr, uint16_t value);
+	void storew(uint32_t addr, uint32_t value);
+	uint8_t loadb(uint32_t addr);
+	uint16_t loadh(uint32_t addr);
+	uint32_t loadw(uint32_t addr);
+	void print8();
+	void print32();
 
 private:
-	unordered_map<uint8_t, uint8_t> mem;
+	vector<uint8_t> mem;
 };
 
 class Stack {

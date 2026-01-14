@@ -9,7 +9,7 @@
 class CPU {
 public:
 	~CPU() = default;
-	CPU() = default;
+	CPU(vector<uint8_t> imem_init) : imem(Memory(imem_init)), dmem(Memory(64 * 1024)) {}
 	CPU(vector<uint8_t> imem_init, vector<uint8_t> dmem_init) : imem(Memory(imem_init)), dmem(Memory(dmem_init)) {}
 
 	RegisterFile regs = RegisterFile();
@@ -22,7 +22,7 @@ public:
 	bool isRunning() { return !halted; }
 
 private:
-	uint8_t pc = 0;
+	uint32_t pc = 0;
 	bool halted = false;
 
 	int fetch();

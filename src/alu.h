@@ -3,5 +3,5 @@
 
 class ALU {
 public:
-	int execute(Opcode op, int operand1, int operand2);
+	int execute(Opcode op, uint32_t operand1, uint32_t operand2);
 };

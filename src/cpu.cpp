@@ -5,7 +5,7 @@ void CPU::step() {
 }
 
 int CPU::fetch() {
-	return imem.load32(pc += 4);
+	return imem.loadw(pc += 4);
 }
 
 Instruction CPU::decode(uint32_t instruction) {
@@ -19,49 +19,87 @@ void CPU::execute(Instruction instr) {
 
 	switch (instr.op) {
 		case Opcode::ECALL:
-		case Opcode::EBREAK: halted = true;
-		case Opcode::INVALID: {
+		case Opcode::EBREAK:
+			halted = true;
 			break;
-		}
-		case Opcode::ADD: {
-			cout << "Executing ADD of registers " << (int)instr.rs1 << " and " << (int)instr.rs2 << " to register " << (int)instr.rd << endl;
+		case Opcode::INVALID:
+			cout << "Invalid instruction encountered!" << endl;
+			break;
+		case Opcode::SUB: case Opcode::SRA: case Opcode::ADD: case Opcode::SLL: case Opcode::SLT:
+		case Opcode::SLTU: case Opcode::XOR: case Opcode::SRL: case Opcode::OR: case Opcode::AND: {
+			cout << "Executing ALU operation..." << endl;
 			int result = alu.execute(
-				Opcode::ADD,
+				instr.op,
 				regs.read(instr.rs1),
 				regs.read(instr.rs2)
 			);
 			regs.write(instr.rd, result);
 			break;
 		}
-		case Opcode::ADDI: {
-			cout << "Executing ADD of 0x" << instr.imm << " to register " << (int)instr.rd << endl;
+		case Opcode::ADDI: case Opcode::SLLI: case Opcode::SLTI: case Opcode::SLTIU: case Opcode::XORI:
+		case Opcode::SRAI: case Opcode::SRLI: case Opcode::ORI: case Opcode::ANDI: {
+			cout << "Executing ALU immediate operation..." << endl;
 			int result = alu.execute(
-				Opcode::ADD,
+				instr.op,
 				regs.read(instr.rs1),
-				instr.imm
+				instr.rs2
 			);
 			regs.write(instr.rd, result);
 			break;
 		}
-		case Opcode::SUB: {
-			int result = alu.execute(
-				Opcode::SUB,
-				regs.read(instr.rs1),
-				regs.read(instr.rs2)
-			);
-			regs.write(instr.rd, result);
+		case Opcode::LB: case Opcode::LH: case Opcode::LW: case Opcode::LBU: case Opcode::LHU: {
+			cout << "Executing load operation..." << endl;
+			uint32_t addr = regs.read(instr.rs1) + instr.rs2;
+			uint32_t value = 0;
+			if (instr.op == Opcode::LB) value = Decoder::sign_extend(dmem.loadb(addr), 8);
+			if (instr.op == Opcode::LH) value = Decoder::sign_extend(dmem.loadh(addr), 16);
+			if (instr.op == Opcode::LW) value = dmem.loadw(addr);
+			if (instr.op == Opcode::LBU) value = dmem.loadb(addr);
+			if (instr.op == Opcode::LHU) value = dmem.loadh(addr);
+			regs.write(instr.rd, value);
 			break;
 		}
-		case Opcode::BEQ: {
-			if (regs.read(instr.rs1) == 0) {
-				pc = instr.imm;
+		case Opcode::SB: case Opcode::SH: case Opcode::SW: {
+			cout << "Executing store operation..." << endl;
+			uint32_t addr = regs.read(instr.rd) + instr.rs2;
+			uint32_t value = regs.read(instr.rs1);
+			if (instr.op == Opcode::SB) dmem.storeb(addr, value & 0xFF);
+			if (instr.op == Opcode::SH) dmem.storeh(addr, value & 0xFFFF);
+			if (instr.op == Opcode::SW) dmem.storew(addr, value);
+			break;
+		}
+		case Opcode::BEQ: case Opcode::BNE: case Opcode::BLT: case Opcode::BGE: case Opcode::BLTU: case Opcode::BGEU: {
+			cout << "Executing branch operation..." << endl;
+			int32_t val1 = regs.read(instr.rd);
+			int32_t val2 = regs.read(instr.rs1);
+			bool take_branch = false;
+			if (instr.op == Opcode::BEQ) take_branch = (val1 == val2);
+			if (instr.op == Opcode::BNE) take_branch = (val1 != val2);
+			if (instr.op == Opcode::BLT) take_branch = (val1 < val2);
+			if (instr.op == Opcode::BGE) take_branch = (val1 >= val2);
+			if (instr.op == Opcode::BLTU) take_branch = ((uint32_t)val1 < (uint32_t)val2);
+			if (instr.op == Opcode::BGEU) take_branch = ((uint32_t)val1 >= (uint32_t)val2);
+			if (take_branch) {
+				pc += instr.rs2;
 			}
 			break;
 		}
-		case Opcode::BLT: {
-			if (regs.read(instr.rs1) < 0) {
-				pc = instr.imm;
-			}
+		case Opcode::JAL: {
+			cout << "Executing JAL operation..." << endl;
+			regs.write(instr.rd, pc);
+			pc += instr.rs2;
+			break;
+		}
+		case Opcode::JALR: {
+			cout << "Executing JALR operation..." << endl;
+			uint32_t temp = pc;
+			pc = (regs.read(instr.rs1) + instr.rs2) & ~1;
+			regs.write(instr.rd, temp);
+			break;
+		}
+		case Opcode::LUI: case Opcode::AUIPC: {
+			cout << "Executing LUI/AUIPC operation..." << endl;
+			regs.write(instr.rd, instr.rs2 << 12 + (pc * (instr.op == Opcode::AUIPC)));
 			break;
 		}
 		default: {
