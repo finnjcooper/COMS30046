@@ -14,6 +14,12 @@ CFLAGS = \
 
 CXXFLAGS = -I src -std=c++26 -g
 
+ifeq ($(OS), Windows_NT)
+	LDFLAGS = -lpdcurses
+else
+	LDFLAGS = -lncurses
+endif
+
 
 CSRCS := test/test.c
 CASMS := test/start.s $(patsubst test/%.c, test/%.s, $(CSRCS))
@@ -30,7 +36,7 @@ test/%.s: test/%.c
 	$(RISCV_GCC) $(CFLAGS) -S $^ -o $@
 
 cpu: $(CXXOBJS)
-	$(CXX) $^ -o build/$@.exe
+	$(CXX) $^ $(LDFLAGS) -o build/$@.exe
 
 bench: $(CASMS) | build
 	$(RISCV_GCC) $(CFLAGS) $^ -o build/$@.elf

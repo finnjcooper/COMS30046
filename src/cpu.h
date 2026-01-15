@@ -1,5 +1,5 @@
 #pragma once
-#include "registers.h"
+#include "regfile.h"
 #include "memory.h"
 #include "alu.h"
 #include "instruction.h"
@@ -12,14 +12,21 @@ public:
 	~CPU() = default;
 	CPU(Program prog) : mem(Memory(prog.instrs, MEM_SIZE)), pc(prog.entryPoint) { regs.write(2, MEM_SIZE); }
 
+	void step() { execute(decode(fetch())); }
+	bool isRunning() { return !halted; }
+	uint32_t getPC() const { return pc; }
+	RegisterFile getRegisters() const { return regs; }
+	Memory getMemory() const { return mem; }
+	void commitMemory() {
+		regs.commit();
+		mem.commit();
+	}
+
+private:
 	RegisterFile regs = RegisterFile();
 	ALU alu = ALU();
 	Memory mem;
 
-	void step() { execute(decode(fetch())); }
-	bool isRunning() { return !halted; }
-
-private:
 	uint32_t pc = 0;
 	bool halted = false;
 

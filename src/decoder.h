@@ -1,6 +1,5 @@
 #pragma once
 #include "instruction.h"
-#include <bitset>
 #include <iomanip>
 
 class Decoder {

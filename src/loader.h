@@ -1,11 +1,13 @@
 #pragma once
 #include <fstream>
+#include <regex>
+#include <map>
 #include "instruction.h"
 #include "elfio/elfio.hpp"
 
 class Loader {
 public:
-	static Program fromBinary(const string& filename) {
+	static Program BIN(const string& filename) {
 		ifstream file(filename, ios::binary);
 		auto bytes = vector<uint8_t>();
 		char byte;
@@ -16,7 +18,7 @@ public:
 		return { bytes, 0 };
 	}
 
-	static Program fromElf(const string& filename) {
+	static Program ELF(const string& filename) {
 		ELFIO::elfio elf;
 		if (!elf.load(filename)) {
 			cerr << "Could not open ELF file: " << filename << endl;
@@ -49,5 +51,25 @@ public:
 		}
 
 		return { memory, static_cast<uint32_t>(elf.get_entry()) };
+	}
+
+	static map<uint32_t, string> ASM(const string& filename) {
+		map<uint32_t, string> disasm;
+		ifstream file(filename);
+		string line;
+		
+		// Regex to match lines like: "  a4:	00200793          	li	a5,2"
+		regex instrPattern("^\\s*([0-9a-f]+):\\s+([0-9a-f]+)\\s+(.+)$");
+		
+		while (getline(file, line)) {
+			smatch match;
+			if (regex_match(line, match, instrPattern)) {
+				uint32_t addr = stoul(match[1].str(), nullptr, 16);
+				string instr = match[3].str();
+				disasm[addr] = instr;
+			}
+		}
+		
+		return disasm;
 	}
 };
