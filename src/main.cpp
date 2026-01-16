@@ -4,8 +4,10 @@
 
 int main(int argc, char* argv[]) {
 	auto prog = Loader::ELF(argv[1]);
-	auto disasm = Loader::ASM("build/bench.asm");
-
+	string asmPath = argv[1];
+	asmPath = asmPath.substr(0, asmPath.size() - 4) + ".asm";
+	auto disasm = Loader::ASM(asmPath);
+	
 	CPU cpu(prog);
 	TUI tui;
 

@@ -1,4 +1,5 @@
 RISCV_GCC = riscv64-unknown-elf-gcc
+RISCV_OBJDUMP = riscv64-unknown-elf-objdump
 CXX = g++
 
 CFLAGS = \
@@ -9,43 +10,41 @@ CFLAGS = \
 	-fno-pic \
 	-fno-builtin \
 	-fno-stack-protector \
-	-nostdlib -nostartfiles \
-	-T test/linker.ld
+	-nostdlib -nostartfiles
+
+CLDFLAGS = -T test/linker.ld
 
 CXXFLAGS = -I src -std=c++26 -g
 
 ifeq ($(OS), Windows_NT)
-	LDFLAGS = -lpdcurses
+	CXXLDFLAGS = -lpdcurses
 else
-	LDFLAGS = -lncurses
+	CXXLDFLAGS = -lncurses
 endif
 
+BENCH ?= add
 
-CSRCS := test/test.c
-CASMS := test/start.s $(patsubst test/%.c, test/%.s, $(CSRCS))
 
-CXXSRCS := src/main.cpp
-CXXOBJS := $(patsubst src/%.cpp, build/%.o, $(CXXSRCS))
+CSRCS := $(wildcard test/*.c)
+CXXSRCS := $(wildcard src/*.cpp)
 
 default: run
 
 build/%.o: src/%.cpp | build
-	$(CXX) $(CXXFLAGS) -c $^ -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-test/%.s: test/%.c
-	$(RISCV_GCC) $(CFLAGS) -S $^ -o $@
+build/%.elf: test/%.c test/start.s | build
+	$(RISCV_GCC) $(CFLAGS) $(CLDFLAGS) $^ -o $@
+	$(RISCV_OBJDUMP) -d $@ > $(@:.elf=.asm)
 
-cpu: $(CXXOBJS)
-	$(CXX) $^ $(LDFLAGS) -o build/$@.exe
+main: $(CXXSRCS:src/%.cpp=build/%.o)
+	$(CXX) $^ $(CXXLDFLAGS) -o build/$@.exe
 
-bench: $(CASMS) | build
-	$(RISCV_GCC) $(CFLAGS) $^ -o build/$@.elf
-	riscv64-unknown-elf-objdump -d build/bench.elf > build/bench.asm
 # 	riscv64-unknown-elf-objcopy -O binary --only-section=.text build/$@.elf build/$@.bin
 
 
-run: cpu | bench
-	build/cpu.exe build/bench.elf
+run: main build/$(BENCH).elf
+	build/$<.exe build/$(BENCH).elf
 
 build:
 	mkdir build
