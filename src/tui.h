@@ -29,7 +29,6 @@ public:
 		
 		getmaxyx(stdscr, maxY, maxX);
 		createWindows();
-		refreshAll();
 	}
 	
 	~TUI() {
@@ -44,7 +43,6 @@ public:
 		renderInstructions(pc, disasm);
 		renderRegisters(regs);
 		renderMemory(mem, regs.read(2)); // pass sp (x2)
-		refreshAll();
 	}
 	
 	int waitForKey() { return getch(); }
@@ -58,6 +56,8 @@ private:
 	WINDOW* regWin = nullptr;
 	WINDOW* memWin = nullptr;
 	int maxY, maxX;
+	std::vector<uint32_t> prevr = std::vector<uint32_t>(RegisterFile::NUM_REGISTERS, 0);
+	std::map<uint32_t, uint32_t> prevm = std::map<uint32_t, uint32_t>();
 	
 	void createWindows() {
 		int instrWidth = (maxX * 4) / 10;
@@ -68,32 +68,6 @@ private:
 		
 		int memWidth = maxX - instrWidth - regWidth;
 		memWin = newwin(maxY - 2, memWidth, 0, instrWidth + regWidth);
-	}
-	
-	void refreshAll() {
-		box(instrWin, 0, 0);
-		box(regWin, 0, 0);
-		box(memWin, 0, 0);
-
-		if (has_colors()) {
-			wattron(instrWin, COLOR_PAIR(5) | A_BOLD);
-			wattron(regWin, COLOR_PAIR(5) | A_BOLD);
-			wattron(memWin, COLOR_PAIR(5) | A_BOLD);
-		}
-		
-		mvwprintw(instrWin, 0, 2, " Instructions ");
-		mvwprintw(regWin, 0, 2, " Registers ");
-		mvwprintw(memWin, 0, 2, " Memory ");
-		
-		if (has_colors()) {
-			wattroff(instrWin, COLOR_PAIR(5) | A_BOLD);
-			wattroff(regWin, COLOR_PAIR(5) | A_BOLD);
-			wattroff(memWin, COLOR_PAIR(5) | A_BOLD);
-		}
-		
-		wrefresh(instrWin);
-		wrefresh(regWin);
-		wrefresh(memWin);
 	}
 	
 	void renderInstructions(uint32_t pc, const std::map<uint32_t, std::string> &disasm) {
@@ -113,9 +87,7 @@ private:
 		auto it = disasm.find(pc);
 		if (it != disasm.end()) {
 			auto startIt = it;
-			for (int i = 0; i < centerLine && startIt != disasm.begin(); i++) {
-				--startIt;
-			}
+			for (int i = 0; i < centerLine && startIt != disasm.begin(); i++) startIt--;
 			
 			int line = 1;
 			for (auto displayIt = startIt; displayIt != disasm.end() && line < height - 1; displayIt++) {
@@ -129,9 +101,8 @@ private:
 				std::string instrText = ss.str();
 				if (instrText.length() > (size_t)(width - 4)) instrText = instrText.substr(0, width - 4);
 				
-				mvwprintw(instrWin, line, 2, "%s", instrText.c_str());
+				mvwprintw(instrWin, line++, 2, "%s", instrText.c_str());
 				if (isCurrent && has_colors()) wattroff(instrWin, COLOR_PAIR(1) | A_BOLD);
-				line++;
 			}
 		}
 		
@@ -150,22 +121,23 @@ private:
 		getmaxyx(regWin, height, width);
 		
 		int line = 1;
-		for (uint8_t i = 0; i < RegisterFile::NUM_REGISTERS; i++) {
-			if (line >= height - 1) break;
-			
-			bool modified = (regs.readPrev(i) != regs.read(i));
-			
+		for (uint8_t i = 0; i < RegisterFile::NUM_REGISTERS && line < height - 1; i++) {
+			uint32_t rv = regs.read(i);
+			bool modified = (rv != prevr[i]);
+			const char *name = regs.name(i);
+
 			if (has_colors()) wattron(regWin, COLOR_PAIR(2));
-			mvwprintw(regWin, line, 2, "x%02d:", i);
+			mvwprintw(regWin, line++, 2, "x%02d %s(%s):", i, strlen(name) < 3 ? " " : "", name);
 			if (has_colors()) wattroff(regWin, COLOR_PAIR(2));
 			
 			if (modified && has_colors()) wattron(regWin, COLOR_PAIR(4) | A_BOLD);
 			else if (has_colors()) wattron(regWin, COLOR_PAIR(3));
-			wprintw(regWin, " 0x%08X", regs.read(i));
+			wprintw(regWin, " 0x%08X", rv);
 			
 			if (modified && has_colors()) wattroff(regWin, COLOR_PAIR(4) | A_BOLD);
 			else if (has_colors()) wattroff(regWin, COLOR_PAIR(3));
-			line++;
+			
+			prevr[i] = rv;
 		}
 		
 		wrefresh(regWin);
@@ -183,18 +155,22 @@ private:
 		getmaxyx(memWin, height, width);
 		
 		int line = 1;
-		uint32_t start = sp > 64 ? sp - 64 : 0;
-		uint32_t memSize = mem.size();
-		for (uint32_t addr = start; line < height - 1 && addr + 3 < memSize; addr += 4) {
-			bool modified = (mem.loadw(addr) != mem.loadwPrev(addr));
-			
+		uint32_t start = max(sp - 64, 0u);
+		for (uint32_t addr = start; addr + 3 < CPU::MEM_SIZE && line < height - 1; addr += 4) {
+			uint32_t word = mem.loadw(addr);
+			bool modified = false;
+			auto it = prevm.find(addr);
+			if (it != prevm.end()) modified = (it->second != word);
+
 			if (modified && has_colors()) wattron(memWin, COLOR_PAIR(4) | A_BOLD);
 			else if (has_colors()) wattron(memWin, COLOR_PAIR(3));
 			
-			mvwprintw(memWin, line++, 2, "0x%08X: 0x%08X", addr, mem.loadw(addr));
+			mvwprintw(memWin, line++, 2, "0x%08X: 0x%08X", addr, word);
 			
 			if (modified && has_colors()) wattroff(memWin, COLOR_PAIR(4) | A_BOLD);
 			else if (has_colors()) wattroff(memWin, COLOR_PAIR(3));
+			
+			prevm[addr] = word;
 		}
 		
 		wrefresh(memWin);

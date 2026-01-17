@@ -12,7 +12,7 @@ int main(int argc, char* argv[]) {
 	TUI tui;
 
 	tui.renderFrame(cpu.getPC(), cpu.getRegisters(), cpu.getMemory(), disasm);
-	tui.displayMessage("Press any key to step, 'c' to continue, 'q' to quit");
+	tui.displayMessage("Press any key to step, 'c' to continue, 'q' to quit.");
 	
 	bool stepping = true;
 	while (cpu.isRunning()) {
@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
 		
 		cpu.step();
 		tui.renderFrame(cpu.getPC(), cpu.getRegisters(), cpu.getMemory(), disasm);
-		cpu.commitMemory();
+		tui.displayMessage(cpu.readout());
 	}
 
 	tui.displayMessage("Program halted. Press any key to exit.                     ");

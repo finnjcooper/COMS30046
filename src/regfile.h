@@ -2,33 +2,32 @@
 #include <cstdint>
 #include <stdexcept>
 
-struct RegValue {
-	uint32_t prev = 0;
-	uint32_t curr = 0;
-};
-
 class RegisterFile {
 public:
-	static const uint8_t NUM_REGISTERS = 32;
-	RegValue registers[NUM_REGISTERS];
+	static constexpr uint8_t NUM_REGISTERS = 32;
 
 	uint32_t read(uint8_t index) const {
 		if (index < 0 || index >= NUM_REGISTERS) throw std::out_of_range("Register index out of range");
-		return registers[index].curr;
-	}
-
-	uint32_t readPrev(uint8_t index) const {
-		if (index < 0 || index >= NUM_REGISTERS) throw std::out_of_range("Register index out of range");
-		return registers[index].prev;
+		return regs[index];
 	}
 
 	void write(uint8_t index, uint32_t value) {
 		if (index < 0 || index >= NUM_REGISTERS) throw std::out_of_range("Register index out of range");
 		else if (index == 0) return; // discard writes to x0
-		registers[index].curr = value;
+		regs[index] = value;
 	}
 
-	void commit() {
-		for (int i = 0; i < NUM_REGISTERS; i++) registers[i].prev = registers[i].curr;
+	const char* name(uint8_t index) const {
+		if (index < 0 || index >= NUM_REGISTERS) throw std::out_of_range("Register index out of range");
+		return NAMES[index];
 	}
+
+private:
+	uint32_t regs[NUM_REGISTERS] = {0};
+	static constexpr const char* NAMES[NUM_REGISTERS] = {
+		"zr","ra","sp","gp","tp","t0","t1","t2",
+		"s0","s1","a0","a1","a2","a3","a4","a5",
+		"a6","a7","s2","s3","s4","s5","s6","s7",
+		"s8","s9","s10","s11","t3","t4","t5","t6"
+	};
 };

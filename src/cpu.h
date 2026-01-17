@@ -1,25 +1,29 @@
 #pragma once
+#include <sstream>
 #include "regfile.h"
 #include "memory.h"
 #include "alu.h"
 #include "instruction.h"
 #include "decoder.h"
 
-#define MEM_SIZE 64 * 1024
-
 class CPU {
 public:
 	~CPU() = default;
 	CPU(Program prog) : mem(Memory(prog.instrs, MEM_SIZE)), pc(prog.entryPoint) { regs.write(2, MEM_SIZE); }
+
+	static constexpr size_t MEM_SIZE = 64 * 1024; // 64 KB
 
 	void step() { execute(decode(fetch())); }
 	bool isRunning() { return !halted; }
 	uint32_t getPC() const { return pc; }
 	RegisterFile getRegisters() const { return regs; }
 	Memory getMemory() const { return mem; }
-	void commitMemory() {
-		regs.commit();
-		mem.commit();
+	
+	string readout() {
+		string s = out.str();
+		out.str("");
+		out.clear();
+		return s;
 	}
 
 private:
@@ -27,10 +31,12 @@ private:
 	ALU alu = ALU();
 	Memory mem;
 
+	ostringstream out;
+
 	uint32_t pc = 0;
 	bool halted = false;
 
-	int fetch() {
+	uint32_t fetch() {
 		uint32_t instr = mem.loadw(pc);
 		pc += 4;
 		return instr;
@@ -48,7 +54,7 @@ private:
 				break;
 			case Opcode::SUB: case Opcode::SRA: case Opcode::ADD: case Opcode::SLL: case Opcode::SLT:
 			case Opcode::SLTU: case Opcode::XOR: case Opcode::SRL: case Opcode::OR: case Opcode::AND: {
-				int result = alu.execute(
+				uint32_t result = alu.execute(
 					instr.op,
 					regs.read(instr.rs1),
 					regs.read(instr.rs2)
@@ -58,7 +64,7 @@ private:
 			}
 			case Opcode::ADDI: case Opcode::SLLI: case Opcode::SLTI: case Opcode::SLTIU: case Opcode::XORI:
 			case Opcode::SRAI: case Opcode::SRLI: case Opcode::ORI: case Opcode::ANDI: {
-				int result = alu.execute(
+				uint32_t result = alu.execute(
 					instr.op,
 					regs.read(instr.rs1),
 					instr.imm
@@ -95,9 +101,7 @@ private:
 				if (instr.op == Opcode::BGE) take_branch = (val1 >= val2);
 				if (instr.op == Opcode::BLTU) take_branch = ((uint32_t)val1 < (uint32_t)val2);
 				if (instr.op == Opcode::BGEU) take_branch = ((uint32_t)val1 >= (uint32_t)val2);
-				if (take_branch) {
-					pc += instr.imm - 4;
-				}
+				if (take_branch) pc += instr.imm - 4;
 				break;
 			}
 			case Opcode::JAL: {
@@ -115,10 +119,9 @@ private:
 				regs.write(instr.rd, instr.imm + ((pc - 4) * (instr.op == Opcode::AUIPC)));
 				break;
 			}
-			default: {
-				return;
-			}
 			case Opcode::INVALID:
+				out << "Invalid instruction encountered!" << endl;
+			default:
 				return;
 		}
 	}

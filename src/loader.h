@@ -58,7 +58,7 @@ public:
 		ifstream file(filename);
 		string line;
 		
-		// Regex to match lines like: "  a4:	00200793          	li	a5,2"
+		// regex to match lines like: "  a4:	00200793          	li	a5,2"
 		regex instrPattern("^\\s*([0-9a-f]+):\\s+([0-9a-f]+)\\s+(.+)$");
 		
 		while (getline(file, line)) {

@@ -3,7 +3,7 @@
 
 class ALU {
 public:
-	int execute(Opcode op, uint32_t operand1, uint32_t operand2) {
+	uint32_t execute(Opcode op, uint32_t operand1, uint32_t operand2) {
 		switch (op) {
 			case Opcode::ADD: case Opcode::ADDI:
 				return operand1 + operand2;
