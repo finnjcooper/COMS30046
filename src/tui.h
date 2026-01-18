@@ -1,5 +1,5 @@
 #pragma once
-#include <curses.h>
+#include <ncurses.h>
 #include <string>
 #include <vector>
 #include <map>
@@ -29,6 +29,7 @@ public:
 		
 		getmaxyx(stdscr, maxY, maxX);
 		createWindows();
+		refresh();
 	}
 	
 	~TUI() {
@@ -84,26 +85,26 @@ private:
 		int visibleLines = height - 2;
 		int centerLine = visibleLines / 2;
 
-		auto it = disasm.find(pc);
-		if (it != disasm.end()) {
-			auto startIt = it;
-			for (int i = 0; i < centerLine && startIt != disasm.begin(); i++) startIt--;
+		auto pcIt = disasm.lower_bound(pc);
+		if (pcIt == disasm.end()) --pcIt; // highlight last instruction if pc beyond end
+		
+		auto startIt = pcIt;
+		for (int i = 0; i < centerLine && startIt != disasm.begin(); i++) startIt--;
+		
+		int line = 1;
+		for (auto displayIt = startIt; displayIt != disasm.end() && line < height - 1; displayIt++) {
+			bool isCurrent = (displayIt == pcIt);
 			
-			int line = 1;
-			for (auto displayIt = startIt; displayIt != disasm.end() && line < height - 1; displayIt++) {
-				bool isCurrent = (displayIt->first == pc);
-				
-				if (isCurrent && has_colors()) wattron(instrWin, COLOR_PAIR(1) | A_BOLD);
-				
-				std::stringstream ss;
-				ss << "0x" << std::hex << std::setw(8) << std::setfill('0') << displayIt->first << ": " << displayIt->second;
-				
-				std::string instrText = ss.str();
-				if (instrText.length() > (size_t)(width - 4)) instrText = instrText.substr(0, width - 4);
-				
-				mvwprintw(instrWin, line++, 2, "%s", instrText.c_str());
-				if (isCurrent && has_colors()) wattroff(instrWin, COLOR_PAIR(1) | A_BOLD);
-			}
+			if (isCurrent && has_colors()) wattron(instrWin, COLOR_PAIR(1) | A_BOLD);
+			
+			std::stringstream ss;
+			ss << "0x" << std::hex << std::setw(8) << std::setfill('0') << displayIt->first << ": " << displayIt->second;
+			
+			std::string instrText = ss.str();
+			if (instrText.length() > (size_t)(width - 4)) instrText = instrText.substr(0, width - 4);
+			
+			mvwprintw(instrWin, line++, 2, "%s", instrText.c_str());
+			if (isCurrent && has_colors()) wattroff(instrWin, COLOR_PAIR(1) | A_BOLD);
 		}
 		
 		wrefresh(instrWin);
@@ -153,21 +154,27 @@ private:
 		
 		int height, width;
 		getmaxyx(memWin, height, width);
+
+		int visibleLines = height - 2;
 		
 		int line = 1;
-		uint32_t start = max(sp - 64, 0u);
+		uint32_t start = min(sp, uint32_t(CPU::MEM_SIZE) - visibleLines * 4);
 		for (uint32_t addr = start; addr + 3 < CPU::MEM_SIZE && line < height - 1; addr += 4) {
 			uint32_t word = mem.loadw(addr);
 			bool modified = false;
 			auto it = prevm.find(addr);
 			if (it != prevm.end()) modified = (it->second != word);
 
+			bool isSP = (addr == sp);
+
 			if (modified && has_colors()) wattron(memWin, COLOR_PAIR(4) | A_BOLD);
+			else if (isSP && has_colors()) wattron(memWin, COLOR_PAIR(2));
 			else if (has_colors()) wattron(memWin, COLOR_PAIR(3));
 			
 			mvwprintw(memWin, line++, 2, "0x%08X: 0x%08X", addr, word);
 			
 			if (modified && has_colors()) wattroff(memWin, COLOR_PAIR(4) | A_BOLD);
+			else if (isSP && has_colors()) wattroff(memWin, COLOR_PAIR(2));
 			else if (has_colors()) wattroff(memWin, COLOR_PAIR(3));
 			
 			prevm[addr] = word;

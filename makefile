@@ -14,12 +14,11 @@ CFLAGS = \
 
 CLDFLAGS = -T test/linker.ld
 
-CXXFLAGS = -I src -std=c++26 -g
+CXXFLAGS = -I src -std=c++26 -g -DNCURSES_STATIC
+CXXLDFLAGS = -lncurses
 
 ifeq ($(OS), Windows_NT)
-	CXXLDFLAGS = -lpdcurses
-else
-	CXXLDFLAGS = -lncurses
+	CXXFLAGS += -I G:\Finn\Stuff\MSYS2\mingw64\include\ncurses
 endif
 
 BENCH ?= add
@@ -27,24 +26,27 @@ BENCH ?= add
 
 CSRCS := $(wildcard test/*.c)
 CXXSRCS := $(wildcard src/*.cpp)
+CXXOBJS := $(patsubst src/%.cpp,build/%.o,$(CXXSRCS))
+DEPS := $(CXXOBJS:.o=.d)
 
-default: run
+-include $(DEPS)
 
-build/%.o: src/%.cpp | build
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+.PHONY: run clean
+.DEFAULT_GOAL := run
 
 build/%.elf: test/%.c test/start.s | build
 	$(RISCV_GCC) $(CFLAGS) $(CLDFLAGS) $^ -o $@
 	$(RISCV_OBJDUMP) -d $@ > $(@:.elf=.asm)
-
-main: $(CXXSRCS:src/%.cpp=build/%.o)
-	$(CXX) $^ $(CXXLDFLAGS) -o build/$@.exe
-
 # 	riscv64-unknown-elf-objcopy -O binary --only-section=.text build/$@.elf build/$@.bin
 
+build/%.o: src/%.cpp | build
+	$(CXX) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
-run: main build/$(BENCH).elf
-	build/$<.exe build/$(BENCH).elf
+build/main.exe: $(CXXOBJS) | build
+	$(CXX) $^ $(CXXLDFLAGS) -o $@
+
+run: build/main.exe build/$(BENCH).elf
+	$^
 
 build:
 	mkdir build
