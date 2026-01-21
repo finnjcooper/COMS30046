@@ -37,7 +37,6 @@ DEPS := $(CXXOBJS:.o=.d)
 build/%.elf: test/%.c test/start.s | build
 	$(RISCV_GCC) $(CFLAGS) $(CLDFLAGS) $^ -o $@
 	$(RISCV_OBJDUMP) -d $@ > $(@:.elf=.asm)
-# 	riscv64-unknown-elf-objcopy -O binary --only-section=.text build/$@.elf build/$@.bin
 
 build/%.o: src/%.cpp | build
 	$(CXX) $(CXXFLAGS) -MMD -MP -c $< -o $@

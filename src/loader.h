@@ -35,9 +35,7 @@ public:
 
 		auto memory = vector<uint8_t>(mem_size, 0);
 		for (const auto& seg : elf.segments) {
-			if (seg->get_type() != ELFIO::PT_LOAD) {
-				continue;
-			}
+			if (seg->get_type() != ELFIO::PT_LOAD) continue;
 
 			uint32_t vaddr = seg->get_virtual_address();
 			uint32_t filesz = seg->get_file_size();

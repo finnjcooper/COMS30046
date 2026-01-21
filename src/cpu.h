@@ -9,7 +9,7 @@
 class CPU {
 public:
 	~CPU() = default;
-	CPU(Program prog) : mem(Memory(prog.instrs, MEM_SIZE)), pc(prog.entryPoint) { regs.write(2, MEM_SIZE); }
+	CPU(Program prog) : mem(Memory(prog.instrs, MEM_SIZE)), pc(prog.entryPoint) { regs.write(2, MEM_SIZE - 4); }
 
 	static constexpr size_t MEM_SIZE = 64 * 1024; // 64 KB
 
