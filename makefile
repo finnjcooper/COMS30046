@@ -3,7 +3,7 @@ RISCV_OBJDUMP = riscv64-unknown-elf-objdump
 CXX = g++
 
 CFLAGS = \
-	-march=rv32i \
+	-march=rv32im \
 	-mabi=ilp32 -mno-relax \
 	-O0 \
 	-ffreestanding \

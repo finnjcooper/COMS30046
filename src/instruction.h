@@ -4,16 +4,18 @@
 using namespace std;
 
 enum Opcode {
+	INVALID,
+	// rv32i
 	ADD, SUB, SLL, SLT, SLTU, XOR, SRL, SRA, OR, AND,
-	ADDI, SLTI, SLTIU, XORI, ORI, ANDI,
-	SLLI, SRLI, SRAI,
+	ADDI, SLTI, SLTIU, XORI, ORI, ANDI, SLLI, SRLI, SRAI,
 	LB, LH, LW, LBU, LHU,
 	SB, SH, SW,
 	BEQ, BNE, BLT, BGE, BLTU, BGEU,
 	JAL, JALR,
 	LUI, AUIPC,
 	ECALL, EBREAK,
-	INVALID
+	// rv32m
+	MUL, MULH, MULHSU, MULHU, DIV, DIVU, REM, REMU
 };
 
 struct Instruction {

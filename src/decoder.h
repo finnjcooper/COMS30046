@@ -23,7 +23,7 @@ public:
 				if (f7 == 0x20) {
 					if (f3 == 0x00) return {Opcode::SUB, rd, rs1, rs2, 0};
 					if (f3 == 0x05) return {Opcode::SRA, rd, rs1, rs2, 0};
-				} else {
+				} else if (f7 == 0x00) {
 					if (f3 == 0x00) return {Opcode::ADD, rd, rs1, rs2, 0};
 					if (f3 == 0x01) return {Opcode::SLL, rd, rs1, rs2, 0};
 					if (f3 == 0x02) return {Opcode::SLT, rd, rs1, rs2, 0};
@@ -32,6 +32,15 @@ public:
 					if (f3 == 0x05) return {Opcode::SRL, rd, rs1, rs2, 0};
 					if (f3 == 0x06) return {Opcode::OR, rd, rs1, rs2, 0};
 					if (f3 == 0x07) return {Opcode::AND, rd, rs1, rs2, 0};
+				} else if (f7 == 0x01) {
+					if (f3 == 0x00) return {Opcode::MUL, rd, rs1, rs2, 0};
+					if (f3 == 0x01) return {Opcode::MULH, rd, rs1, rs2, 0};
+					if (f3 == 0x02) return {Opcode::MULHSU, rd, rs1, rs2, 0};
+					if (f3 == 0x03) return {Opcode::MULHU, rd, rs1, rs2, 0};
+					if (f3 == 0x04) return {Opcode::DIV, rd, rs1, rs2, 0};
+					if (f3 == 0x05) return {Opcode::DIVU, rd, rs1, rs2, 0};
+					if (f3 == 0x06) return {Opcode::REM, rd, rs1, rs2, 0};
+					if (f3 == 0x07) return {Opcode::REMU, rd, rs1, rs2, 0};
 				}
 				cout << "Unknown R-type instruction." << endl;
 				break;

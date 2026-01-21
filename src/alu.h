@@ -25,6 +25,30 @@ public:
 				return operand1 | operand2;
 			case Opcode::AND: case Opcode::ANDI:
 				return operand1 & operand2;
+			case Opcode::MUL: case Opcode::MULH: {
+				int64_t result = static_cast<int64_t>(static_cast<int32_t>(operand1)) * static_cast<int64_t>(static_cast<int32_t>(operand2));
+				return op == Opcode::MUL ? static_cast<uint32_t>(result) : static_cast<uint32_t>(result >> 32);
+			}
+			case Opcode::MULHSU: {
+				int64_t result = static_cast<int64_t>(static_cast<int32_t>(operand1)) * static_cast<uint64_t>(operand2);
+				return static_cast<uint32_t>(result >> 32);
+			}
+			case Opcode::MULHU: {
+				uint64_t result = static_cast<uint64_t>(operand1) * static_cast<uint64_t>(operand2);
+				return static_cast<uint32_t>(result >> 32);
+			}
+			case Opcode::DIV:
+				if (operand2 == 0) return 0xFFFFFFFF;
+				return static_cast<uint32_t>(static_cast<int32_t>(operand1) / static_cast<int32_t>(operand2));
+			case Opcode::REM:
+				if (operand2 == 0) return operand1;
+				return static_cast<uint32_t>(static_cast<int32_t>(operand1) % static_cast<int32_t>(operand2));
+			case Opcode::DIVU:
+				if (operand2 == 0) return 0xFFFFFFFF;
+				return operand1 / operand2;
+			case Opcode::REMU:
+				if (operand2 == 0) return operand1;
+				return operand1 % operand2;
 			default:
 				return 0;
 		}

@@ -53,7 +53,9 @@ private:
 				halted = true;
 				break;
 			case Opcode::SUB: case Opcode::SRA: case Opcode::ADD: case Opcode::SLL: case Opcode::SLT:
-			case Opcode::SLTU: case Opcode::XOR: case Opcode::SRL: case Opcode::OR: case Opcode::AND: {
+			case Opcode::SLTU: case Opcode::XOR: case Opcode::SRL: case Opcode::OR: case Opcode::AND:
+			case Opcode::MUL: case Opcode::MULH: case Opcode::MULHSU: case Opcode::MULHU:
+			case Opcode::DIV: case Opcode::DIVU: case Opcode::REM: case Opcode::REMU: {
 				uint32_t result = alu.execute(
 					instr.op,
 					regs.read(instr.rs1),
