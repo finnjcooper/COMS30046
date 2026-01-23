@@ -3,6 +3,8 @@
 #include "regfile.h"
 #include "memory.h"
 #include "alu.h"
+#include "branch.h"
+#include "loadstore.h"
 #include "instruction.h"
 #include "decoder.h"
 
@@ -29,7 +31,11 @@ public:
 private:
 	RegisterFile regs = RegisterFile();
 	ALU alu = ALU();
+	LoadStoreUnit lsu = LoadStoreUnit();
+	BranchUnit bu = BranchUnit();
 	Memory mem;
+
+	bool pipelined = false;
 
 	ostringstream out;
 
@@ -76,34 +82,21 @@ private:
 			}
 			case Opcode::LB: case Opcode::LH: case Opcode::LW: case Opcode::LBU: case Opcode::LHU: {
 				uint32_t addr = regs.read(instr.rs1) + instr.imm;
-				uint32_t value = 0;
-				if (instr.op == Opcode::LB) value = Decoder::sign_extend(mem.loadb(addr), 8);
-				if (instr.op == Opcode::LH) value = Decoder::sign_extend(mem.loadh(addr), 16);
-				if (instr.op == Opcode::LW) value = mem.loadw(addr);
-				if (instr.op == Opcode::LBU) value = mem.loadb(addr);
-				if (instr.op == Opcode::LHU) value = mem.loadh(addr);
+				uint32_t value = lsu.load(instr.op, mem, addr);
 				regs.write(instr.rd, value);
 				break;
 			}
 			case Opcode::SB: case Opcode::SH: case Opcode::SW: {
 				uint32_t addr = regs.read(instr.rs1) + instr.imm;
 				uint32_t value = regs.read(instr.rs2);
-				if (instr.op == Opcode::SB) mem.storeb(addr, value & 0xFF);
-				if (instr.op == Opcode::SH) mem.storeh(addr, value & 0xFFFF);
-				if (instr.op == Opcode::SW) mem.storew(addr, value);
+				lsu.store(instr.op, mem, addr, value);
 				break;
 			}
 			case Opcode::BEQ: case Opcode::BNE: case Opcode::BLT: case Opcode::BGE: case Opcode::BLTU: case Opcode::BGEU: {
 				int32_t val1 = regs.read(instr.rs1);
 				int32_t val2 = regs.read(instr.rs2);
-				bool take_branch = false;
-				if (instr.op == Opcode::BEQ) take_branch = (val1 == val2);
-				if (instr.op == Opcode::BNE) take_branch = (val1 != val2);
-				if (instr.op == Opcode::BLT) take_branch = (val1 < val2);
-				if (instr.op == Opcode::BGE) take_branch = (val1 >= val2);
-				if (instr.op == Opcode::BLTU) take_branch = ((uint32_t)val1 < (uint32_t)val2);
-				if (instr.op == Opcode::BGEU) take_branch = ((uint32_t)val1 >= (uint32_t)val2);
-				if (take_branch) pc += instr.imm - 4;
+				bool branch = bu.evaluate(instr.op, val1, val2);
+				if (branch) pc += instr.imm - 4;
 				break;
 			}
 			case Opcode::JAL: {
