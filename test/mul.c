@@ -1,6 +1,9 @@
 int main() {
-	int a = 6;
-	int b = 4;
+	int a = 5;
+	int b = 3;
+	int c = a * b;
+	int d = a / b;
+	int e = a % b;
 
-	return a * b;
+	return 0;
 }

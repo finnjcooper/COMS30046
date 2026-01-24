@@ -1,24 +1,25 @@
 #pragma once
-#include <cstdint>
 #include <stdexcept>
+
+using namespace std;
 
 class RegisterFile {
 public:
 	static constexpr uint8_t NUM_REGISTERS = 32;
 
 	uint32_t read(uint8_t index) const {
-		if (index < 0 || index >= NUM_REGISTERS) throw std::out_of_range("Register index out of range");
+		if (index < 0 || index >= NUM_REGISTERS) throw out_of_range("Register index out of range");
 		return regs[index];
 	}
 
 	void write(uint8_t index, uint32_t value) {
-		if (index < 0 || index >= NUM_REGISTERS) throw std::out_of_range("Register index out of range");
+		if (index < 0 || index >= NUM_REGISTERS) throw out_of_range("Register index out of range");
 		else if (index == 0) return; // discard writes to x0
 		regs[index] = value;
 	}
 
 	const char* name(uint8_t index) const {
-		if (index < 0 || index >= NUM_REGISTERS) throw std::out_of_range("Register index out of range");
+		if (index < 0 || index >= NUM_REGISTERS) throw out_of_range("Register index out of range");
 		return NAMES[index];
 	}
 

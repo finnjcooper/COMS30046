@@ -1,5 +1,4 @@
 #pragma once
-#include <fstream>
 #include <regex>
 #include <map>
 #include "instruction.h"
@@ -7,18 +6,7 @@
 
 class Loader {
 public:
-	static Program BIN(const string& filename) {
-		ifstream file(filename, ios::binary);
-		auto bytes = vector<uint8_t>();
-		char byte;
-		while (file.read(&byte, 1)) {
-			bytes.push_back(byte);
-		};
-
-		return { bytes, 0 };
-	}
-
-	static Program ELF(const string& filename) {
+	static Program ELF(const string &filename) {
 		ELFIO::elfio elf;
 		if (!elf.load(filename)) {
 			cerr << "Could not open ELF file: " << filename << endl;
@@ -51,7 +39,7 @@ public:
 		return { memory, static_cast<uint32_t>(elf.get_entry()) };
 	}
 
-	static map<uint32_t, string> ASM(const string& filename) {
+	static map<uint32_t, string> ASM(const string &filename) {
 		map<uint32_t, string> disasm;
 		ifstream file(filename);
 		string line;

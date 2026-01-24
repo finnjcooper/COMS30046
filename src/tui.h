@@ -1,9 +1,6 @@
 #pragma once
 #include <ncurses.h>
-#include <string>
-#include <vector>
 #include <map>
-#include <iomanip>
 #include <sstream>
 #include "instruction.h"
 #include "regfile.h"
@@ -40,14 +37,14 @@ public:
 	}
 
 	void renderFrame(uint32_t pc, const RegisterFile &regs, const Memory &mem, 
-					 const std::map<uint32_t, std::string> &disasm) {
+					 const map<uint32_t, string> &disasm) {
 		renderInstructions(pc, disasm);
 		renderRegisters(regs);
 		renderMemory(mem, regs.read(2)); // pass sp (x2)
 	}
 	
 	int waitForKey() { return getch(); }
-	void displayMessage(const std::string &msg) {
+	void displayMessage(const string &msg) {
 		mvwprintw(stdscr, maxY - 1, 0, "%s", msg.c_str());
 		wrefresh(stdscr);
 	}
@@ -57,8 +54,8 @@ private:
 	WINDOW* regWin = nullptr;
 	WINDOW* memWin = nullptr;
 	int maxY, maxX;
-	std::vector<uint32_t> prevr = std::vector<uint32_t>(RegisterFile::NUM_REGISTERS, 0);
-	std::map<uint32_t, uint32_t> prevm = std::map<uint32_t, uint32_t>();
+	vector<uint32_t> prevr = vector<uint32_t>(RegisterFile::NUM_REGISTERS, 0);
+	map<uint32_t, uint32_t> prevm = map<uint32_t, uint32_t>();
 	
 	void createWindows() {
 		int instrWidth = (maxX * 4) / 10;
@@ -71,7 +68,7 @@ private:
 		memWin = newwin(maxY - 2, memWidth, 0, instrWidth + regWidth);
 	}
 	
-	void renderInstructions(uint32_t pc, const std::map<uint32_t, std::string> &disasm) {
+	void renderInstructions(uint32_t pc, const map<uint32_t, string> &disasm) {
 		werase(instrWin);
 		box(instrWin, 0, 0);
 		
@@ -86,8 +83,6 @@ private:
 		int centerLine = visibleLines / 2;
 
 		auto pcIt = disasm.lower_bound(pc);
-		if (pcIt == disasm.end()) --pcIt; // highlight last instruction if pc beyond end
-		
 		auto startIt = pcIt;
 		for (int i = 0; i < centerLine && startIt != disasm.begin(); i++) startIt--;
 		
@@ -97,10 +92,10 @@ private:
 			
 			if (isCurrent && has_colors()) wattron(instrWin, COLOR_PAIR(1) | A_BOLD);
 			
-			std::stringstream ss;
-			ss << "0x" << std::hex << std::setw(8) << std::setfill('0') << displayIt->first << ": " << displayIt->second;
+			stringstream ss;
+			ss << "0x" << hex << setw(8) << setfill('0') << displayIt->first << ": " << displayIt->second;
 			
-			std::string instrText = ss.str();
+			string instrText = ss.str();
 			if (instrText.length() > (size_t)(width - 4)) instrText = instrText.substr(0, width - 4);
 			
 			mvwprintw(instrWin, line++, 2, "%s", instrText.c_str());
@@ -158,7 +153,7 @@ private:
 		int visibleLines = height - 2;
 		
 		int line = 1;
-		uint32_t start = min(sp, uint32_t(CPU::MEM_SIZE) - visibleLines * 4);
+		uint32_t start = max(min(sp, uint32_t(CPU::MEM_SIZE) - visibleLines * 4), 0U);
 		for (uint32_t addr = start; addr + 3 < CPU::MEM_SIZE && line < height - 1; addr += 4) {
 			uint32_t word = mem.loadw(addr);
 			bool modified = false;

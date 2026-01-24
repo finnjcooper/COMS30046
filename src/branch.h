@@ -2,19 +2,19 @@
 
 class BranchUnit {
 public:
-	bool evaluate(Opcode op, int32_t val1, int32_t val2) {
+	bool evaluate(Op op, int32_t val1, int32_t val2) {
 		switch (op) {
-			case Opcode::BEQ:
+			case BEQ:
 				return val1 == val2;
-			case Opcode::BNE:
+			case BNE:
 				return val1 != val2;
-			case Opcode::BLT:
+			case BLT:
 				return val1 < val2;
-			case Opcode::BGE:
+			case BGE:
 				return val1 >= val2;
-			case Opcode::BLTU:
+			case BLTU:
 				return static_cast<uint32_t>(val1) < static_cast<uint32_t>(val2);
-			case Opcode::BGEU:
+			case BGEU:
 				return static_cast<uint32_t>(val1) >= static_cast<uint32_t>(val2);
 			default:
 				return false;

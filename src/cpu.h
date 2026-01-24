@@ -11,12 +11,46 @@
 class CPU {
 public:
 	~CPU() = default;
-	CPU(Program prog) : mem(Memory(prog.instrs, MEM_SIZE)), pc(prog.entryPoint) { regs.write(2, MEM_SIZE - 4); }
+	CPU(Program prog) : mem(Memory(prog.instrs, MEM_SIZE)), pc(prog.entryPoint) { regs.write(2, MEM_SIZE - WORD_BYTES); }
 
 	static constexpr size_t MEM_SIZE = 64 * 1024; // 64 KB
+	static constexpr uint8_t XLEN = 32;
+	static constexpr uint8_t WORD_BYTES = XLEN / 8;
 
-	void step() { execute(decode(fetch())); }
-	bool isRunning() { return !halted; }
+	void step() {
+		if (!pipelined) {
+			fetch();
+			decode();
+			execute();
+			if (exmem.jump) pc = exmem.alu;
+			memory();
+			writeback();
+			return;
+		}
+
+		writeback();
+		memory();
+		execute();
+
+		// TODO: move to hazard unit
+		if (exmem.jump) {
+			out << "JUMP detected: target=0x" << hex << exmem.alu << " from PC=0x" << exmem.pc << dec << "\n";
+			pc = exmem.alu;
+			ifid.valid = false;
+			idex.valid = false;
+		}
+		
+		decode();
+		fetch();
+
+		cout << "---- Pipeline State ----\n";
+		cout << "IF/ID: PC=0x" << hex << ifid.pc << " Instr=0x" << ifid.instr << dec << "\n";
+		cout << "ID/EX: PC=0x" << hex << idex.pc << " Op=0x" << (int)idex.instr.op << " rs1=0x" << idex.instr.rs1 << " rs2=0x" << idex.instr.rs2 << " imm=0x" << idex.instr.imm << " D1=0x" << idex.r1 << " D2=0x" << idex.r2 << dec << "\n";
+		cout << "EX/MEM: PC=0x" << hex << exmem.pc << " Op=0x" << (int)exmem.instr.op << " rs1=0x" << exmem.instr.rs1 << " rs2=0x" << exmem.instr.rs2 << " imm=0x" << exmem.instr.imm << " D1=0x" << exmem.alu << " D2=0x" << exmem.r2 << dec << "\n";
+		cout << "MEM/WB: PC=0x" << hex << memwb.pc << " Op=0x" << (int)memwb.instr.op << " rs1=0x" << memwb.instr.rs1 << " rs2=0x" << memwb.instr.rs2 << " imm=0x" << memwb.instr.imm << " D1=0x" << memwb.alu << " D2=0x" << memwb.mem << dec << "\n";
+	}
+
+	bool running() { return !halted; }
 	uint32_t getPC() const { return pc; }
 	RegisterFile getRegisters() const { return regs; }
 	Memory getMemory() const { return mem; }
@@ -29,95 +63,97 @@ public:
 	}
 
 private:
-	RegisterFile regs = RegisterFile();
-	ALU alu = ALU();
-	LoadStoreUnit lsu = LoadStoreUnit();
-	BranchUnit bu = BranchUnit();
+	RegisterFile regs;
+	LoadStoreUnit lsu;
+	BranchUnit bru;
+	ALU alu;
 	Memory mem;
 
-	bool pipelined = false;
+	IFID ifid;
+	IDEX idex;
+	EXMEM exmem;
+	MEMWB memwb;
 
 	ostringstream out;
 
 	uint32_t pc = 0;
 	bool halted = false;
+	bool pipelined = false;
 
-	uint32_t fetch() {
-		uint32_t instr = mem.loadw(pc);
-		pc += 4;
-		return instr;
+	void fetch() {
+		if (ifid.valid) return;
+		
+		ifid = {pc, mem.loadw(pc), true};
+		pc += WORD_BYTES;
 	}
 
-	Instruction decode(uint32_t instruction) {
-		return Decoder::decode(instruction);
+	void decode() {
+		if (ifid.valid == false) return;
+		
+		Instruction instr = Decoder::decode(ifid.instr);
+
+		// TODO: handle hazards (stall / forwarding)
+
+		idex = {ifid.pc, instr, regs.read(instr.rs1), regs.read(instr.rs2), true};
+		ifid.valid = false;
 	}
 	
-	void execute(Instruction instr) {
-		switch (instr.op) {
-			case Opcode::ECALL:
-			case Opcode::EBREAK:
-				halted = true;
-				break;
-			case Opcode::SUB: case Opcode::SRA: case Opcode::ADD: case Opcode::SLL: case Opcode::SLT:
-			case Opcode::SLTU: case Opcode::XOR: case Opcode::SRL: case Opcode::OR: case Opcode::AND:
-			case Opcode::MUL: case Opcode::MULH: case Opcode::MULHSU: case Opcode::MULHU:
-			case Opcode::DIV: case Opcode::DIVU: case Opcode::REM: case Opcode::REMU: {
-				uint32_t result = alu.execute(
-					instr.op,
-					regs.read(instr.rs1),
-					regs.read(instr.rs2)
-				);
-				regs.write(instr.rd, result);
-				break;
-			}
-			case Opcode::ADDI: case Opcode::SLLI: case Opcode::SLTI: case Opcode::SLTIU: case Opcode::XORI:
-			case Opcode::SRAI: case Opcode::SRLI: case Opcode::ORI: case Opcode::ANDI: {
-				uint32_t result = alu.execute(
-					instr.op,
-					regs.read(instr.rs1),
-					instr.imm
-				);
-				regs.write(instr.rd, result);
-				break;
-			}
-			case Opcode::LB: case Opcode::LH: case Opcode::LW: case Opcode::LBU: case Opcode::LHU: {
-				uint32_t addr = regs.read(instr.rs1) + instr.imm;
-				uint32_t value = lsu.load(instr.op, mem, addr);
-				regs.write(instr.rd, value);
-				break;
-			}
-			case Opcode::SB: case Opcode::SH: case Opcode::SW: {
-				uint32_t addr = regs.read(instr.rs1) + instr.imm;
-				uint32_t value = regs.read(instr.rs2);
-				lsu.store(instr.op, mem, addr, value);
-				break;
-			}
-			case Opcode::BEQ: case Opcode::BNE: case Opcode::BLT: case Opcode::BGE: case Opcode::BLTU: case Opcode::BGEU: {
-				int32_t val1 = regs.read(instr.rs1);
-				int32_t val2 = regs.read(instr.rs2);
-				bool branch = bu.evaluate(instr.op, val1, val2);
-				if (branch) pc += instr.imm - 4;
-				break;
-			}
-			case Opcode::JAL: {
-				regs.write(instr.rd, pc);
-				pc += instr.imm - 4;
-				break;
-			}
-			case Opcode::JALR: {
-				uint32_t temp = pc;
-				pc = (regs.read(instr.rs1) + instr.imm) & ~1;
-				regs.write(instr.rd, temp);
-				break;
-			}
-			case Opcode::LUI: case Opcode::AUIPC: {
-				regs.write(instr.rd, instr.imm + ((pc - 4) * (instr.op == Opcode::AUIPC)));
-				break;
-			}
-			case Opcode::INVALID:
-				out << "Invalid instruction encountered!" << endl;
-			default:
-				return;
+	void execute() {
+		if (idex.valid == false) return;
+
+		Op op = idex.instr.op;
+		uint32_t imm = idex.instr.imm, r1 = idex.r1, r2 = idex.r2;
+		bool jump = false;
+		uint32_t alu_res;
+
+		if (isALU(op)) alu_res = alu.execute(op, r1, r2);
+		if (isALUI(op)) alu_res = alu.execute(op, r1, imm);
+		if (isLoad(op) || isStore(op)) alu_res = r1 + imm;
+		
+		if (isBranch(op)) {
+			jump = bru.evaluate(op, r1, r2);
+			alu_res = idex.pc + imm;
 		}
+		
+		if (isJAL(op)) {
+			jump = true;
+			alu_res = op == JAL ? idex.pc + imm : (r1 + imm) & ~1u;
+			r2 = idex.pc + WORD_BYTES;
+		}
+
+		if (op == LUI) alu_res = imm;
+		if (op == AUIPC) alu_res = idex.pc + imm;
+
+		exmem = {idex.pc, idex.instr, alu_res, r2, jump, true};
+		idex.valid = false;
+	}
+
+	void memory() {
+		if (exmem.valid == false) return;
+
+		Op op = exmem.instr.op;
+		uint32_t addr = exmem.alu, val = exmem.r2;
+
+		if (isLoad(op)) val = lsu.load(op, mem, addr);
+		if (isStore(op)) lsu.store(op, mem, addr, val);
+		memwb = {exmem.pc, exmem.instr, addr, val, true};
+		exmem.valid = false;
+	}
+
+	void writeback() {
+		if (memwb.valid == false) return;
+
+		Op op = memwb.instr.op;
+		uint8_t rd = memwb.instr.rd;
+
+		if (isALU(op) || isALUI(op) || isUI(op)) regs.write(rd, memwb.alu);
+		if (isLoad(op) || isJAL(op)) regs.write(rd, memwb.mem);
+
+		if (op == EBREAK) {
+			pc -= WORD_BYTES; // undo pc increment to point to ebreak instruction
+			halted = true;
+		}
+
+		memwb.valid = false;
 	}
 };

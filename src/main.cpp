@@ -14,10 +14,11 @@ int main(int argc, char* argv[]) {
 	tui.renderFrame(cpu.getPC(), cpu.getRegisters(), cpu.getMemory(), disasm);
 	tui.displayMessage("Press any key to step, 'c' to continue, 'q' to quit.");
 	
+	int ch;
 	bool stepping = true;
-	while (cpu.isRunning()) {
+	while (cpu.running()) {
 		if (stepping) {
-			int ch = tui.waitForKey();
+			ch = tui.waitForKey();
 			if (ch == 'q' || ch == 'Q') break;
 			if (ch == 'c' || ch == 'C') stepping = false;
 			else stepping = true;
@@ -28,8 +29,8 @@ int main(int argc, char* argv[]) {
 		tui.displayMessage(cpu.readout());
 	}
 
-	tui.displayMessage("Program halted. Press any key to exit.                     ");
-	tui.waitForKey();
+	tui.displayMessage("Program halted. Press 'q' to quit.                         ");
+	while (ch != 'q' && ch != 'Q') ch = tui.waitForKey();
 
 	return 0;
 };
