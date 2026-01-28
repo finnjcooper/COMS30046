@@ -5,7 +5,9 @@
 
 class LoadStoreUnit {
 public:
-	uint32_t load(Op op, Memory &mem, uint32_t addr) {
+	LoadStoreUnit(Memory &memory) : mem(memory) {}
+
+	uint32_t load(Op op, uint32_t addr) {
 		switch (op) {
 			case LB:
 				return Decoder::sign_extend(mem.loadb(addr), 8);
@@ -22,7 +24,7 @@ public:
 		}
 	}
 
-	void store(Op op, Memory &mem, uint32_t addr, uint32_t value) {
+	void store(Op op, uint32_t addr, uint32_t value) {
 		switch (op) {
 			case SB:
 				mem.storeb(addr, value & 0xFF);
@@ -37,4 +39,7 @@ public:
 				break;
 		}
 	}
+
+private:
+	Memory &mem;
 };

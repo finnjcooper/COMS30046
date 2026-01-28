@@ -22,6 +22,10 @@ public:
 			init_pair(3, COLOR_YELLOW, COLOR_BLACK);  // values
 			init_pair(4, COLOR_RED, COLOR_BLACK);     // modified values
 			init_pair(5, COLOR_WHITE, COLOR_BLUE);    // titles
+			init_pair(6, COLOR_BLACK, COLOR_CYAN);    // fetch pointer
+			init_pair(7, COLOR_BLACK, COLOR_MAGENTA); // decode pointer
+			init_pair(8, COLOR_BLACK, COLOR_YELLOW);  // execute pointer
+			init_pair(9, COLOR_BLACK, COLOR_WHITE);   // memory pointer
 		}
 		
 		getmaxyx(stdscr, maxY, maxX);
@@ -36,15 +40,15 @@ public:
 		endwin();
 	}
 
-	void renderFrame(uint32_t pc, const RegisterFile &regs, const Memory &mem, 
-					 const map<uint32_t, string> &disasm) {
-		renderInstructions(pc, disasm);
+	void renderFrame(const Pipeline &pipe, const RegisterFile &regs, const Memory &mem, const map<uint32_t, string> &disasm) {
+		renderInstructions(pipe, disasm);
 		renderRegisters(regs);
 		renderMemory(mem, regs.read(2)); // pass sp (x2)
 	}
 	
 	int waitForKey() { return getch(); }
 	void displayMessage(const string &msg) {
+		mvwprintw(stdscr, maxY - 1, 0, "%-*s", maxX - 1, ""); // clear line
 		mvwprintw(stdscr, maxY - 1, 0, "%s", msg.c_str());
 		wrefresh(stdscr);
 	}
@@ -68,7 +72,7 @@ private:
 		memWin = newwin(maxY - 2, memWidth, 0, instrWidth + regWidth);
 	}
 	
-	void renderInstructions(uint32_t pc, const map<uint32_t, string> &disasm) {
+	void renderInstructions(const Pipeline &pipe, const map<uint32_t, string> &disasm) {
 		werase(instrWin);
 		box(instrWin, 0, 0);
 		
@@ -80,17 +84,27 @@ private:
 		getmaxyx(instrWin, height, width);
 		
 		int visibleLines = height - 2;
-		int centerLine = visibleLines / 2;
+		int targetLine = 3 * visibleLines / 4;
 
-		auto pcIt = disasm.lower_bound(pc);
-		auto startIt = pcIt;
-		for (int i = 0; i < centerLine && startIt != disasm.begin(); i++) startIt--;
+		auto fetchIt = disasm.lower_bound(pipe.ifid.pc);
+		auto decodeIt = disasm.lower_bound(pipe.idex.pc);
+		auto executeIt = disasm.lower_bound(pipe.exmem.pc);
+		auto memIt = disasm.lower_bound(pipe.memwb.pc);
+		
+		auto startIt = fetchIt;
+		for (int i = 0; i < targetLine && startIt != disasm.begin(); i++) startIt--;
 		
 		int line = 1;
 		for (auto displayIt = startIt; displayIt != disasm.end() && line < height - 1; displayIt++) {
-			bool isCurrent = (displayIt == pcIt);
-			
-			if (isCurrent && has_colors()) wattron(instrWin, COLOR_PAIR(1) | A_BOLD);
+			bool isFetch = (displayIt == fetchIt && (pipe.ifid.valid || !pipe.isPipelined()));
+			bool isDecode = (displayIt == decodeIt && pipe.idex.valid);
+			bool isExecute = (displayIt == executeIt && pipe.exmem.valid);
+			bool isMem = (displayIt == memIt && pipe.memwb.valid);
+
+			if      (isFetch && has_colors()) wattron(instrWin, COLOR_PAIR(6) | A_BOLD);
+			else if (isDecode && has_colors()) wattron(instrWin, COLOR_PAIR(7) | A_BOLD);
+			else if (isExecute && has_colors()) wattron(instrWin, COLOR_PAIR(8) | A_BOLD);
+			else if (isMem && has_colors()) wattron(instrWin, COLOR_PAIR(9) | A_BOLD);
 			
 			stringstream ss;
 			ss << "0x" << hex << setw(8) << setfill('0') << displayIt->first << ": " << displayIt->second;
@@ -99,7 +113,12 @@ private:
 			if (instrText.length() > (size_t)(width - 4)) instrText = instrText.substr(0, width - 4);
 			
 			mvwprintw(instrWin, line++, 2, "%s", instrText.c_str());
-			if (isCurrent && has_colors()) wattroff(instrWin, COLOR_PAIR(1) | A_BOLD);
+
+			if      (isFetch && has_colors()) wattroff(instrWin, COLOR_PAIR(6) | A_BOLD);
+			else if (isDecode && has_colors()) wattroff(instrWin, COLOR_PAIR(7) | A_BOLD);
+			else if (isExecute && has_colors()) wattroff(instrWin, COLOR_PAIR(8) | A_BOLD);
+			else if (isMem && has_colors()) wattroff(instrWin, COLOR_PAIR(9) | A_BOLD);
+			
 		}
 		
 		wrefresh(instrWin);
@@ -123,7 +142,7 @@ private:
 			const char *name = regs.name(i);
 
 			if (has_colors()) wattron(regWin, COLOR_PAIR(2));
-			mvwprintw(regWin, line++, 2, "x%02d %s(%s):", i, strlen(name) < 3 ? " " : "", name);
+			mvwprintw(regWin, line++, 2, "x%02d %-*s(%s):", i, (4 - strlen(name)), "", name);
 			if (has_colors()) wattroff(regWin, COLOR_PAIR(2));
 			
 			if (modified && has_colors()) wattron(regWin, COLOR_PAIR(4) | A_BOLD);

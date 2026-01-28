@@ -7,53 +7,54 @@
 #include "loadstore.h"
 #include "instruction.h"
 #include "decoder.h"
+#include "pipeline.h"
 
 class CPU {
 public:
 	~CPU() = default;
-	CPU(Program prog) : mem(Memory(prog.instrs, MEM_SIZE)), pc(prog.entryPoint) { regs.write(2, MEM_SIZE - WORD_BYTES); }
+	CPU(Program prog) : mem(Memory(prog.instrs, MEM_SIZE)), lsu(mem), pc(prog.entryPoint) { regs.write(2, MEM_SIZE - WORD_BYTES); }
+	CPU(Program prog, bool isPipelined) : mem(Memory(prog.instrs, MEM_SIZE)), lsu(mem), pc(prog.entryPoint), pipe(Pipeline(isPipelined)) { regs.write(2, MEM_SIZE - WORD_BYTES); }
 
 	static constexpr size_t MEM_SIZE = 64 * 1024; // 64 KB
 	static constexpr uint8_t XLEN = 32;
 	static constexpr uint8_t WORD_BYTES = XLEN / 8;
 
 	void step() {
-		if (!pipelined) {
-			fetch();
-			decode();
-			execute();
-			if (exmem.jump) pc = exmem.alu;
-			memory();
-			writeback();
+		if (!pipe.isPipelined()) { stepUnpipelined(); return; }
+
+		cycles++;
+		PipelineControl ctrl = pipe.getControl();
+
+		if (pipe.memwb.valid) instructions++;
+		if (pipe.writeback(regs)) halted = true;
+		
+		pipe.memory(lsu);
+
+		// control hazard
+		if (ctrl.jumped) {
+			pc = ctrl.target;
+			pipe.flush();
+			out << "Control hazard: flushing pipeline, jumping to 0x" << std::hex << pc << std::dec << "\n";
 			return;
 		}
 
-		writeback();
-		memory();
-		execute();
+		pipe.execute(alu, bru);
 
-		// TODO: move to hazard unit
-		if (exmem.jump) {
-			out << "JUMP detected: target=0x" << hex << exmem.alu << " from PC=0x" << exmem.pc << dec << "\n";
-			pc = exmem.alu;
-			ifid.valid = false;
-			idex.valid = false;
+		// data hazard
+		if (!ctrl.stall) {
+			pipe.decode(regs);
+			if (pipe.fetch(pc, mem)) pc += WORD_BYTES;
+		} else {
+			out << "Data hazard: stalling pipeline\n";
 		}
-		
-		decode();
-		fetch();
-
-		cout << "---- Pipeline State ----\n";
-		cout << "IF/ID: PC=0x" << hex << ifid.pc << " Instr=0x" << ifid.instr << dec << "\n";
-		cout << "ID/EX: PC=0x" << hex << idex.pc << " Op=0x" << (int)idex.instr.op << " rs1=0x" << idex.instr.rs1 << " rs2=0x" << idex.instr.rs2 << " imm=0x" << idex.instr.imm << " D1=0x" << idex.r1 << " D2=0x" << idex.r2 << dec << "\n";
-		cout << "EX/MEM: PC=0x" << hex << exmem.pc << " Op=0x" << (int)exmem.instr.op << " rs1=0x" << exmem.instr.rs1 << " rs2=0x" << exmem.instr.rs2 << " imm=0x" << exmem.instr.imm << " D1=0x" << exmem.alu << " D2=0x" << exmem.r2 << dec << "\n";
-		cout << "MEM/WB: PC=0x" << hex << memwb.pc << " Op=0x" << (int)memwb.instr.op << " rs1=0x" << memwb.instr.rs1 << " rs2=0x" << memwb.instr.rs2 << " imm=0x" << memwb.instr.imm << " D1=0x" << memwb.alu << " D2=0x" << memwb.mem << dec << "\n";
 	}
 
 	bool running() { return !halted; }
-	uint32_t getPC() const { return pc; }
 	RegisterFile getRegisters() const { return regs; }
 	Memory getMemory() const { return mem; }
+	Pipeline getPipeline() const { return pipe; }
+	int getNumInstructions() const { return instructions; }
+	int getNumCycles() const { return cycles; }
 	
 	string readout() {
 		string s = out.str();
@@ -68,92 +69,30 @@ private:
 	BranchUnit bru;
 	ALU alu;
 	Memory mem;
-
-	IFID ifid;
-	IDEX idex;
-	EXMEM exmem;
-	MEMWB memwb;
+	Pipeline pipe;
 
 	ostringstream out;
 
 	uint32_t pc = 0;
 	bool halted = false;
-	bool pipelined = false;
 
-	void fetch() {
-		if (ifid.valid) return;
-		
-		ifid = {pc, mem.loadw(pc), true};
+	int instructions = 0;
+	int cycles = 0;
+
+	void stepUnpipelined() {
+		pipe.fetch(pc, mem);
 		pc += WORD_BYTES;
-	}
 
-	void decode() {
-		if (ifid.valid == false) return;
-		
-		Instruction instr = Decoder::decode(ifid.instr);
+		pipe.decode(regs);
+		pipe.execute(alu, bru);
 
-		// TODO: handle hazards (stall / forwarding)
+		PipelineControl ctrl = pipe.getControl();
+		if (ctrl.jumped) pc = ctrl.target;
 
-		idex = {ifid.pc, instr, regs.read(instr.rs1), regs.read(instr.rs2), true};
-		ifid.valid = false;
-	}
-	
-	void execute() {
-		if (idex.valid == false) return;
+		pipe.memory(lsu);
+		if (pipe.writeback(regs)) halted = true;
 
-		Op op = idex.instr.op;
-		uint32_t imm = idex.instr.imm, r1 = idex.r1, r2 = idex.r2;
-		bool jump = false;
-		uint32_t alu_res;
-
-		if (isALU(op)) alu_res = alu.execute(op, r1, r2);
-		if (isALUI(op)) alu_res = alu.execute(op, r1, imm);
-		if (isLoad(op) || isStore(op)) alu_res = r1 + imm;
-		
-		if (isBranch(op)) {
-			jump = bru.evaluate(op, r1, r2);
-			alu_res = idex.pc + imm;
-		}
-		
-		if (isJAL(op)) {
-			jump = true;
-			alu_res = op == JAL ? idex.pc + imm : (r1 + imm) & ~1u;
-			r2 = idex.pc + WORD_BYTES;
-		}
-
-		if (op == LUI) alu_res = imm;
-		if (op == AUIPC) alu_res = idex.pc + imm;
-
-		exmem = {idex.pc, idex.instr, alu_res, r2, jump, true};
-		idex.valid = false;
-	}
-
-	void memory() {
-		if (exmem.valid == false) return;
-
-		Op op = exmem.instr.op;
-		uint32_t addr = exmem.alu, val = exmem.r2;
-
-		if (isLoad(op)) val = lsu.load(op, mem, addr);
-		if (isStore(op)) lsu.store(op, mem, addr, val);
-		memwb = {exmem.pc, exmem.instr, addr, val, true};
-		exmem.valid = false;
-	}
-
-	void writeback() {
-		if (memwb.valid == false) return;
-
-		Op op = memwb.instr.op;
-		uint8_t rd = memwb.instr.rd;
-
-		if (isALU(op) || isALUI(op) || isUI(op)) regs.write(rd, memwb.alu);
-		if (isLoad(op) || isJAL(op)) regs.write(rd, memwb.mem);
-
-		if (op == EBREAK) {
-			pc -= WORD_BYTES; // undo pc increment to point to ebreak instruction
-			halted = true;
-		}
-
-		memwb.valid = false;
+		instructions++;
+		cycles += 5;
 	}
 };

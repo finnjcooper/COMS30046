@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 
 using namespace std;
 
@@ -25,6 +26,8 @@ bool isBranch(Op op) { return op >= BEQ && op <= BGEU; };
 bool isJAL(Op op) { return op == JAL || op == JALR; };
 bool isUI(Op op) { return op == LUI || op == AUIPC; };
 
+bool writesRegister(Op op) { return isALU(op) || isALUI(op) || isLoad(op) || isUI(op) || isJAL(op); };
+
 struct Instruction {
 	Op op = INVALID;
 	uint8_t rd, rs1, rs2;
@@ -35,34 +38,4 @@ struct Instruction {
 struct Program {
 	vector<uint8_t> instrs;
 	uint32_t entryPoint;
-};
-
-
-
-
-struct IFID {
-	uint32_t pc, instr;
-	bool valid = false;
-};
-
-struct IDEX {
-	uint32_t pc;
-	Instruction instr;
-	uint32_t r1, r2;
-	bool valid = false;
-};
-
-struct EXMEM {
-	uint32_t pc;
-	Instruction instr;
-	uint32_t alu, r2;
-	bool jump = false;
-	bool valid = false;
-};
-
-struct MEMWB {
-	uint32_t pc;
-	Instruction instr;
-	uint32_t alu, mem;
-	bool valid = false;
 };

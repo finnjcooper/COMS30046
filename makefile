@@ -7,12 +7,12 @@ CFLAGS = \
 	-mabi=ilp32 -mno-relax \
 	-O0 \
 	-ffreestanding \
-	-fno-pic \
-	-fno-builtin \
-	-fno-stack-protector \
-	-nostdlib -nostartfiles
+	-fno-pic -fno-pie \
+	-fno-builtin -fno-stack-protector
 
-CLDFLAGS = -T test/linker.ld
+CLDFLAGS = \
+	-nostdlib -static -no-pie \
+	-T test/linker.ld
 
 CXXFLAGS = -I src -std=c++26 -g -DNCURSES_STATIC
 CXXLDFLAGS = -lncurses
@@ -22,6 +22,7 @@ ifeq ($(OS), Windows_NT)
 endif
 
 BENCH ?= add
+PIPELINED ?= true
 
 
 CSRCS := $(wildcard test/*.c)
@@ -45,7 +46,7 @@ build/main.exe: $(CXXOBJS) | build
 	$(CXX) $^ $(CXXLDFLAGS) -o $@
 
 run: build/main.exe build/$(BENCH).elf
-	$^
+	$^ $(PIPELINED)
 
 build:
 	mkdir build
