@@ -1,19 +1,19 @@
 #pragma once
 #include <sstream>
-#include "regfile.h"
-#include "memory.h"
-#include "alu.h"
-#include "branch.h"
-#include "loadstore.h"
-#include "instruction.h"
-#include "decoder.h"
-#include "pipeline.h"
+#include "regfile.hpp"
+#include "memory.hpp"
+#include "alu.hpp"
+#include "branch.hpp"
+#include "loadstore.hpp"
+#include "instruction.hpp"
+#include "decoder.hpp"
+#include "pipeline.hpp"
 
 class CPU {
 public:
 	~CPU() = default;
 	CPU(Program prog) : mem(Memory(prog.instrs, MEM_SIZE)), lsu(mem), pc(prog.entryPoint) { regs.write(2, MEM_SIZE - WORD_BYTES); }
-	CPU(Program prog, bool isPipelined) : mem(Memory(prog.instrs, MEM_SIZE)), lsu(mem), pc(prog.entryPoint), pipe(Pipeline(isPipelined)) { regs.write(2, MEM_SIZE - WORD_BYTES); }
+	CPU(Program prog, bool isPipelined) : mem(Memory(prog.instrs, MEM_SIZE)), lsu(mem), pipe(Pipeline(isPipelined)), pc(prog.entryPoint) { regs.write(2, MEM_SIZE - WORD_BYTES); }
 
 	static constexpr size_t MEM_SIZE = 64 * 1024; // 64 KB
 	static constexpr uint8_t XLEN = 32;
@@ -23,11 +23,11 @@ public:
 		if (!pipe.isPipelined()) { stepUnpipelined(); return; }
 
 		cycles++;
-		PipelineControl ctrl = pipe.getControl();
-
-		if (pipe.memwb.valid) instructions++;
-		if (pipe.writeback(regs)) halted = true;
 		
+		PipelineControl ctrl = pipe.getControl();
+		if (pipe.memwb.valid) instructions++;
+
+		if (pipe.writeback(regs)) halted = true;
 		pipe.memory(lsu);
 
 		// control hazard
@@ -53,6 +53,7 @@ public:
 	RegisterFile getRegisters() const { return regs; }
 	Memory getMemory() const { return mem; }
 	Pipeline getPipeline() const { return pipe; }
+	uint32_t getPC() const { return pc; }
 	int getNumInstructions() const { return instructions; }
 	int getNumCycles() const { return cycles; }
 	

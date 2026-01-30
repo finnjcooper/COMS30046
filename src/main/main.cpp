@@ -1,6 +1,6 @@
-#include "cpu.h"
-#include "loader.h"
-#include "tui.h"
+#include "cpu.hpp"
+#include "loader.hpp"
+#include "tui.hpp"
 
 struct Args {
 	string elfPath;
@@ -39,28 +39,8 @@ int main(int argc, char* argv[]) {
 	auto disasm = Loader::ASM(asmPath);
 	
 	CPU cpu(prog, isPipelined);
-	TUI tui;
-
-	tui.renderFrame(cpu.getPipeline(), cpu.getRegisters(), cpu.getMemory(), disasm);
-	tui.displayMessage("Press any key to step, 'c' to continue, 'q' to quit.");
-	
-	int ch;
-	bool stepping = true;
-	while (cpu.running()) {
-		if (stepping) {
-			ch = tui.waitForKey();
-			if (ch == 'q' || ch == 'Q') break;
-			if (ch == 'c' || ch == 'C') stepping = false;
-			else stepping = true;
-		}
-		
-		cpu.step();
-		tui.renderFrame(cpu.getPipeline(), cpu.getRegisters(), cpu.getMemory(), disasm);
-		tui.displayMessage(cpu.readout());
-	}
-
-	tui.displayMessage("Program halted. Press 'q' to quit.");
-	while (ch != 'q' && ch != 'Q') ch = tui.waitForKey();
+	TUI tui(cpu, disasm);
+	tui.run();
 
 	cout << "Instructions executed: " << cpu.getNumInstructions() << endl;
 	cout << "Cycles taken: " << cpu.getNumCycles() << endl;

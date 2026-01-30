@@ -1,7 +1,7 @@
 #pragma once
-#include "memory.h"
-#include "instruction.h"
-#include "decoder.h"
+#include "memory.hpp"
+#include "instruction.hpp"
+#include "decoder.hpp"
 
 class LoadStoreUnit {
 public:

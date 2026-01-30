@@ -1,5 +1,5 @@
 #pragma once
-#include "instruction.h"
+#include "instruction.hpp"
 
 class ALU {
 public:

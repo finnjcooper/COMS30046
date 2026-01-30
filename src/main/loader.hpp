@@ -1,8 +1,8 @@
 #pragma once
 #include <regex>
 #include <map>
-#include "instruction.h"
-#include "elfio/elfio.hpp"
+#include <elfio/elfio.hpp>
+#include "instruction.hpp"
 
 class Loader {
 public:
