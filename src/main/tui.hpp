@@ -23,13 +23,27 @@ public:
 	void run() {
 		auto screen = ScreenInteractive::Fullscreen();
 
-		auto component = Renderer([&] {
-			return hbox({
-				renderInstructions() | flex,
-				renderRegisters() | flex,
-				renderMemory() | flex,
-			}) | flex;
+		vector<string> tab_values = {" Registers ", " Memory "};
+		int tab_selected = 0;
+		auto tab_toggle = Toggle(&tab_values, &tab_selected);
+
+		auto regs_comp = Renderer([&] { return renderRegisters(); });
+		auto mem_comp = Renderer([&] { return renderMemory(); });
+		auto tab_container = Container::Tab({regs_comp, mem_comp}, &tab_selected);
+		auto right_container = Container::Vertical({tab_toggle, tab_container});
+		
+		auto right_renderer = Renderer(right_container, [&] {
+			return vbox({ tab_toggle->Render(), tab_container->Render() });
 		});
+
+		auto left_renderer = Renderer([&] {
+			return vbox({ text(""), renderInstructions() });
+		});
+
+		int left_size = 50;
+
+		auto component = right_renderer;
+		component = ResizableSplitLeft(left_renderer, component, &left_size);
 
 		component = CatchEvent(component, [&](Event event) {
 			if (event == Event::Character('q') || event == Event::Escape) { screen.Exit(); return true; }
@@ -68,7 +82,7 @@ private:
 	bool showHelp = false;
 
 	Element renderTitleBar() {
-		return text(" RISC-V Simulator TUI ") | bold | center | bgcolor(Color::Blue) | color(Color::White);
+		return text(" RISC-V Simulator TUI ") | bold | center | bgcolor(Color::SkyBlue2) | color(Color::White);
 	}
 
 	Element renderInstructions() {
@@ -78,30 +92,47 @@ private:
 		uint32_t pc = cpu.getPC();
 		
 		map<uint32_t, pair<char, Color>> stages;
-		if (pipe.memwb.valid) stages[pipe.memwb.pc] = {'W', Color::Green};
-		if (pipe.exmem.valid) stages[pipe.exmem.pc] = {'M', Color::GrayLight};
-		if (pipe.idex.valid)  stages[pipe.idex.pc]  = {'X', Color::Yellow};
-		if (pipe.ifid.valid)  stages[pipe.ifid.pc]  = {'D', Color::Magenta};
-		stages[pc] = {'F', Color::Cyan};
+		if (pipe.memwb.valid) stages[pipe.memwb.pc] = {'W', Color::MediumPurple3};
+		if (pipe.exmem.valid) stages[pipe.exmem.pc] = {'M', Color::SkyBlue2};
+		if (pipe.idex.valid)  stages[pipe.idex.pc]  = {'X', Color::PaleGreen1};
+		if (pipe.ifid.valid)  stages[pipe.ifid.pc]  = {'D', Color::Orange1};
+		stages[pc] = {'F', Color::LightCoral};
 		
-		for (const auto &[addr, instr] : disasm) {
+		for (const auto &[addr, orig_instr] : disasm) {
 			stringstream ss;
 			ss << hex << setw(8) << setfill('0') << addr;
-			
+
+			// render tabs as spaces
+			string instr;
+			size_t i = 0;
+			while (i < orig_instr.size()) {
+				if (orig_instr[i] == '\t') {
+					// find preceding word
+					size_t j = i;
+					while (j > 0 && orig_instr[j-1] != ' ' && orig_instr[j-1] != '\t') --j;
+					size_t wordlen = i - j;
+					size_t nspaces = (wordlen < 7) ? (7 - wordlen) : 1;
+					instr.append(nspaces, ' ');
+					++i;
+				} else {
+					instr += orig_instr[i++];
+				}
+			}
+
 			auto it = stages.find(addr);
 			bool isStage = (it != stages.end());
 			char stage = isStage ? it->second.first : ' ';
 			Color stageColor = isStage ? it->second.second : Color::White;
-			
+
 			Element line = hbox({
-				text(string(1, stage)) | color(stageColor) | bold,
+				text(string(1, stage)) | color(Color::Black) | bold,
 				text(" 0x" + ss.str() + ": "),
 				text(instr),
 			});
-			
+
 			if (isStage) line = line | bgcolor(stageColor) | color(Color::Black);
 			if (addr == pc) line = line | focus;
-			
+
 			lines.push_back(line);
 		}
 		
@@ -119,19 +150,27 @@ private:
 			uint32_t val = regs.read(i);
 			bool modified = (val != prevRegs[i]);
 			prevRegs[i] = val;
+			string regname = regs.name(i);
 			
 			stringstream ss;
-			ss << "x" << setw(2) << setfill('0') << static_cast<int>(i)
-			   << " (" << setw(4) << left << setfill(' ') << regs.name(i) << "): "
+			ss << "x" << setw(2) << setfill('0') << static_cast<int>(i);
+
+			stringstream name_ss;
+			name_ss << "(" << regname << ")";
+			string name = name_ss.str();
+			int pad = 7 - static_cast<int>(name.length());
+
+			ss << string(pad, ' ') << name << ": "
 			   << "0x" << hex << setw(8) << setfill('0') << right << val;
 			
 			Element line = text(ss.str());
-			if (modified) line = line | color(Color::Red) | bold;
-			else line = line | color(Color::Green);
+			if (modified) line = line | color(Color::LightCoral) | bold;
+			else line = line | color(Color::PaleGreen1);
 			lines.push_back(line);
 		}
 		
-		return window(text(" Registers ") | bold, vbox(lines) | vscroll_indicator | frame);
+		return vbox(lines) | vscroll_indicator | frame | borderRounded;
+		// return window(text(" Registers ") | bold, vbox(lines) | vscroll_indicator | frame);
 	}
 
 	Element renderMemory() {
@@ -152,20 +191,22 @@ private:
 			stringstream ss;
 			ss << "0x" << hex << setw(8) << setfill('0') << addr << ": "
 			   << "0x" << setw(8) << setfill('0') << word;
-			if (isSP) ss << " <sp";
+			if (isSP) ss << right << " < sp";
 			
 			Element line = text(ss.str());
-			if (modified) line = line | color(Color::Red) | bold;
-			else if (isSP) line = line | color(Color::Green) | bold | focus;
-			else line = line | color(Color::Yellow);
+			if (modified) line = line | color(Color::RedLight) | bold;
+			else if (isSP) line = line | color(Color::Orange1) | bold | focus;
+			else line = line | color(Color::LightGoldenrod1);
 			
 			lines.push_back(line);
 		}
 		
-		return window(
-			text(" Memory ") | bold,
-			vbox(lines) | vscroll_indicator | frame | focusPositionRelative(0.0f, 1.0f)
-		);
+		return vbox(lines) | vscroll_indicator | frame | focusPositionRelative(0.0f, 1.0f) | borderRounded;
+
+		// return window(
+		// 	text(" Memory ") | bold,
+		// 	vbox(lines) | vscroll_indicator | frame | focusPositionRelative(0.0f, 1.0f)
+		// );
 	}
 
 	Element renderStatusBar() {
@@ -174,15 +215,16 @@ private:
 		stringstream ss;
 		ss << " Cycle: " << cpu.getNumCycles()
 		   << " | Instructions: " << cpu.getNumInstructions()
-		   << " | IPC: " << fixed << setprecision(2) << ipc
+		   << " | IPC: " << fixed << setprecision(3) << ipc
 		   << " | PC: 0x" << hex << setw(8) << setfill('0') << cpu.getPC()
 		   << " | [h]elp [q]uit";
 		
-		return text(ss.str()) | bgcolor(Color::Blue) | color(Color::White);
+		return text(ss.str()) | bgcolor(Color::SkyBlue2) | color(Color::White);
 	}
 
 	Element renderHelpWindow() {
-		return window(
+		Element bg = text("") | flex | bgcolor(Color::Red);
+		Element win = window(
 			text(" Help ") | bold | center,
 			vbox({
 				text("                                      "),
@@ -190,12 +232,16 @@ private:
 				text("  r               Run until halt      "),
 				text("  q / Esc         Quit                "),
 				text("                                      "),
+				text("  Tab             Cycle tabs          "),
+				text("                                      "),
 				text("  h               Toggle this help    "),
 				text("                                      "),
 				text("  Pipeline: F=Fetch   D=Decode        "),
 				text("            X=Execute M=Mem W=WB      "),
 				text("                                      "),
 			})
-		) | bgcolor(Color::Red) | color(Color::White) | size(WIDTH, EQUAL, 42) | size(HEIGHT, EQUAL, 18);
+		) | color(Color::White) | size(WIDTH, EQUAL, 42) | size(HEIGHT, EQUAL, 13);
+
+		return dbox({ bg, win | center });
 	}
 };

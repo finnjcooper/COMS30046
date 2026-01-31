@@ -1,11 +1,17 @@
 #pragma once
 #include "memory.hpp"
-#include "instruction.hpp"
 #include "decoder.hpp"
+#include "exec.hpp"
 
-class LoadStoreUnit {
+class LoadStoreUnit : ExecUnit {
 public:
 	LoadStoreUnit(Memory &memory) : mem(memory) {}
+
+	uint32_t exec(Op op, uint32_t addr, uint32_t value) override {
+		if (isLoad(op)) return load(op, addr);
+		else if (isStore(op)) return store(op, addr, value);
+		return 0;
+	}
 
 	uint32_t load(Op op, uint32_t addr) {
 		switch (op) {
@@ -24,7 +30,7 @@ public:
 		}
 	}
 
-	void store(Op op, uint32_t addr, uint32_t value) {
+	uint32_t store(Op op, uint32_t addr, uint32_t value) {
 		switch (op) {
 			case SB:
 				mem.storeb(addr, value & 0xFF);
@@ -38,6 +44,8 @@ public:
 			default:
 				break;
 		}
+
+		return 0;
 	}
 
 private:

@@ -1,9 +1,9 @@
 #pragma once
-#include "instruction.hpp"
+#include "exec.hpp"
 
-class ALU {
+class ALU : ExecUnit {
 public:
-	uint32_t execute(Op op, uint32_t operand1, uint32_t operand2) {
+	uint32_t exec(Op op, uint32_t operand1, uint32_t operand2) override {
 		switch (op) {
 			case ADD: case ADDI:
 				return operand1 + operand2;

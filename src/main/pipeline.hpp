@@ -53,6 +53,7 @@ class Pipeline {
 public:
 	Pipeline() = default;
 	Pipeline(bool pipelined) : pipelined(pipelined) {}
+	Pipeline(bool pipelined, bool forwarded) : pipelined(pipelined), forwarded(forwarded) {}
 
 	IFID ifid;
 	IDEX idex;
@@ -74,8 +75,15 @@ public:
 		if (!ifid.valid) return false;
 
 		Instruction instr = Decoder::decode(ifid.instr);
-		uint32_t r1 = forward(instr.rs1, regs.read(instr.rs1));
-		uint32_t r2 = forward(instr.rs2, regs.read(instr.rs2));
+
+		uint32_t r1 = regs.read(instr.rs1);
+		uint32_t r2 = regs.read(instr.rs2);
+		
+		if (forwarded) {
+			r1 = forward(instr.rs1, r1);
+			r2 = forward(instr.rs2, r2);
+		}
+
 		idex = {ifid.pc, instr, r1, r2, true};
 		ifid.valid = false;
 		return true;
@@ -93,12 +101,12 @@ public:
 		if      (op == LUI)   alu_out = imm;
 		else if (op == AUIPC) alu_out = idex.pc + imm;
 
-		else if (isALU(op))                 alu_out = alu.execute(op, r1, r2);
-		else if (isALUI(op))                alu_out = alu.execute(op, r1, imm);
+		else if (isALU(op))                 alu_out = alu.exec(op, r1, r2);
+		else if (isALUI(op))                alu_out = alu.exec(op, r1, imm);
 		else if (isLoad(op) || isStore(op)) alu_out = r1 + imm;
 		
 		else if (isBranch(op)) {
-			jumped = bru.evaluate(op, r1, r2);
+			jumped = bru.exec(op, r1, r2);
 			r2 = idex.pc + imm;  // target in r2
 		}
 		
@@ -164,6 +172,7 @@ public:
 private:
 
 	bool pipelined = true;
+	bool forwarded = true; // TODO: make configurable
 
 	uint32_t forward(uint8_t rs, uint32_t regVal) const {
 		if (rs == 0) return regVal;
@@ -184,8 +193,16 @@ private:
 
 		Instruction instr = Decoder::decode(ifid.instr);
 		
-		// load-use hazard
-		if (idex.valid && isLoad(idex.instr.op) && hasDependency(instr, idex.instr)) return true;
+
+		if (forwarded) {
+			// load-use hazard
+			if (idex.valid && isLoad(idex.instr.op) && hasDependency(instr, idex.instr)) return true;
+		} else {
+			// general data hazard
+			if (idex.valid && hasDependency(instr, idex.instr)) return true;
+			if (exmem.valid && hasDependency(instr, exmem.instr)) return true;
+		}
+		
 		return false;
 	}
 
