@@ -16,12 +16,12 @@ FetchContent_Declare(ftxui
 FetchContent_MakeAvailable(ftxui)
 
 
-file(GLOB_RECURSE SOURCES "main/*.cpp")
+file(GLOB_RECURSE SOURCES "main.cpp")
 add_executable(main ${SOURCES})
 
 add_library(lib INTERFACE)
 target_include_directories(lib INTERFACE lib/)
-target_include_directories(main PRIVATE main)
+target_include_directories(main PRIVATE cpu utils tui)
 
 target_link_libraries(main PRIVATE
 	lib
@@ -50,7 +50,7 @@ set(RISCV_LDFLAGS
 	-nostdlib
 	-static
 	-no-pie
-	-T ${CMAKE_SOURCE_DIR}/test/linker.ld
+	-T ${CMAKE_SOURCE_DIR}/test/startup/linker.ld
 )
 
 file(GLOB TEST_SOURCES "test/*.c")
@@ -64,11 +64,11 @@ foreach(TEST_SOURCE ${TEST_SOURCES})
 	add_custom_command(
 		OUTPUT ${ELF_OUTPUT}
 		COMMAND ${RISCV_GCC} ${RISCV_CFLAGS} ${RISCV_LDFLAGS}
-			${TEST_SOURCE} ${CMAKE_SOURCE_DIR}/test/start.s
+			${TEST_SOURCE} ${CMAKE_SOURCE_DIR}/test/startup/start.s
 			-o ${ELF_OUTPUT}
 		COMMAND ${RISCV_OBJDUMP} -d ${ELF_OUTPUT} > ${ASM_OUTPUT}
-		DEPENDS ${TEST_SOURCE} ${CMAKE_SOURCE_DIR}/test/start.s ${CMAKE_SOURCE_DIR}/test/linker.ld
-		COMMENT "Building RISC-V test: ${TEST_NAME}"
+		DEPENDS ${TEST_SOURCE} ${CMAKE_SOURCE_DIR}/test/startup/start.s ${CMAKE_SOURCE_DIR}/test/startup/linker.ld
+		COMMENT "Building RISC-V benchmark: ${TEST_NAME}"
 	)
 	
 	add_custom_target(${TEST_NAME}_elf ALL DEPENDS ${ELF_OUTPUT})

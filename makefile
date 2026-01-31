@@ -16,7 +16,7 @@ endif
 default: ninja
 	.\build\main.exe --elf .\build\$(BENCH).elf $(PIPELINED_FLAG) $(FORWARDING_FLAG)
 
-ninja: src/main/
+ninja: src/
 	ninja -C build
 
 cmake:
