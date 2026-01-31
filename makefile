@@ -5,19 +5,22 @@ FORWARDING ?= true
 
 PIPELINED_FLAG :=
 ifeq ($(PIPELINED),true)
-	PIPELINED_FLAG := -p
+	PIPELINED_FLAG := --pipelined
 endif
 
 FORWARDING_FLAG :=
 ifeq ($(FORWARDING),true)
-	FORWARDING_FLAG := -f
+	FORWARDING_FLAG := --forwarding
 endif
 
-default: build
+default: ninja
 	.\build\main.exe --elf .\build\$(BENCH).elf $(PIPELINED_FLAG) $(FORWARDING_FLAG)
 
-build:
-	cmake --preset default src && ninja -C build
+ninja: src/main/
+	ninja -C build
+
+cmake:
+	cmake --preset default src
 
 clean:
 ifeq ($(OS),Windows_NT)
