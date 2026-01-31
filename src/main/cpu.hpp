@@ -12,8 +12,11 @@
 class CPU {
 public:
 	~CPU() = default;
-	CPU(Program prog) : mem(Memory(prog.instrs, MEM_SIZE)), lsu(mem), pc(prog.entryPoint) { regs.write(2, MEM_SIZE - WORD_BYTES); }
-	CPU(Program prog, bool isPipelined) : mem(Memory(prog.instrs, MEM_SIZE)), lsu(mem), pipe(Pipeline(isPipelined)), pc(prog.entryPoint) { regs.write(2, MEM_SIZE - WORD_BYTES); }
+	CPU(Program prog, bool isPipelined = true, bool isForwarding = true) :
+		mem(Memory(prog.instrs, MEM_SIZE)), lsu(mem),
+		pipe(Pipeline(isPipelined, isForwarding)), pc(prog.entryPoint) {
+		regs.write(2, MEM_SIZE - WORD_BYTES);
+	}
 
 	static constexpr size_t MEM_SIZE = 64 * 1024; // 64 KB
 	static constexpr uint8_t XLEN = 32;
@@ -56,7 +59,7 @@ public:
 	uint32_t getPC() const { return pc; }
 	int getNumInstructions() const { return instructions; }
 	int getNumCycles() const { return cycles; }
-	
+
 	string readout() {
 		string s = out.str();
 		out.str("");

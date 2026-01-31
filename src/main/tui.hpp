@@ -62,12 +62,13 @@ public:
 			if (showHelp) {
 				auto helpBox = renderHelpWindow() | center;
 				return dbox({
+					renderBackground(),
 					vbox(content),
 					helpBox,
 				});
 			}
 
-			return vbox(content);
+			return dbox({ renderBackground(), vbox(content) });
 		});
 
 		screen.Loop(layout);
@@ -81,9 +82,9 @@ private:
 	map<uint32_t, uint32_t> prevMem;
 	bool showHelp = false;
 
-	Element renderTitleBar() {
-		return text(" RISC-V Simulator TUI ") | bold | center | bgcolor(Color::SkyBlue2) | color(Color::White);
-	}
+	Element renderTitleBar() { return text(" RISC-V Simulator TUI ") | bold | center | bgcolor(Color::SkyBlue2) | color(Color::White); }
+
+	Element renderBackground() { return text("") | flex | bgcolor(Color(0x18, 0x18, 0x18)); }
 
 	Element renderInstructions() {
 		Elements lines;
@@ -219,7 +220,7 @@ private:
 		   << " | PC: 0x" << hex << setw(8) << setfill('0') << cpu.getPC()
 		   << " | [h]elp [q]uit";
 		
-		return text(ss.str()) | bgcolor(Color::SkyBlue2) | color(Color::White);
+		return vbox({ text(" " + cpu.readout()), text(ss.str()) }) | bgcolor(Color::SkyBlue2) | color(Color::White);
 	}
 
 	Element renderHelpWindow() {

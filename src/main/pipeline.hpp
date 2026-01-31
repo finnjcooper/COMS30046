@@ -52,8 +52,7 @@ struct PipelineControl {
 class Pipeline {
 public:
 	Pipeline() = default;
-	Pipeline(bool pipelined) : pipelined(pipelined) {}
-	Pipeline(bool pipelined, bool forwarded) : pipelined(pipelined), forwarded(forwarded) {}
+	Pipeline(bool pipelined = true, bool forwarding = true) : pipelined(pipelined), forwarding(forwarding) {}
 
 	IFID ifid;
 	IDEX idex;
@@ -64,6 +63,7 @@ public:
 	static constexpr int STAGES = 5;
 
 	bool isPipelined() const { return pipelined; }
+	bool isForwarding() const { return forwarding; }
 
 	bool fetch(uint32_t pc, Memory &mem) {
 		if (ifid.valid) return false;
@@ -79,7 +79,7 @@ public:
 		uint32_t r1 = regs.read(instr.rs1);
 		uint32_t r2 = regs.read(instr.rs2);
 		
-		if (forwarded) {
+		if (forwarding) {
 			r1 = forward(instr.rs1, r1);
 			r2 = forward(instr.rs2, r2);
 		}
@@ -98,22 +98,23 @@ public:
 		bool jumped = false;
 		uint32_t alu_out = 0;
 
-		if      (op == LUI)   alu_out = imm;
-		else if (op == AUIPC) alu_out = idex.pc + imm;
+		if      (op == LUI)   alu_out = alu.exec(op, 0U, imm);
+		else if (op == AUIPC) alu_out = alu.exec(op, idex.pc, imm);
 
-		else if (isALU(op))                 alu_out = alu.exec(op, r1, r2);
-		else if (isALUI(op))                alu_out = alu.exec(op, r1, imm);
-		else if (isLoad(op) || isStore(op)) alu_out = r1 + imm;
+		else if (isALU(op))                               alu_out = alu.exec(op, r1, r2);
+		else if (isALUI(op) || isLoad(op) || isStore(op)) alu_out = alu.exec(op, r1, imm);
 		
 		else if (isBranch(op)) {
 			jumped = bru.exec(op, r1, r2);
-			r2 = idex.pc + imm;  // target in r2
+			r2 = alu.exec(ADD, idex.pc, imm);  // target in r2
 		}
 		
 		else if (isJAL(op)) {
 			jumped = true;
-			alu_out = idex.pc + WORD_BYTES; // return address in alu
-			r2 = (op == JAL) ? idex.pc + imm : (r1 + imm) & ~1u;  // target in r2
+			alu_out = alu.exec(ADD, idex.pc, WORD_BYTES); // return address in alu
+			r2 = (op == JAL) ?                            // target in r2
+				alu.exec(ADD, idex.pc, imm) :
+				alu.exec(ANDI, alu.exec(ADD, r1, imm), ~1U); // ensure aligned
 		}
 
 		exmem = {idex.pc, idex.instr, alu_out, r2, jumped, true};
@@ -172,12 +173,12 @@ public:
 private:
 
 	bool pipelined = true;
-	bool forwarded = true; // TODO: make configurable
+	bool forwarding = true;
 
 	uint32_t forward(uint8_t rs, uint32_t regVal) const {
 		if (rs == 0) return regVal;
 		
-		// EX/MEM: forward ALU result (not loads - data not ready yet)
+		// EX/MEM: forward ALU result (not loads)
 		if (exmem.valid && !isLoad(exmem.instr.op) && exmem.instr.rd == rs)
 			return exmem.alu;
 		
@@ -194,7 +195,7 @@ private:
 		Instruction instr = Decoder::decode(ifid.instr);
 		
 
-		if (forwarded) {
+		if (forwarding) {
 			// load-use hazard
 			if (idex.valid && isLoad(idex.instr.op) && hasDependency(instr, idex.instr)) return true;
 		} else {

@@ -73,15 +73,3 @@ foreach(TEST_SOURCE ${TEST_SOURCES})
 	
 	add_custom_target(${TEST_NAME}_elf ALL DEPENDS ${ELF_OUTPUT})
 endforeach()
-
-# TODO: make it better
-set(BENCH "vectoradd" CACHE STRING "Benchmark to run")
-set(PIPELINED "true" CACHE STRING "Run in pipelined mode")
-
-add_custom_target(run
-	COMMAND main ${CMAKE_BINARY_DIR}/${BENCH}.elf ${PIPELINED}
-	DEPENDS main ${BENCH}_elf
-	WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-	USES_TERMINAL
-	COMMENT "Running ${BENCH} benchmark"
-)

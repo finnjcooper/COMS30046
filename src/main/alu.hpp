@@ -4,6 +4,9 @@
 class ALU : ExecUnit {
 public:
 	uint32_t exec(Op op, uint32_t operand1, uint32_t operand2) override {
+		
+		if (isLoad(op) || isStore(op) || isUI(op)) return operand1 + operand2;
+
 		switch (op) {
 			case ADD: case ADDI:
 				return operand1 + operand2;
