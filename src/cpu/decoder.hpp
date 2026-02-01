@@ -4,11 +4,6 @@
 
 class Decoder {
 public:
-	static int32_t sign_extend(uint32_t value, int bits) {
-		int32_t shift = 32 - bits;
-		return (int32_t)(value << shift) >> shift;
-	}
-
 	static Instruction decode(uint32_t instruction) {
 		uint8_t op = instruction & 0x7F;
 		uint8_t f3 = (instruction >> 12) & 0x07;
@@ -42,7 +37,7 @@ public:
 					if (f3 == 0x06) return {REM, rd, rs1, rs2, 0};
 					if (f3 == 0x07) return {REMU, rd, rs1, rs2, 0};
 				}
-				cout << "Unknown R-type instruction." << endl;
+				cerr << "Unknown R-type instruction." << endl;
 				break;
 			case 0x13: {
 				int32_t imm = sign_extend(immu, 12);
@@ -56,7 +51,7 @@ public:
 					: Instruction {SRLI, rd, rs1, 0, rs2};
 				if (f3 == 0x06) return {ORI, rd, rs1, 0, imm};
 				if (f3 == 0x07) return {ANDI, rd, rs1, 0, imm};
-				cout << "Unknown I-type instruction." << endl;
+				cerr << "Unknown I-type instruction." << endl;
 				break;
 			}
 			case 0x03: {
@@ -66,7 +61,7 @@ public:
 				if (f3 == 0x02) return {LW,  rd, rs1, 0, imm};
 				if (f3 == 0x04) return {LBU, rd, rs1, 0, imm};
 				if (f3 == 0x05) return {LHU, rd, rs1, 0, imm};
-				cout << "Unknown load instruction." << endl;
+				cerr << "Unknown load instruction." << endl;
 				break;
 			}
 			case 0x23: {
@@ -74,7 +69,7 @@ public:
 				if (f3 == 0x00) return {SB, 0, rs1, rs2, imm};
 				if (f3 == 0x01) return {SH, 0, rs1, rs2, imm};
 				if (f3 == 0x02) return {SW, 0, rs1, rs2, imm};
-				cout << "Unknown store instruction." << endl;
+				cerr << "Unknown store instruction." << endl;
 				break;
 			}
 			case 0x63: {
@@ -89,7 +84,7 @@ public:
 				if (f3 == 0x05) return {BGE,  0, rs1, rs2, imm};
 				if (f3 == 0x06) return {BLTU, 0, rs1, rs2, imm};
 				if (f3 == 0x07) return {BGEU, 0, rs1, rs2, imm};
-				cout << "Unknown branch instruction." << endl;
+				cerr << "Unknown branch instruction." << endl;
 				break;
 			}
 			case 0x6F: {
@@ -111,10 +106,10 @@ public:
 			case 0x73:
 				if (instruction >> 20 == 0x000) return {ECALL, 0, 0, 0, 0};
 				if (instruction >> 20 == 0x001) return {EBREAK, 0, 0, 0, 0};
-				cout << "Unknown system instruction." << endl;
+				cerr << "Unknown system instruction." << endl;
 				break;
 			default:
-				cout << "Unknown opcode: 0x" << setw(2) << setfill('0') << hex << (int)op << dec << endl;
+				cerr << "Unknown opcode: 0x" << setw(2) << setfill('0') << hex << (int)op << dec << endl;
 				break;
 		}
 

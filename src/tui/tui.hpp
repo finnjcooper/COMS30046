@@ -1,8 +1,6 @@
 #pragma once
 #include <map>
-#include <sstream>
-#include <iomanip>
-#include <functional>
+#include <set>
 
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/screen/screen.hpp>
@@ -10,15 +8,12 @@
 #include <ftxui/component/screen_interactive.hpp>
 
 #include "cpu.hpp"
-#include "regfile.hpp"
-#include "memory.hpp"
-#include "pipeline.hpp"
 
 using namespace ftxui;
 
 class TUI {
 public:
-	TUI(CPU &cpu, const map<uint32_t, string> &disasm) : cpu(cpu), disasm(disasm) { prevRegs.fill(0); }
+	TUI(CPU &cpu, const map<uint32_t, string> &disasm) : cpu(cpu), disasm(disasm) {}
 
 	void run() {
 		auto screen = ScreenInteractive::Fullscreen();
@@ -53,6 +48,14 @@ public:
 			return false;
 		});
 
+		cpu.setStepCallback([&](const CommitLog &log, const string &msg) {
+			message = msg;
+			highlightedRegs.clear();
+			for (const auto &rw : log.regWrites) highlightedRegs.insert(rw.reg);
+			highlightedMem.clear();
+			for (const auto &mw : log.memWrites) highlightedMem.insert(mw.addr);
+		});
+
 		auto layout = Renderer(component, [&] {
 			Elements content;
 			content.push_back(renderTitleBar());
@@ -78,8 +81,9 @@ private:
 	CPU &cpu;
 	const map<uint32_t, string> &disasm;
 	
-	array<uint32_t, RegisterFile::NUM_REGISTERS> prevRegs;
-	map<uint32_t, uint32_t> prevMem;
+	string message = "";
+	set<uint8_t> highlightedRegs;
+	set<uint32_t> highlightedMem;
 	bool showHelp = false;
 
 	Element renderTitleBar() { return text(" RISC-V Simulator TUI ") | bold | center | bgcolor(Color::SkyBlue2) | color(Color::White); }
@@ -149,8 +153,6 @@ private:
 		
 		for (uint8_t i = 0; i < RegisterFile::NUM_REGISTERS; i++) {
 			uint32_t val = regs.read(i);
-			bool modified = (val != prevRegs[i]);
-			prevRegs[i] = val;
 			string regname = regs.name(i);
 			
 			stringstream ss;
@@ -165,13 +167,12 @@ private:
 			   << "0x" << hex << setw(8) << setfill('0') << right << val;
 			
 			Element line = text(ss.str());
-			if (modified) line = line | color(Color::LightCoral) | bold;
+			if (highlightedRegs.count(i)) line = line | color(Color::LightCoral) | bold;
 			else line = line | color(Color::PaleGreen1);
 			lines.push_back(line);
 		}
 		
 		return vbox(lines) | vscroll_indicator | frame | borderRounded;
-		// return window(text(" Registers ") | bold, vbox(lines) | vscroll_indicator | frame);
 	}
 
 	Element renderMemory() {
@@ -181,12 +182,6 @@ private:
 		
 		for (uint32_t addr = sp; addr < CPU::MEM_SIZE; addr += CPU::WORD_BYTES) {
 			uint32_t word = mem.loadw(addr);
-			
-			bool modified = false;
-			auto it = prevMem.find(addr);
-			if (it != prevMem.end()) modified = (it->second != word);
-			prevMem[addr] = word;
-			
 			bool isSP = (addr == sp);
 			
 			stringstream ss;
@@ -195,7 +190,7 @@ private:
 			if (isSP) ss << right << " < sp";
 			
 			Element line = text(ss.str());
-			if (modified) line = line | color(Color::RedLight) | bold;
+			if (highlightedMem.count(addr)) line = line | color(Color::RedLight) | bold;
 			else if (isSP) line = line | color(Color::Orange1) | bold | focus;
 			else line = line | color(Color::LightGoldenrod1);
 			
@@ -203,11 +198,6 @@ private:
 		}
 		
 		return vbox(lines) | vscroll_indicator | frame | focusPositionRelative(0.0f, 1.0f) | borderRounded;
-
-		// return window(
-		// 	text(" Memory ") | bold,
-		// 	vbox(lines) | vscroll_indicator | frame | focusPositionRelative(0.0f, 1.0f)
-		// );
 	}
 
 	Element renderStatusBar() {
@@ -220,7 +210,7 @@ private:
 		   << " | PC: 0x" << hex << setw(8) << setfill('0') << cpu.getPC()
 		   << " | [h]elp [q]uit";
 		
-		return vbox({ text(" " + cpu.readout()), text(ss.str()) }) | bgcolor(Color::SkyBlue2) | color(Color::White);
+		return vbox({ text(" " + message), text(ss.str()) }) | bgcolor(Color::SkyBlue2) | color(Color::White);
 	}
 
 	Element renderHelpWindow() {

@@ -1,11 +1,10 @@
 #pragma once
 #include "memory.hpp"
-#include "decoder.hpp"
 #include "exec.hpp"
 
 class LoadStoreUnit : ExecUnit {
 public:
-	LoadStoreUnit(Memory &memory) : mem(memory) {}
+	LoadStoreUnit(Memory &memory, CommitLog &log) : mem(memory), log(log) {}
 
 	uint32_t exec(Op op, uint32_t addr, uint32_t value) override {
 		if (isLoad(op)) return load(op, addr);
@@ -16,9 +15,9 @@ public:
 	uint32_t load(Op op, uint32_t addr) {
 		switch (op) {
 			case LB:
-				return Decoder::sign_extend(mem.loadb(addr), 8);
+				return sign_extend(mem.loadb(addr), 8);
 			case LH:
-				return Decoder::sign_extend(mem.loadh(addr), 16);
+				return sign_extend(mem.loadh(addr), 16);
 			case LW:
 				return mem.loadw(addr);
 			case LBU:
@@ -34,12 +33,15 @@ public:
 		switch (op) {
 			case SB:
 				mem.storeb(addr, value & 0xFF);
+				log.recordMemWrite(addr, mem.loadb(addr), value & 0xFF, 1);
 				break;
 			case SH:
 				mem.storeh(addr, value & 0xFFFF);
+				log.recordMemWrite(addr, mem.loadh(addr), value & 0xFFFF, 2);
 				break;
 			case SW:
 				mem.storew(addr, value);
+				log.recordMemWrite(addr, mem.loadw(addr), value, 4);
 				break;
 			default:
 				break;
@@ -50,4 +52,5 @@ public:
 
 private:
 	Memory &mem;
+	CommitLog &log;
 };

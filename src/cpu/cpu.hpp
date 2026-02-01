@@ -1,5 +1,6 @@
 #pragma once
 #include <sstream>
+#include <functional>
 #include "regfile.hpp"
 #include "memory.hpp"
 #include "alu.hpp"
@@ -8,12 +9,13 @@
 #include "instruction.hpp"
 #include "decoder.hpp"
 #include "pipeline.hpp"
+#include "trace.hpp"
 
 class CPU {
 public:
 	~CPU() = default;
 	CPU(Program prog, bool isPipelined = true, bool isForwarding = true) :
-		mem(Memory(prog.instrs, MEM_SIZE)), lsu(mem),
+		mem(Memory(prog.instrs, MEM_SIZE)), regs(log), lsu(mem, log),
 		pipe(Pipeline(isPipelined, isForwarding)), pc(prog.entryPoint) {
 		regs.write(2, MEM_SIZE - WORD_BYTES);
 	}
@@ -25,6 +27,7 @@ public:
 	void step() {
 		if (!pipe.isPipelined()) { stepUnpipelined(); return; }
 
+		log.clear();
 		cycles++;
 		
 		PipelineControl ctrl = pipe.getControl();
@@ -37,7 +40,7 @@ public:
 		if (ctrl.jumped) {
 			pc = ctrl.target;
 			pipe.flush();
-			out << "Control hazard: flushing pipeline, jumping to 0x" << std::hex << pc << std::dec << "\n";
+			out << "Control hazard: flushing pipeline, jumping to 0x" << hex << setw(8) << setfill('0') << pc << dec << "\n";
 			return;
 		}
 
@@ -50,6 +53,8 @@ public:
 		} else {
 			out << "Data hazard: stalling pipeline\n";
 		}
+
+		if (onStepCallback) onStepCallback(log, readout());
 	}
 
 	bool running() { return !halted; }
@@ -59,6 +64,9 @@ public:
 	uint32_t getPC() const { return pc; }
 	int getNumInstructions() const { return instructions; }
 	int getNumCycles() const { return cycles; }
+	CommitLog getCommitLog() const { return log; }
+
+	void setStepCallback(function<void(const CommitLog &, const string &)> callback) { onStepCallback = callback; }
 
 	string readout() {
 		string s = out.str();
@@ -76,6 +84,8 @@ private:
 	Pipeline pipe;
 
 	ostringstream out;
+	function<void(const CommitLog &, const string &)> onStepCallback;
+	CommitLog log;
 
 	uint32_t pc = 0;
 	bool halted = false;
@@ -84,6 +94,8 @@ private:
 	int cycles = 0;
 
 	void stepUnpipelined() {
+		log.clear();
+
 		pipe.fetch(pc, mem);
 		pc += WORD_BYTES;
 
@@ -98,5 +110,7 @@ private:
 
 		instructions++;
 		cycles += 5;
+
+		if (onStepCallback) onStepCallback(log, readout());
 	}
 };

@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <vector>
 
 using namespace std;
 
@@ -35,7 +36,7 @@ struct Instruction {
 };
 
 
-struct Program {
-	vector<uint8_t> instrs;
-	uint32_t entryPoint;
-};
+int32_t sign_extend(uint32_t value, int bits) {
+	int32_t shift = 32 - bits;
+	return (int32_t)(value << shift) >> shift;
+}

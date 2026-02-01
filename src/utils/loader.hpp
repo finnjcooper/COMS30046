@@ -1,8 +1,13 @@
 #pragma once
 #include <regex>
-#include <map>
 #include <elfio/elfio.hpp>
-#include "instruction.hpp"
+
+using namespace std;
+
+struct Program {
+	vector<uint8_t> instrs;
+	uint32_t entryPoint;
+};
 
 class Loader {
 public:

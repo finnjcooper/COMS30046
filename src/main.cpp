@@ -1,4 +1,3 @@
-#include "cpu.hpp"
 #include "loader.hpp"
 #include "tui.hpp"
 #include <argparse/argparse.hpp>
