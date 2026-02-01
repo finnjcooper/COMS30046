@@ -29,8 +29,8 @@ int main(int argc, char* argv[]) {
 	TUI tui(cpu, disasm);
 	tui.run();
 
-	cout << "Instructions executed: " << cpu.getNumInstructions() << endl;
-	cout << "Cycles taken: " << cpu.getNumCycles() << endl;
+	cout << "Instructions executed: " << cpu.getInstructionCount() << endl;
+	cout << "Cycles taken: " << cpu.getCycleCount() << endl;
 
 	return 0;
 };

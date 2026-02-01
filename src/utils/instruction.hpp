@@ -19,15 +19,15 @@ enum Op {
 	MUL, MULH, MULHSU, MULHU, DIV, DIVU, REM, REMU
 };
 
-bool isALU(Op op) { return op >= ADD && op <= AND || op >= MUL && op <= REMU; };
-bool isALUI(Op op) { return op >= ADDI && op <= SRAI; };
-bool isLoad(Op op) { return op >= LB && op <= LHU; };
-bool isStore(Op op) { return op >= SB && op <= SW; };
-bool isBranch(Op op) { return op >= BEQ && op <= BGEU; };
-bool isJAL(Op op) { return op == JAL || op == JALR; };
-bool isUI(Op op) { return op == LUI || op == AUIPC; };
+inline bool isALU(Op op) { return op >= ADD && op <= AND || op >= MUL && op <= REMU; }
+inline bool isALUI(Op op) { return op >= ADDI && op <= SRAI; }
+inline bool isLoad(Op op) { return op >= LB && op <= LHU; }
+inline bool isStore(Op op) { return op >= SB && op <= SW; }
+inline bool isBranch(Op op) { return op >= BEQ && op <= BGEU; }
+inline bool isJAL(Op op) { return op == JAL || op == JALR; }
+inline bool isUI(Op op) { return op == LUI || op == AUIPC; }
 
-bool writesRegister(Op op) { return isALU(op) || isALUI(op) || isLoad(op) || isUI(op) || isJAL(op); };
+inline bool writesRegister(Op op) { return isALU(op) || isALUI(op) || isLoad(op) || isUI(op) || isJAL(op); }
 
 struct Instruction {
 	Op op = INVALID;
@@ -36,7 +36,7 @@ struct Instruction {
 };
 
 
-int32_t sign_extend(uint32_t value, int bits) {
+inline int32_t sign_extend(uint32_t value, int bits) {
 	int32_t shift = 32 - bits;
 	return (int32_t)(value << shift) >> shift;
 }

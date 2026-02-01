@@ -16,7 +16,7 @@ FetchContent_Declare(ftxui
 FetchContent_MakeAvailable(ftxui)
 
 
-file(GLOB_RECURSE SOURCES "main.cpp")
+file(GLOB_RECURSE SOURCES "*.cpp")
 add_executable(main ${SOURCES})
 
 add_library(lib INTERFACE)

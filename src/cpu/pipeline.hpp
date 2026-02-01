@@ -1,11 +1,6 @@
 #pragma once
 #include "instruction.hpp"
 #include "decoder.hpp"
-#include "regfile.hpp"
-#include "alu.hpp"
-#include "branch.hpp"
-#include "loadstore.hpp"
-#include "memory.hpp"
 
 struct IFID {
 	uint32_t pc = -1U, instr = 0;
@@ -52,104 +47,13 @@ struct PipelineControl {
 class Pipeline {
 public:
 	Pipeline() = default;
-	Pipeline(bool pipelined = true, bool forwarding = true) : pipelined(pipelined), forwarding(forwarding) {}
+	Pipeline(bool forwarding) : forwarding(forwarding) {}
 
 	IFID ifid;
 	IDEX idex;
 	EXMEM exmem;
 	MEMWB memwb;
-
-	static constexpr uint8_t WORD_BYTES = 4; // from CPU::WORD_BYTES?
-	static constexpr int STAGES = 5;
-
-	bool isPipelined() const { return pipelined; }
-	bool isForwarding() const { return forwarding; }
-
-	bool fetch(uint32_t pc, Memory &mem) {
-		if (ifid.valid) return false;
-		ifid = {pc, mem.loadw(pc), true};
-		return true;
-	}
-
-	bool decode(const RegisterFile &regs) {
-		if (!ifid.valid) return false;
-
-		Instruction instr = Decoder::decode(ifid.instr);
-
-		uint32_t r1 = regs.read(instr.rs1);
-		uint32_t r2 = regs.read(instr.rs2);
-		
-		if (forwarding) {
-			r1 = forward(instr.rs1, r1);
-			r2 = forward(instr.rs2, r2);
-		}
-
-		idex = {ifid.pc, instr, r1, r2, true};
-		ifid.valid = false;
-		return true;
-	}
-
-	void execute(ALU &alu, BranchUnit &bru) {
-		if (!idex.valid) return;
-
-		Op op = idex.instr.op;
-		uint32_t imm = idex.instr.imm, r1 = idex.r1, r2 = idex.r2;
-		
-		bool jumped = false;
-		uint32_t alu_out = 0;
-
-		if      (op == LUI)   alu_out = alu.exec(op, 0U, imm);
-		else if (op == AUIPC) alu_out = alu.exec(op, idex.pc, imm);
-
-		else if (isALU(op))                               alu_out = alu.exec(op, r1, r2);
-		else if (isALUI(op) || isLoad(op) || isStore(op)) alu_out = alu.exec(op, r1, imm);
-		
-		else if (isBranch(op)) {
-			jumped = bru.exec(op, r1, r2);
-			r2 = alu.exec(ADD, idex.pc, imm);  // target in r2
-		}
-		
-		else if (isJAL(op)) {
-			jumped = true;
-			alu_out = alu.exec(ADD, idex.pc, WORD_BYTES); // return address in alu
-			r2 = (op == JAL) ?                            // target in r2
-				alu.exec(ADD, idex.pc, imm) :
-				alu.exec(ANDI, alu.exec(ADD, r1, imm), ~1U); // ensure aligned
-		}
-
-		exmem = {idex.pc, idex.instr, alu_out, r2, jumped, true};
-		idex.valid = false;
-	}
-
-	void memory(LoadStoreUnit &lsu) {
-		if (!exmem.valid) return;
-
-		Op op = exmem.instr.op;
-		uint32_t addr = exmem.alu;
-		uint32_t val = exmem.r2;
-
-		if (isLoad(op)) val = lsu.load(op, addr);
-		else if (isStore(op)) lsu.store(op, addr, val);
-
-		memwb = {exmem.pc, exmem.instr, addr, val, true};
-		exmem.valid = false;
-	}
-
-	bool writeback(RegisterFile &regs) {
-		if (!memwb.valid) return false;
-
-		Op op = memwb.instr.op;
-
-		if (writesRegister(memwb.instr.op)) {
-			uint8_t rd = memwb.instr.rd;
-			if (isLoad(op)) regs.write(rd, memwb.mem);
-			else 			regs.write(rd, memwb.alu);
-		}
-
-		memwb.valid = false;
-		return (op == EBREAK);
-	}
-
+	
 	void flush() {
 		ifid.flush();
 		idex.flush();
@@ -158,21 +62,23 @@ public:
 
 	PipelineControl getControl() const {
 		PipelineControl ctrl;
-
 		ctrl.stall = hasDataHazard();
 		
 		if (exmem.valid && exmem.jumped) {
 			ctrl.flush = true;
 			ctrl.jumped = true;
-			ctrl.target = exmem.r2;  // target in r2 for jumps
+			ctrl.target = exmem.r2;
 		}
-
 		return ctrl;
 	}
 
-private:
+	uint32_t applyForwarding(uint8_t rs, uint32_t regVal) const {
+		if (!forwarding) return regVal;
+		return forward(rs, regVal);
+	}
 
-	bool pipelined = true;
+
+private:
 	bool forwarding = true;
 
 	uint32_t forward(uint8_t rs, uint32_t regVal) const {
@@ -188,15 +94,14 @@ private:
 		
 		return regVal;
 	}
-	
+
 	bool hasDataHazard() const {
 		if (!ifid.valid) return false;
 
 		Instruction instr = Decoder::decode(ifid.instr);
-		
 
 		if (forwarding) {
-			// load-use hazard
+			// load-use hazard only
 			if (idex.valid && isLoad(idex.instr.op) && hasDependency(instr, idex.instr)) return true;
 		} else {
 			// general data hazard
