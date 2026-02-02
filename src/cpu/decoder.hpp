@@ -1,6 +1,5 @@
 #pragma once
 #include "instruction.hpp"
-#include <iomanip>
 
 class Decoder {
 public:
@@ -37,7 +36,6 @@ public:
 					if (f3 == 0x06) return {REM, rd, rs1, rs2, 0};
 					if (f3 == 0x07) return {REMU, rd, rs1, rs2, 0};
 				}
-				cerr << "Unknown R-type instruction." << endl;
 				break;
 			case 0x13: {
 				int32_t imm = sign_extend(immu, 12);
@@ -51,7 +49,6 @@ public:
 					: Instruction {SRLI, rd, rs1, 0, rs2};
 				if (f3 == 0x06) return {ORI, rd, rs1, 0, imm};
 				if (f3 == 0x07) return {ANDI, rd, rs1, 0, imm};
-				cerr << "Unknown I-type instruction." << endl;
 				break;
 			}
 			case 0x03: {
@@ -61,7 +58,6 @@ public:
 				if (f3 == 0x02) return {LW,  rd, rs1, 0, imm};
 				if (f3 == 0x04) return {LBU, rd, rs1, 0, imm};
 				if (f3 == 0x05) return {LHU, rd, rs1, 0, imm};
-				cerr << "Unknown load instruction." << endl;
 				break;
 			}
 			case 0x23: {
@@ -69,7 +65,6 @@ public:
 				if (f3 == 0x00) return {SB, 0, rs1, rs2, imm};
 				if (f3 == 0x01) return {SH, 0, rs1, rs2, imm};
 				if (f3 == 0x02) return {SW, 0, rs1, rs2, imm};
-				cerr << "Unknown store instruction." << endl;
 				break;
 			}
 			case 0x63: {
@@ -84,7 +79,6 @@ public:
 				if (f3 == 0x05) return {BGE,  0, rs1, rs2, imm};
 				if (f3 == 0x06) return {BLTU, 0, rs1, rs2, imm};
 				if (f3 == 0x07) return {BGEU, 0, rs1, rs2, imm};
-				cerr << "Unknown branch instruction." << endl;
 				break;
 			}
 			case 0x6F: {
@@ -106,10 +100,6 @@ public:
 			case 0x73:
 				if (instruction >> 20 == 0x000) return {ECALL, 0, 0, 0, 0};
 				if (instruction >> 20 == 0x001) return {EBREAK, 0, 0, 0, 0};
-				cerr << "Unknown system instruction." << endl;
-				break;
-			default:
-				cerr << "Unknown opcode: 0x" << setw(2) << setfill('0') << hex << (int)op << dec << endl;
 				break;
 		}
 

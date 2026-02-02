@@ -34,7 +34,7 @@ public:
 	int getCycleCount() const { return cycleCount; }
 	CommitLog getCommitLog() const { return log; }
 
-	void setStepCallback(function<void(const CommitLog &, const string &)> callback) { onStepCallback = callback; }
+	void setStepCallback(function<void(const PipelineControl &, const CommitLog &, const string &)> callback) { onStepCallback = callback; }
 
 	string readout();
 
@@ -47,7 +47,7 @@ private:
 	Pipeline pipe;
 
 	ostringstream out;
-	function<void(const CommitLog &, const string &)> onStepCallback;
+	function<void(const PipelineControl &, const CommitLog &, const string &)> onStepCallback;
 	CommitLog log;
 
 	uint32_t pc = 0;

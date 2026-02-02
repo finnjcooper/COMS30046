@@ -27,7 +27,7 @@ void CPU::step() {
 		pc = ctrl.target;
 		pipe.flush();
 		out << "Control hazard: flushing pipeline, jumping to 0x" << hex << setw(8) << setfill('0') << pc << dec << ". ";
-		if (onStepCallback) onStepCallback(log, readout());
+		if (onStepCallback) onStepCallback(ctrl, log, readout());
 		return;
 	}
 
@@ -41,7 +41,7 @@ void CPU::step() {
 		out << "Data hazard: stalling pipeline. ";
 	}
 
-	if (onStepCallback) onStepCallback(log, readout());
+	if (onStepCallback) onStepCallback(ctrl, log, readout());
 }
 
 void CPU::stepSequential() {
@@ -65,7 +65,7 @@ void CPU::stepSequential() {
 	instructionCount++;
 	cycleCount += 5;
 
-	if (onStepCallback) onStepCallback(log, readout());
+	if (onStepCallback) onStepCallback(ctrl, log, readout());
 }
 
 string CPU::readout() {

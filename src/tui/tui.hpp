@@ -14,7 +14,8 @@ using namespace std;
 
 // catppuccin mocha
 namespace Theme {
-	const Color BG = Color(0x1e, 0x1e, 0x2e);
+	const Color BGLight = Color(0x31, 0x32, 0x44);
+	const Color BG = Color(0x11, 0x11, 0x1e);
 	const Color Text = Color(0xcd, 0xd6, 0xf4);
 
 	const Color Mauve = Color(0xcb, 0xa6, 0xf7);
@@ -25,6 +26,7 @@ namespace Theme {
 	const Color Yellow = Color(0xf9, 0xe2, 0xaf);
 
 	const Color Bar = Blue;
+	const Color Accent = Mauve;
 	
 	const Color IF = Mauve;
 	const Color ID = Red;
@@ -56,12 +58,16 @@ private:
 	set<uint8_t> highlightedRegs;
 	set<uint32_t> highlightedMem;
 	bool showHelp = false;
+	bool isStalled = false;
+	bool isFlushed = false;
 
 	Element renderTitleBar();
-	Element renderBackground();
 	Element renderInstructions();
 	Element renderRegisters();
 	Element renderMemory();
+	Element renderCPUStatus();
 	Element renderStatusBar();
 	Element renderHelpWindow();
+	
+	Element themedWindow(const string &title, Element content);
 };
