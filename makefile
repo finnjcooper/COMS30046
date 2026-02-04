@@ -14,7 +14,11 @@ ifeq ($(FORWARDING),true)
 endif
 
 default: ninja
+ifeq ($(OS),Windows_NT)
 	.\build\main.exe --elf .\build\$(BENCH).elf $(PIPELINED_FLAG) $(FORWARDING_FLAG)
+else
+	./build/main --elf ./build/$(BENCH).elf $(PIPELINED_FLAG) $(FORWARDING_FLAG)
+endif
 
 ninja: src/
 	ninja -C build

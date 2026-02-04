@@ -25,8 +25,8 @@ namespace Theme {
 	const Color Blue = Color(0x89, 0xb4, 0xfa);
 	const Color Yellow = Color(0xf9, 0xe2, 0xaf);
 
-	const Color Bar = Blue;
 	const Color Accent = Mauve;
+	const Color Bar = Blue;
 	
 	const Color IF = Mauve;
 	const Color ID = Red;
@@ -34,13 +34,11 @@ namespace Theme {
 	const Color MEM = Green;
 	const Color WB = Blue;
 
-	const Color Regs = Green;
+	const Color Regs = Yellow;
 	const Color RegsModified = Red;
 	const Color Memory = Yellow;
 	const Color MemoryModified = Red;
 	const Color SP = Peach;
-	
-	const Color HelpBG = Red;
 }
 
 
@@ -66,7 +64,7 @@ private:
 	Element renderRegisters();
 	Element renderMemory();
 	Element renderCPUStatus();
-	Element renderStatusBar();
+	Element renderMessageBar();
 	Element renderHelpWindow();
 	
 	Element themedWindow(const string &title, Element content);

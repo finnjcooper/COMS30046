@@ -76,7 +76,7 @@ void TUI::run() {
 			renderTitleBar(),
 			full_layout->Render() | flex,
 			renderCPUStatus(),
-			renderStatusBar(),
+			renderMessageBar(),
 		});
 		
 		return dbox({
@@ -89,7 +89,7 @@ void TUI::run() {
 }
 
 Element TUI::renderTitleBar() {
-	return text(" RISC-V Simulator ") | center | bold | bgcolor(Theme::Bar) | color(Theme::Text);
+	return text(" RISC-V Simulator ") | center | bold | bgcolor(Theme::Bar) | color(Theme::BG);
 }
 
 Element TUI::renderInstructions() {
@@ -226,7 +226,7 @@ Element TUI::renderCPUStatus() {
 	}
 	
 	return hbox({
-		hbox({ text("PC: ") | color(Theme::Text), text(pc_ss.str()) | color(Theme::Mauve) | bold }),
+		hbox({ text(" PC: ") | color(Theme::Text), text(pc_ss.str()) | color(Theme::Mauve) | bold }),
 		hbox({ text("  Cycles: ") | color(Theme::Text), text(cyc_ss.str()) | color(Theme::Yellow) }),
 		hbox({ text("  Instrs: ") | color(Theme::Text), text(instr_ss.str()) | color(Theme::Yellow) }),
 		hbox({ text("  IPC: ") | color(Theme::Text), text(ipc_ss.str()) | color(Theme::Green) | bold }),
@@ -235,11 +235,11 @@ Element TUI::renderCPUStatus() {
 	}) | bgcolor(Theme::BGLight);
 }
 
-Element TUI::renderStatusBar() {
+Element TUI::renderMessageBar() {
 	return hbox({
 		text(" " + message) | flex,
-		text(" [Space] Step  [r] Run  [h] Help  [q] Quit") | dim,
-	}) | bgcolor(Theme::Bar) | color(Theme::BG);
+		text(" [Space] Step  [r] Run  [h] Help  [q] Quit "),
+	}) | bgcolor(Theme::Bar) | color(Theme::BG) | bold;
 }
 
 Element TUI::renderHelpWindow() {
