@@ -64,7 +64,7 @@ void TUI::run() {
 	cpu.setStepCallback([&](const PipelineControl &ctrl, const CommitLog &log, const string &msg) {
 		message = msg;
 		isStalled = ctrl.stall;
-		isFlushed = ctrl.flush;
+		isFlushed = ctrl.jumped;
 		highlightedRegs.clear();
 		for (const auto &rw : log.regWrites) highlightedRegs.insert(rw.reg);
 		highlightedMem.clear();
@@ -226,10 +226,10 @@ Element TUI::renderCPUStatus() {
 	}
 	
 	return hbox({
-		hbox({ text(" PC: ") | color(Theme::Text), text(pc_ss.str()) | color(Theme::Mauve) | bold }),
+		hbox({ text(" PC: ") | color(Theme::Text), text(pc_ss.str()) | color(Theme::Mauve) }),
 		hbox({ text("  Cycles: ") | color(Theme::Text), text(cyc_ss.str()) | color(Theme::Yellow) }),
 		hbox({ text("  Instrs: ") | color(Theme::Text), text(instr_ss.str()) | color(Theme::Yellow) }),
-		hbox({ text("  IPC: ") | color(Theme::Text), text(ipc_ss.str()) | color(Theme::Green) | bold }),
+		hbox({ text("  IPC: ") | color(Theme::Text), text(ipc_ss.str()) | color(Theme::Green) }),
 		filler(),
 		status,
 	}) | bgcolor(Theme::BGLight);
@@ -239,7 +239,7 @@ Element TUI::renderMessageBar() {
 	return hbox({
 		text(" " + message) | flex,
 		text(" [Space] Step  [r] Run  [h] Help  [q] Quit "),
-	}) | bgcolor(Theme::Bar) | color(Theme::BG) | bold;
+	}) | bgcolor(Theme::Bar) | color(Theme::BG);
 }
 
 Element TUI::renderHelpWindow() {

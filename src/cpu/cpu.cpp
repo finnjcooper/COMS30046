@@ -2,7 +2,7 @@
 
 CPU::CPU(Program prog, bool isPipelined, bool isForwarding) :
 	mem(prog.instrs, MEM_SIZE), regs(log), lsu(mem, log),
-	pipelined(isPipelined), pipe(isForwarding), pc(prog.entryPoint) {
+	pipelined(isPipelined), pipe(isForwarding), pc(prog.entryPoint), end(prog.exitPoint) {
 	regs.write(2, MEM_SIZE - WORD_BYTES);
 }
 
@@ -15,18 +15,14 @@ void CPU::step() {
 	PipelineControl ctrl = pipe.getControl();
 	if (pipe.memwb.valid) instructionCount++;
 
-	if (writeback()) {
-		halted = true;
-		out << "EBREAK encountered: halting execution. ";
-	}
-
+	writeback();
 	memory();
 
 	// control hazard
 	if (ctrl.jumped) {
 		pc = ctrl.target;
 		pipe.flush();
-		out << "Control hazard: flushing pipeline, jumping to 0x" << hex << setw(8) << setfill('0') << pc << dec << ". ";
+		if (!ctrl.should_halt) out << "Control hazard: flushing pipeline, jumping to 0x" << hex << setw(8) << setfill('0') << pc << dec << ". ";
 		if (onStepCallback) onStepCallback(ctrl, log, readout());
 		return;
 	}
@@ -57,10 +53,7 @@ void CPU::stepSequential() {
 	if (ctrl.jumped) pc = ctrl.target;
 
 	memory();
-	if (writeback()) {
-		halted = true;
-		out << "EBREAK encountered: halting execution. ";
-	}
+	writeback();
 
 	instructionCount++;
 	cycleCount += 5;
@@ -82,9 +75,9 @@ bool CPU::fetch() {
 	return true;
 }
 
-bool CPU::decode() {
+void CPU::decode() {
 	auto &ifid = pipe.ifid; auto &idex = pipe.idex;
-	if (!ifid.valid) return false;
+	if (!ifid.valid) return;
 
 	Instruction instr = Decoder::decode(ifid.instr);
 
@@ -96,7 +89,6 @@ bool CPU::decode() {
 
 	idex = {ifid.pc, instr, r1, r2, true};
 	ifid.valid = false;
-	return true;
 }
 
 void CPU::execute() {
@@ -107,11 +99,13 @@ void CPU::execute() {
 	uint32_t imm = idex.instr.imm, r1 = idex.r1, r2 = idex.r2;
 	
 	bool jumped = false;
+	bool should_halt = false;
 	uint32_t alu_out = 0;
 
 	if      (op == LUI)   alu_out = alu.exec(op, 0U, imm);
 	else if (op == AUIPC) alu_out = alu.exec(op, idex.pc, imm);
 
+	else if (isMUL(op))                               alu_out = mul.exec(op, r1, r2);
 	else if (isALU(op))                               alu_out = alu.exec(op, r1, r2);
 	else if (isALUI(op) || isLoad(op) || isStore(op)) alu_out = alu.exec(op, r1, imm);
 	
@@ -122,13 +116,18 @@ void CPU::execute() {
 	
 	else if (isJAL(op)) {
 		jumped = true;
-		alu_out = alu.exec(ADD, idex.pc, WORD_BYTES); // return address in alu
-		r2 = (op == JAL) ?                                 // target in r2
+		alu_out = alu.exec(ADD, idex.pc, WORD_BYTES);     // return address in alu
+		r2 = (op == JAL) ?                                // target in r2
 			alu.exec(ADD, idex.pc, imm) :
-			alu.exec(ANDI, alu.exec(ADD, r1, imm), ~1U);   // ensure aligned
+			alu.exec(ANDI, alu.exec(ADD, r1, imm), ~1U);  // ensure aligned
+
+		if (r2 >= end) {
+			should_halt = true;
+			out << "Reached end of program at 0x" << hex << setw(8) << setfill('0') << r2 << dec << ". Halting CPU. ";
+		}
 	}
 
-	exmem = {idex.pc, idex.instr, alu_out, r2, jumped, true};
+	exmem = {idex.pc, idex.instr, alu_out, r2, jumped, should_halt, true};
 	idex.valid = false;
 }
 
@@ -142,13 +141,13 @@ void CPU::memory() {
 	if (isLoad(op)) val = lsu.load(op, addr);
 	else if (isStore(op)) lsu.store(op, addr, val);
 
-	memwb = {exmem.pc, exmem.instr, addr, val, true};
+	memwb = {exmem.pc, exmem.instr, addr, val, exmem.should_halt, true};
 	exmem.valid = false;
 }
 
-bool CPU::writeback() {
+void CPU::writeback() {
 	auto &memwb = pipe.memwb;
-	if (!memwb.valid) return false;
+	if (!memwb.valid) return;
 
 	Op op = memwb.instr.op;
 
@@ -158,6 +157,6 @@ bool CPU::writeback() {
 		else            regs.write(rd, memwb.alu);
 	}
 
+	if (memwb.should_halt) halted = true;
 	memwb.valid = false;
-	return (op == EBREAK);
 }

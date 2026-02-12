@@ -4,6 +4,7 @@
 #include "regfile.hpp"
 #include "memory.hpp"
 #include "alu.hpp"
+#include "mul.hpp"
 #include "branch.hpp"
 #include "loadstore.hpp"
 #include "instruction.hpp"
@@ -42,6 +43,7 @@ private:
 	RegisterFile regs;
 	LoadStoreUnit lsu;
 	BranchUnit bru;
+	MulUnit mul;
 	ALU alu;
 	Memory mem;
 	Pipeline pipe;
@@ -51,6 +53,7 @@ private:
 	CommitLog log;
 
 	uint32_t pc = 0;
+	uint32_t end = 0;
 	bool halted = false;
 	bool pipelined = true;
 
@@ -60,8 +63,8 @@ private:
 	void stepSequential();
 
 	bool fetch();
-	bool decode();
+	void decode();
 	void execute();
 	void memory();
-	bool writeback();
+	void writeback();
 };

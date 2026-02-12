@@ -7,7 +7,7 @@ Program Loader::ELF(const string &filename) {
 	ELFIO::elfio elf;
 	if (!elf.load(filename)) {
 		cerr << "Could not open ELF file: " << filename << endl;
-		return { vector<uint8_t>(), 0 };
+		return { vector<uint8_t>(), 0, 0 };
 	}
 
 	uint32_t mem_size = 0;
@@ -33,7 +33,7 @@ Program Loader::ELF(const string &filename) {
 		}
 	}
 
-	return { memory, static_cast<uint32_t>(elf.get_entry()) };
+	return { memory, static_cast<uint32_t>(elf.get_entry()), mem_size };
 }
 
 map<uint32_t, string> Loader::ASM(const string &filename) {

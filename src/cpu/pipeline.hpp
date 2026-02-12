@@ -23,15 +23,17 @@ struct EXMEM {
 	Instruction instr;
 	uint32_t alu = 0, r2 = 0;
 	bool jumped = false;
+	bool should_halt = false;
 	bool valid = false;
 
-	void flush() { valid = false; jumped = false; }
+	void flush() { valid = false; jumped = false; should_halt = false; }
 };
 
 struct MEMWB {
 	uint32_t pc = 0;
 	Instruction instr;
 	uint32_t alu = 0, mem = 0;
+	bool should_halt = false;
 	bool valid = false;
 
 	void flush() { valid = false; }
@@ -39,9 +41,9 @@ struct MEMWB {
 
 struct PipelineControl {
 	bool stall = false;
-	bool flush = false;
 	uint32_t target = 0;
 	bool jumped = false;
+	bool should_halt = false;
 };
 
 class Pipeline {
@@ -57,17 +59,18 @@ public:
 	void flush() {
 		ifid.flush();
 		idex.flush();
-		exmem.jumped = false;
 	}
 
 	PipelineControl getControl() const {
 		PipelineControl ctrl;
 		ctrl.stall = hasDataHazard();
 		
-		if (exmem.valid && exmem.jumped) {
-			ctrl.flush = true;
-			ctrl.jumped = true;
-			ctrl.target = exmem.r2;
+		if (exmem.valid) {
+			if (exmem.should_halt) ctrl.should_halt = true;
+			if (exmem.jumped) {
+				ctrl.jumped = true;
+				ctrl.target = exmem.r2;
+			}
 		}
 		return ctrl;
 	}
