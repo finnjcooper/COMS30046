@@ -6,31 +6,31 @@ using namespace std;
 
 struct RegWrite {
 	uint8_t reg;
-	uint32_t oldVal;
-	uint32_t newVal;
+	uint32_t old_val;
+	uint32_t new_val;
 };
 
 struct MemWrite {
 	uint32_t addr;
-	uint32_t oldVal;
-	uint32_t newVal;
+	uint32_t old_val;
+	uint32_t new_val;
 	uint8_t size;
 };
 
 struct CommitLog {
-	vector<RegWrite> regWrites;
-	vector<MemWrite> memWrites;
+	vector<RegWrite> reg_writes;
+	vector<MemWrite> mem_writes;
 
-	void recordRegWrite(uint8_t reg, uint32_t oldVal, uint32_t newVal) {
-		regWrites.push_back({reg, oldVal, newVal});
+	void recordRegWrite(uint8_t reg, uint32_t old_val, uint32_t new_val) {
+		reg_writes.push_back({reg, old_val, new_val});
 	}
 
-	void recordMemWrite(uint32_t addr, uint32_t oldVal, uint32_t newVal, uint8_t size) {
-		memWrites.push_back({addr, oldVal, newVal, size});
+	void recordMemWrite(uint32_t addr, uint32_t old_val, uint32_t new_val, uint8_t size) {
+		mem_writes.push_back({addr, old_val, new_val, size});
 	}
 
 	void clear() {
-		regWrites.clear();
-		memWrites.clear();
+		reg_writes.clear();
+		mem_writes.clear();
 	}
 };

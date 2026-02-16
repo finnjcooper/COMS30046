@@ -45,19 +45,22 @@ namespace Theme {
 class TUI {
 public:
 	TUI(CPU &cpu, const map<uint32_t, string> &disasm) : cpu(cpu), disasm(disasm) {}
+	~TUI() { halt(); }
 
 	void run();
+	void halt();
 
 private:
 	CPU &cpu;
 	const map<uint32_t, string> &disasm;
+	ScreenInteractive screen = ScreenInteractive::Fullscreen();
 	
 	string message = "";
-	set<uint8_t> highlightedRegs;
-	set<uint32_t> highlightedMem;
-	bool showHelp = false;
-	bool isStalled = false;
-	bool isFlushed = false;
+	set<uint8_t> highlighted_regs;
+	set<uint32_t> highlighted_mem;
+	bool show_help = false;
+	bool stalled = false;
+	bool flushed = false;
 
 	Element renderTitleBar();
 	Element renderInstructions();

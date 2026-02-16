@@ -9,8 +9,8 @@ using namespace std;
 
 struct Program {
 	vector<uint8_t> instrs;
-	uint32_t entryPoint;
-	uint32_t exitPoint;
+	uint32_t entry_point;
+	uint32_t exit_point;
 };
 
 class Loader {

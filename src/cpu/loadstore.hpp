@@ -15,9 +15,9 @@ public:
 	uint32_t load(Op op, uint32_t addr) {
 		switch (op) {
 			case LB:
-				return sign_extend(mem.loadb(addr), 8);
+				return signExtend(mem.loadb(addr), 8);
 			case LH:
-				return sign_extend(mem.loadh(addr), 16);
+				return signExtend(mem.loadh(addr), 16);
 			case LW:
 				return mem.loadw(addr);
 			case LBU:

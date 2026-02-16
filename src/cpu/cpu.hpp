@@ -18,7 +18,7 @@ using namespace std;
 class CPU {
 public:
 	~CPU() = default;
-	CPU(Program prog, bool isPipelined = true, bool isForwarding = true);
+	CPU(Program prog, bool pipelined = true, bool forwarding = true);
 
 	static constexpr size_t MEM_SIZE = 64 * 1024; // 64 KB
 	static constexpr uint8_t XLEN = 32;
@@ -31,8 +31,8 @@ public:
 	Memory getMemory() const { return mem; }
 	Pipeline getPipeline() const { return pipe; }
 	uint32_t getPC() const { return pc; }
-	int getInstructionCount() const { return instructionCount; }
-	int getCycleCount() const { return cycleCount; }
+	int getInstructionCount() const { return instruction_count; }
+	int getCycleCount() const { return cycle_count; }
 	CommitLog getCommitLog() const { return log; }
 
 	void setStepCallback(function<void(const PipelineControl &, const CommitLog &, const string &)> callback) { onStepCallback = callback; }
@@ -57,12 +57,12 @@ private:
 	bool halted = false;
 	bool pipelined = true;
 
-	int instructionCount = 0;
-	int cycleCount = 0;
+	int instruction_count = 0;
+	int cycle_count = 0;
 
 	void stepSequential();
 
-	bool fetch();
+	void fetch();
 	void decode();
 	void execute();
 	void memory();

@@ -1,8 +1,8 @@
 #include "cpu.hpp"
 
-CPU::CPU(Program prog, bool isPipelined, bool isForwarding) :
-	mem(prog.instrs, MEM_SIZE), regs(log), lsu(mem, log),
-	pipelined(isPipelined), pipe(isForwarding), pc(prog.entryPoint), end(prog.exitPoint) {
+CPU::CPU(Program prog, bool pipelined, bool forwarding) :
+	mem(prog.instrs, MEM_SIZE), regs(log), lsu(mem, log), pc(prog.entry_point), end(prog.exit_point),
+	pipelined(pipelined), pipe(forwarding) {
 	regs.write(2, MEM_SIZE - WORD_BYTES);
 }
 
@@ -10,10 +10,10 @@ void CPU::step() {
 	if (!pipelined) { stepSequential(); return; }
 
 	log.clear();
-	cycleCount++;
+	cycle_count++;
 	
 	PipelineControl ctrl = pipe.getControl();
-	if (pipe.memwb.valid) instructionCount++;
+	if (pipe.memwb.valid) instruction_count++;
 
 	writeback();
 	memory();
@@ -32,7 +32,7 @@ void CPU::step() {
 	// data hazard
 	if (!ctrl.stall) {
 		decode();
-		if (fetch()) pc += WORD_BYTES;
+		fetch();
 	} else {
 		out << "Data hazard: stalling pipeline. ";
 	}
@@ -44,8 +44,6 @@ void CPU::stepSequential() {
 	log.clear();
 
 	fetch();
-	pc += WORD_BYTES;
-
 	decode();
 	execute();
 
@@ -55,8 +53,8 @@ void CPU::stepSequential() {
 	memory();
 	writeback();
 
-	instructionCount++;
-	cycleCount += 5;
+	instruction_count++;
+	cycle_count += 5;
 
 	if (onStepCallback) onStepCallback(ctrl, log, readout());
 }
@@ -68,11 +66,11 @@ string CPU::readout() {
 	return s;
 }
 
-bool CPU::fetch() {
+void CPU::fetch() {
 	auto &ifid = pipe.ifid;
-	if (ifid.valid) return false;
+	if (ifid.valid) return;
 	ifid = {pc, mem.loadw(pc), true};
-	return true;
+	pc += WORD_BYTES;
 }
 
 void CPU::decode() {

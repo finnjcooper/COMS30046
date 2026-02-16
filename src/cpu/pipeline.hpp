@@ -48,8 +48,7 @@ struct PipelineControl {
 
 class Pipeline {
 public:
-	Pipeline() = default;
-	Pipeline(bool forwarding) : forwarding(forwarding) {}
+	Pipeline(bool forwarding = true) : forwarding(forwarding) {}
 
 	IFID ifid;
 	IDEX idex;
@@ -64,28 +63,27 @@ public:
 	PipelineControl getControl() const {
 		PipelineControl ctrl;
 		ctrl.stall = hasDataHazard();
-		
-		if (exmem.valid) {
-			if (exmem.should_halt) ctrl.should_halt = true;
-			if (exmem.jumped) {
-				ctrl.jumped = true;
-				ctrl.target = exmem.r2;
-			}
+
+		if (!exmem.valid) return;
+		if (exmem.should_halt) ctrl.should_halt = true;
+		if (exmem.jumped && !ctrl.jumped) {
+			ctrl.jumped = true;
+			ctrl.target = exmem.r2;
 		}
+
 		return ctrl;
 	}
 
-	uint32_t applyForwarding(uint8_t rs, uint32_t regVal) const {
-		if (!forwarding) return regVal;
-		return forward(rs, regVal);
+	uint32_t applyForwarding(uint8_t rs, uint32_t reg_val) const {
+		if (!forwarding) return reg_val;
+		return forward(rs, reg_val);
 	}
 
-
 private:
-	bool forwarding = true;
+	bool forwarding;
 
-	uint32_t forward(uint8_t rs, uint32_t regVal) const {
-		if (rs == 0) return regVal;
+	uint32_t forward(uint8_t rs, uint32_t reg_val) const {
+		if (rs == 0) return reg_val;
 		
 		// EX/MEM: forward ALU result (not loads)
 		if (exmem.valid && !isLoad(exmem.instr.op) && exmem.instr.rd == rs)
@@ -95,7 +93,7 @@ private:
 		if (memwb.valid && writesRegister(memwb.instr.op) && memwb.instr.rd == rs)
 			return isLoad(memwb.instr.op) ? memwb.mem : memwb.alu;
 		
-		return regVal;
+		return reg_val;
 	}
 
 	bool hasDataHazard() const {

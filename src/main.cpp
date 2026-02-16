@@ -1,6 +1,10 @@
 #include "loader.hpp"
 #include "tui.hpp"
 #include <argparse/argparse.hpp>
+#include <csignal>
+
+static TUI *tui_ptr = nullptr;
+static void haltOnSignal(int) { if (tui_ptr) tui_ptr->halt(); }
 
 int main(int argc, char* argv[]) {
 	argparse::ArgumentParser program("RISC-V Simulator");
@@ -27,7 +31,12 @@ int main(int argc, char* argv[]) {
 	
 	CPU cpu(prog, isPipelined, isForwarding);
 	TUI tui(cpu, disasm);
+
+	tui_ptr = &tui;
+	signal(SIGINT, haltOnSignal);
+	signal(SIGTERM, haltOnSignal);
 	tui.run();
+	tui_ptr = nullptr;
 
 	cout << "Instructions executed: " << cpu.getInstructionCount() << endl;
 	cout << "Cycles taken: " << cpu.getCycleCount() << endl;

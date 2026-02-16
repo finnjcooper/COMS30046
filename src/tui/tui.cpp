@@ -1,15 +1,10 @@
 #include "tui.hpp"
 
-using namespace ftxui;
-
-Element TUI::themedWindow(const string &title, Element content) {
-	return window(text(" " + title + " ") | bold | color(Theme::Text), content) 
-		| color(Theme::Text) | bgcolor(Theme::BG);
+void TUI::halt() {
+	screen.Exit();
 }
 
 void TUI::run() {
-	auto screen = ScreenInteractive::Fullscreen();
-
 	vector<string> tab_values = {"Registers", "Stack"};
 	int tab_selected = 0;
 
@@ -56,19 +51,19 @@ void TUI::run() {
 		if (event == Event::Character('q') || event == Event::Escape) { screen.Exit(); return true; }
 		if (event == Event::Character(' ') || event == Event::Return) { if (cpu.running()) cpu.step(); return true; }
 		if (event == Event::Character('r')) { while (cpu.running()) cpu.step(); return true; }
-		if (event == Event::Character('h')) { showHelp = !showHelp; return true; }
+		if (event == Event::Character('h')) { show_help = !show_help; return true; }
 		if (event == Event::Tab) { tab_selected = (tab_selected + 1) % tab_values.size(); return true; }
 		return false;
 	});
 
 	cpu.setStepCallback([&](const PipelineControl &ctrl, const CommitLog &log, const string &msg) {
 		message = msg;
-		isStalled = ctrl.stall;
-		isFlushed = ctrl.jumped;
-		highlightedRegs.clear();
-		for (const auto &rw : log.regWrites) highlightedRegs.insert(rw.reg);
-		highlightedMem.clear();
-		for (const auto &mw : log.memWrites) highlightedMem.insert(mw.addr);
+		stalled = ctrl.stall;
+		flushed = ctrl.jumped;
+		highlighted_regs.clear();
+		for (const auto &rw : log.reg_writes) highlighted_regs.insert(rw.reg);
+		highlighted_mem.clear();
+		for (const auto &mw : log.mem_writes) highlighted_mem.insert(mw.addr);
 	});
 
 	auto layout = Renderer(full_layout, [&] {
@@ -81,11 +76,16 @@ void TUI::run() {
 		
 		return dbox({
 			main | bgcolor(Theme::BG),
-			showHelp ? renderHelpWindow() | center : emptyElement(),
+			show_help ? renderHelpWindow() | center : emptyElement(),
 		});
 	});
 
 	screen.Loop(layout);
+}
+
+Element TUI::themedWindow(const string &title, Element content) {
+	return window(text(" " + title + " ") | bold | color(Theme::Text), content) 
+		| color(Theme::Text) | bgcolor(Theme::BG);
 }
 
 Element TUI::renderTitleBar() {
@@ -99,11 +99,11 @@ Element TUI::renderInstructions() {
 	uint32_t pc = cpu.getPC();
 	
 	map<uint32_t, pair<char, Color>> stages;
-	if (pipe.memwb.valid) stages[pipe.memwb.pc] = {'W', Theme::WB};
-	if (pipe.exmem.valid) stages[pipe.exmem.pc] = {'M', Theme::MEM};
-	if (pipe.idex.valid)  stages[pipe.idex.pc]  = {'X', Theme::EX};
-	if (pipe.ifid.valid)  stages[pipe.ifid.pc]  = {'D', Theme::ID};
 	stages[pc] = {'F', Theme::IF};
+	if (pipe.ifid.valid)  stages[pipe.ifid.pc]  = {'D', Theme::ID};
+	if (pipe.idex.valid)  stages[pipe.idex.pc]  = {'X', Theme::EX};
+	if (pipe.exmem.valid) stages[pipe.exmem.pc] = {'M', Theme::MEM};
+	if (pipe.memwb.valid) stages[pipe.memwb.pc] = {'W', Theme::WB};
 	
 	for (const auto &[addr, orig_instr] : disasm) {
 		stringstream ss;
@@ -124,13 +124,13 @@ Element TUI::renderInstructions() {
 		}
 
 		auto it = stages.find(addr);
-		auto [stage, stageColor] = (it != stages.end()) ? it->second : make_pair(' ', Theme::BG);
+		auto [stage, stage_col] = (it != stages.end()) ? it->second : make_pair(' ', Theme::BG);
 
-		Element stageBadge = text(string(" ") + stage + " ") | bold;
-		if (it != stages.end()) stageBadge |= bgcolor(stageColor) | color(Theme::BG);
+		Element stage_badge = text(string(" ") + stage + " ") | bold;
+		if (it != stages.end()) stage_badge |= bgcolor(stage_col) | color(Theme::BG);
 
 		Element line = hbox({
-			stageBadge,
+			stage_badge,
 			text(" "),
 			text("0x" + ss.str()) | color(Theme::Accent),
 			text("  "),
@@ -165,7 +165,7 @@ Element TUI::renderRegisters() {
 		Element line = hbox({
 			text(reg_ss.str()) | color(Theme::Accent),
 			text("  "),
-			text(val_ss.str()) | (highlightedRegs.count(i) ? color(Theme::RegsModified) | bold : color(Theme::Regs)),
+			text(val_ss.str()) | (highlighted_regs.count(i) ? color(Theme::RegsModified) | bold : color(Theme::Regs)),
 		});
 		
 		lines.push_back(line);
@@ -188,13 +188,13 @@ Element TUI::renderMemory() {
 		val_ss << "0x" << hex << setw(8) << setfill('0') << word;
 		
 		Color valColour = Theme::Memory;
-		if (highlightedMem.count(addr)) valColour = Theme::MemoryModified;
+		if (highlighted_mem.count(addr)) valColour = Theme::MemoryModified;
 		else if (isSP) valColour = Theme::SP;
 		
 		Element line = hbox({
 			text(addr_ss.str()) | color(Theme::Accent),
 			text("  "),
-			text(val_ss.str()) | color(valColour) | (highlightedMem.count(addr) || isSP ? bold : nothing),
+			text(val_ss.str()) | color(valColour) | (highlighted_mem.count(addr) || isSP ? bold : nothing),
 			isSP ? (text("  ◄ sp") | color(Theme::SP) | bold) : emptyElement(),
 		});
 		
@@ -217,9 +217,9 @@ Element TUI::renderCPUStatus() {
 	Element status;
 	if (!cpu.running()) {
 		status = text(" HALTED ") | bgcolor(Theme::Red) | color(Theme::BG) | bold;
-	} else if (isStalled) {
+	} else if (stalled) {
 		status = text(" STALLED ") | bgcolor(Theme::Peach) | color(Theme::BG) | bold;
-	} else if (isFlushed) {
+	} else if (flushed) {
 		status = text(" FLUSHED ") | bgcolor(Theme::Mauve) | color(Theme::BG) | bold;
 	} else {
 		status = text(" RUNNING ") | bgcolor(Theme::Green) | color(Theme::BG) | bold;

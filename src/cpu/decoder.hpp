@@ -38,7 +38,7 @@ public:
 				}
 				break;
 			case 0x13: {
-				int32_t imm = sign_extend(immu, 12);
+				int32_t imm = signExtend(immu, 12);
 				if (f3 == 0x00) return {ADDI, rd, rs1, 0, imm};
 				if (f3 == 0x01) return {SLLI, rd, rs1, 0, rs2};
 				if (f3 == 0x02) return {SLTI, rd, rs1, 0, imm};
@@ -52,7 +52,7 @@ public:
 				break;
 			}
 			case 0x03: {
-				int32_t imm = sign_extend(immu, 12);
+				int32_t imm = signExtend(immu, 12);
 				if (f3 == 0x00) return {LB,  rd, rs1, 0, imm};
 				if (f3 == 0x01) return {LH,  rd, rs1, 0, imm};
 				if (f3 == 0x02) return {LW,  rd, rs1, 0, imm};
@@ -61,14 +61,14 @@ public:
 				break;
 			}
 			case 0x23: {
-				int32_t imm = sign_extend((f7 << 5) | rd, 12);
+				int32_t imm = signExtend((f7 << 5) | rd, 12);
 				if (f3 == 0x00) return {SB, 0, rs1, rs2, imm};
 				if (f3 == 0x01) return {SH, 0, rs1, rs2, imm};
 				if (f3 == 0x02) return {SW, 0, rs1, rs2, imm};
 				break;
 			}
 			case 0x63: {
-				int32_t imm = sign_extend(
+				int32_t imm = signExtend(
 					((instruction >> 7)  & 0x1e)  |
 					((instruction >> 20) & 0x7e0) |
 					((instruction << 4)  & 0x800) |
@@ -82,7 +82,7 @@ public:
 				break;
 			}
 			case 0x6F: {
-				int32_t imm = sign_extend(
+				int32_t imm = signExtend(
 					((instruction >> 21) & 0x3FF) << 1  |
 					((instruction >> 20) & 0x1)   << 11 |
 					((instruction >> 12) & 0xFF)  << 12 |
@@ -90,7 +90,7 @@ public:
 				return {JAL, rd, 0, 0, imm};
 			}
 			case 0x67: {
-				int32_t imm = sign_extend(immu, 12);
+				int32_t imm = signExtend(immu, 12);
 				return {JALR, rd, rs1, 0, imm};
 			}
 			case 0x37:

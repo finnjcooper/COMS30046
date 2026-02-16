@@ -23,13 +23,13 @@ Program Loader::ELF(const string &filename) {
 		if (seg->get_type() != ELFIO::PT_LOAD) continue;
 
 		uint32_t vaddr = seg->get_virtual_address();
-		uint32_t filesz = seg->get_file_size();
-		uint32_t memsz  = seg->get_memory_size();
+		uint32_t file_sz = seg->get_file_size();
+		uint32_t mem_sz  = seg->get_memory_size();
 
 		const char* data = seg->get_data();
 
-		for (uint32_t i = 0; i < memsz; i++) {
-			memory[vaddr + i] = i >= filesz ? 0 : data[i];
+		for (uint32_t i = 0; i < mem_sz; i++) {
+			memory[vaddr + i] = i >= file_sz ? 0 : data[i];
 		}
 	}
 
@@ -42,11 +42,11 @@ map<uint32_t, string> Loader::ASM(const string &filename) {
 	string line;
 	
 	// regex to match lines like: "  a4:	00200793          	li	a5,2"
-	regex instrPattern("^\\s*([0-9a-f]+):\\s+([0-9a-f]+)\\s+(.+)$");
+	regex instr_pattern("^\\s*([0-9a-f]+):\\s+([0-9a-f]+)\\s+(.+)$");
 	
 	while (getline(file, line)) {
 		smatch match;
-		if (regex_match(line, match, instrPattern)) {
+		if (regex_match(line, match, instr_pattern)) {
 			uint32_t addr = stoul(match[1].str(), nullptr, 16);
 			string instr = match[3].str();
 			disasm[addr] = instr;
