@@ -119,10 +119,7 @@ void CPU::execute() {
 			alu.exec(ADD, idex.pc, imm) :
 			alu.exec(ANDI, alu.exec(ADD, r1, imm), ~1U);  // ensure aligned
 
-		if (r2 >= end) {
-			should_halt = true;
-			out << "Reached end of program at 0x" << hex << setw(8) << setfill('0') << r2 << dec << ". Halting CPU. ";
-		}
+		if (r2 >= end) should_halt = true;
 	}
 
 	exmem = {idex.pc, idex.instr, alu_out, r2, jumped, should_halt, true};
@@ -155,6 +152,9 @@ void CPU::writeback() {
 		else            regs.write(rd, memwb.alu);
 	}
 
-	if (memwb.should_halt) halted = true;
+	if (memwb.should_halt) {
+		halted = true;
+		out << "Reached end of program. Halting CPU. ";
+	}
 	memwb.valid = false;
 }

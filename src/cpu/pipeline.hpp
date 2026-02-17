@@ -64,7 +64,7 @@ public:
 		PipelineControl ctrl;
 		ctrl.stall = hasDataHazard();
 
-		if (!exmem.valid) return;
+		if (!exmem.valid) return ctrl;
 		if (exmem.should_halt) ctrl.should_halt = true;
 		if (exmem.jumped && !ctrl.jumped) {
 			ctrl.jumped = true;
