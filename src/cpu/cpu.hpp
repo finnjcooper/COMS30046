@@ -8,7 +8,7 @@
 #include "branch.hpp"
 #include "loadstore.hpp"
 #include "instruction.hpp"
-#include "decoder.hpp"
+#include "decode.hpp"
 #include "pipeline.hpp"
 #include "trace.hpp"
 #include "loader.hpp"

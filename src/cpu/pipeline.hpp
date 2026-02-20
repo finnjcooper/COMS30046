@@ -1,6 +1,6 @@
 #pragma once
 #include "instruction.hpp"
-#include "decoder.hpp"
+#include "decode.hpp"
 
 struct IFID {
 	uint32_t pc = -1U, instr = 0;
