@@ -13,15 +13,18 @@ ifeq ($(FORWARDING),true)
 	FORWARDING_FLAG := --forwarding
 endif
 
-default: ninja
+default: make
 ifeq ($(OS),Windows_NT)
-	.\build\main.exe --elf .\build\$(BENCH).elf $(PIPELINED_FLAG) $(FORWARDING_FLAG)
+	.\build\main.exe --elf .\src\test\build\$(BENCH).elf $(PIPELINED_FLAG) $(FORWARDING_FLAG)
 else
-	./build/main --elf ./build/$(BENCH).elf $(PIPELINED_FLAG) $(FORWARDING_FLAG)
+	./build/main --elf ./src/test/build/$(BENCH).elf $(PIPELINED_FLAG) $(FORWARDING_FLAG)
 endif
 
 ninja: src/
 	ninja -C build
+
+make: src/
+	make -C build
 
 cmake:
 	cmake --preset default src

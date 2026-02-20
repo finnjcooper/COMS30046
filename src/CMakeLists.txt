@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 
 project(main CXX)
 
-set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -30,7 +30,7 @@ target_link_libraries(main PRIVATE
 	ftxui::component
 )
 
-
+#[[
 set(RISCV_GCC "riscv64-unknown-elf-gcc")
 set(RISCV_OBJDUMP "riscv64-unknown-elf-objdump")
 
@@ -73,3 +73,4 @@ foreach(TEST_SOURCE ${TEST_SOURCES})
 	
 	add_custom_target(${TEST_NAME}_elf ALL DEPENDS ${ELF_OUTPUT})
 endforeach()
+]]

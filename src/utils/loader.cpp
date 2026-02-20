@@ -1,6 +1,5 @@
 #include "loader.hpp"
 #include <fstream>
-#include <regex>
 #include <elfio/elfio.hpp>
 
 Program Loader::ELF(const string &filename) {
@@ -47,20 +46,34 @@ Program Loader::ELF(const string &filename) {
 }
 
 map<uint32_t, string> Loader::ASM(const string &filename) {
+
 	map<uint32_t, string> disasm;
 	ifstream file(filename);
 	string line;
-	
-	// regex to match lines like: "  a4:	00200793          	li	a5,2"
-	regex instr_pattern("^\\s*([0-9a-f]+):\\s+([0-9a-f]+)\\s+(.+)$");
-	
+
 	while (getline(file, line)) {
-		smatch match;
-		if (regex_match(line, match, instr_pattern)) {
-			uint32_t addr = stoul(match[1].str(), nullptr, 16);
-			string instr = match[3].str();
-			disasm[addr] = instr;
-		}
+		auto colon = line.find(':');
+		if (colon == string::npos) continue;
+
+		string addr_str = line.substr(0, colon);
+		addr_str.erase(0, addr_str.find_first_not_of(" \t"));
+
+		if (addr_str.empty()) continue;
+		if (!isxdigit(addr_str[0])) continue;
+
+		uint32_t addr = stoul(addr_str, nullptr, 16);
+
+		auto bytes_end = line.find_first_not_of(" \t", colon + 1);
+		if (bytes_end == string::npos) continue;
+
+		auto mnemonic_start = line.find_first_of(" \t", bytes_end);
+		if (mnemonic_start == string::npos) continue;
+
+		auto mnemonic_end = line.find_first_not_of(" \t", mnemonic_start);
+		if (mnemonic_end == string::npos) continue;
+
+		string instr = line.substr(mnemonic_end);
+		disasm[addr] = instr;
 	}
 	
 	return disasm;
