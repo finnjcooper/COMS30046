@@ -1,8 +1,20 @@
 #pragma once
 #include "exec.hpp"
 
-class MulUnit : ExecUnit {
+class MulUnit : public ExecUnit {
 public:
+	MulUnit() { cycles = 1UL; }
+
+	void step() override {
+		if (!busy_) return;
+		if (--cycles_remaining == 0) {
+			uint32_t mul_out = exec(current.instr.op, current.r1, current.r2);
+			result = {current.seq, current.pc, current.instr, mul_out, 0, false, false};
+			busy_ = false; done_ = true;
+		}
+	}
+
+private:
 	uint32_t exec(Op op, uint32_t operand1, uint32_t operand2) override {
 		switch (op) {
 			case MUL: case MULH: {

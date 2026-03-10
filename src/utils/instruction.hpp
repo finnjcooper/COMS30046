@@ -4,6 +4,9 @@
 
 using namespace std;
 
+inline constexpr uint8_t XLEN = 32;
+inline constexpr uint8_t WORD_BYTES = XLEN / 8;
+
 enum Op {
 	INVALID,
 	// rv32i

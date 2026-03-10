@@ -2,15 +2,29 @@
 #include "memory.hpp"
 #include "exec.hpp"
 
-class LoadStoreUnit : ExecUnit {
+class LoadStoreUnit : public ExecUnit {
 public:
-	LoadStoreUnit(Memory &memory, CommitLog &log) : mem(memory), log(log) {}
+	LoadStoreUnit(Memory &memory, CommitLog &log) : mem(memory), log(log) { cycles = 1UL; }
+
+	void step() override {
+		if (!busy_) return;
+		if (--cycles_remaining == 0) {
+			uint32_t addr = current.r1 + current.instr.imm;
+			// uint32_t ls_out = exec(current.instr.op, addr, current.r2);
+			result = {current.seq, current.pc, current.instr, addr, current.r2, false, false};
+			busy_ = false; done_ = true;
+		}
+	}
 
 	uint32_t exec(Op op, uint32_t addr, uint32_t value) override {
 		if (isLoad(op)) return load(op, addr);
 		else if (isStore(op)) return store(op, addr, value);
 		return 0;
 	}
+
+private:
+	Memory &mem;
+	CommitLog &log;
 
 	uint32_t load(Op op, uint32_t addr) {
 		switch (op) {
@@ -49,8 +63,4 @@ public:
 
 		return 0;
 	}
-
-private:
-	Memory &mem;
-	CommitLog &log;
 };

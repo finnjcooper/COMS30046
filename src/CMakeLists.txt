@@ -30,7 +30,6 @@ target_link_libraries(main PRIVATE
 	ftxui::component
 )
 
-#[[
 set(RISCV_GCC "riscv64-unknown-elf-gcc")
 set(RISCV_OBJDUMP "riscv64-unknown-elf-objdump")
 
@@ -73,4 +72,3 @@ foreach(TEST_SOURCE ${TEST_SOURCES})
 	
 	add_custom_target(${TEST_NAME}_elf ALL DEPENDS ${ELF_OUTPUT})
 endforeach()
-]]

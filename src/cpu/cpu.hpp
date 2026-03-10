@@ -21,8 +21,7 @@ public:
 	CPU(Program prog, bool pipelined = true, bool forwarding = true);
 
 	static constexpr size_t MEM_SIZE = 64 * 1024; // 64 KB
-	static constexpr uint8_t XLEN = 32;
-	static constexpr uint8_t WORD_BYTES = XLEN / 8;
+	static constexpr size_t LSU_COUNT = 2, BRU_COUNT = 2, MUL_COUNT = 1, ALU_COUNT = 2;
 
 	void step();
 
@@ -35,36 +34,37 @@ public:
 	int getCycleCount() const { return cycle_count; }
 	CommitLog getCommitLog() const { return log; }
 
-	void setStepCallback(function<void(const PipelineControl &, const CommitLog &, const string &)> callback) { onStepCallback = callback; }
+	void setStepCallback(function<void(bool, const CommitLog &, const string &)> callback) { onStepCallback = callback; }
 
 	string readout();
 
 private:
-	RegisterFile regs;
-	LoadStoreUnit lsu;
-	BranchUnit bru;
-	MulUnit mul;
-	ALU alu;
-	Memory mem;
-	Pipeline pipe;
-
-	ostringstream out;
-	function<void(const PipelineControl &, const CommitLog &, const string &)> onStepCallback;
-	CommitLog log;
-
 	uint32_t pc = 0;
 	uint32_t end = 0;
+	uint32_t seq = 0;
+	uint32_t next_commit = 0;
 	bool halted = false;
 	bool pipelined = true;
 
 	int instruction_count = 0;
 	int cycle_count = 0;
+	RegisterFile regs;
+	vector<LoadStoreUnit> lsus = vector<LoadStoreUnit>(LSU_COUNT, LoadStoreUnit(mem, log));
+	vector<BranchUnit> brus = vector<BranchUnit>(BRU_COUNT, BranchUnit(end));
+	vector<MulUnit> muls = vector<MulUnit>(MUL_COUNT);
+	vector<ALU> alus = vector<ALU>(ALU_COUNT);
+	Memory mem;
+	Pipeline pipe;
+
+	ostringstream out;
+	function<void(bool, const CommitLog &, const string &)> onStepCallback;
+	CommitLog log;
 
 	void stepSequential();
 
 	void fetch();
 	void decode();
+	void issue();
 	void execute();
-	void memory();
-	void writeback();
+	bool writeback();
 };

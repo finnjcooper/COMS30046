@@ -13,7 +13,7 @@ ifeq ($(FORWARDING),true)
 	FORWARDING_FLAG := --forwarding
 endif
 
-default: make
+default: ninja
 ifeq ($(OS),Windows_NT)
 	.\build\main.exe --elf .\src\test\build\$(BENCH).elf $(PIPELINED_FLAG) $(FORWARDING_FLAG)
 else

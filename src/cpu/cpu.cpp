@@ -1,7 +1,7 @@
 #include "cpu.hpp"
 
 CPU::CPU(Program prog, bool pipelined, bool forwarding) :
-	mem(prog.instrs, MEM_SIZE), regs(log), lsu(mem, log), pc(prog.entry_point), end(prog.exit_point),
+	mem(prog.instrs, MEM_SIZE), regs(log), pc(prog.entry_point), end(prog.exit_point),
 	pipelined(pipelined), pipe(forwarding) {
 	regs.write(2, MEM_SIZE - WORD_BYTES);
 }
@@ -11,33 +11,14 @@ void CPU::step() {
 
 	log.clear();
 	cycle_count++;
-	
-	PipelineControl ctrl = pipe.getControl();
-	if (pipe.memwb.valid) instruction_count++;
 
-	writeback();
-	memory();
-
-	// control hazard
-	if (ctrl.jumped) {
-		pc = ctrl.target;
-		pipe.flush();
-		if (!ctrl.should_halt) out << "Control hazard: flushing pipeline, jumping to 0x" << hex << setw(8) << setfill('0') << pc << dec << ". ";
-		if (onStepCallback) onStepCallback(ctrl, log, readout());
-		return;
-	}
-
+	bool jumped = writeback();
 	execute();
+	decode();
+	issue();
+	fetch();
 
-	// data hazard
-	if (!ctrl.stall) {
-		decode();
-		fetch();
-	} else {
-		out << "Data hazard: stalling pipeline. ";
-	}
-
-	if (onStepCallback) onStepCallback(ctrl, log, readout());
+	if (onStepCallback) onStepCallback(jumped, log, readout());
 }
 
 void CPU::stepSequential() {
@@ -45,18 +26,14 @@ void CPU::stepSequential() {
 
 	fetch();
 	decode();
+	issue();
 	execute();
-
-	PipelineControl ctrl = pipe.getControl();
-	if (ctrl.jumped) pc = ctrl.target;
-
-	memory();
-	writeback();
+	bool jumped = writeback();
 
 	instruction_count++;
 	cycle_count += 5;
 
-	if (onStepCallback) onStepCallback(ctrl, log, readout());
+	if (onStepCallback) onStepCallback(jumped, log, readout());
 }
 
 string CPU::readout() {
@@ -67,94 +44,130 @@ string CPU::readout() {
 }
 
 void CPU::fetch() {
-	auto &ifid = pipe.ifid;
-	if (ifid.valid) return;
-	ifid = {pc, mem.loadw(pc), true};
-	pc += WORD_BYTES;
+	while (pipe.ifids.size() < PIPELINE_WIDTH) {
+		pipe.ifids.push_back({seq++, pc, mem.loadw(pc)});
+		pc += WORD_BYTES;
+	}
 }
 
 void CPU::decode() {
-	auto &ifid = pipe.ifid; auto &idex = pipe.idex;
-	if (!ifid.valid) return;
+	vector<Instruction> prevs;
+	while (!pipe.ifids.empty()) {
+		auto &ifid = pipe.ifids.front();
 
-	Instruction instr = Decoder::decode(ifid.instr);
+		Instruction instr = Decoder::decode(ifid.instr);
 
-	uint32_t r1 = regs.read(instr.rs1);
-	uint32_t r2 = regs.read(instr.rs2);
-	
-	r1 = pipe.applyForwarding(instr.rs1, r1);
-	r2 = pipe.applyForwarding(instr.rs2, r2);
+		if (pipe.hasHazard(prevs, instr)) {
+			out << "Data hazard. Stalling pipeline. ";
+			return;
+		}
+		
+		prevs.push_back(instr);
 
-	idex = {ifid.pc, instr, r1, r2, true};
-	ifid.valid = false;
+		uint32_t r1 = regs.read(instr.rs1);
+		uint32_t r2 = regs.read(instr.rs2);
+		
+		r1 = pipe.applyForwarding(instr.rs1, r1);
+		r2 = pipe.applyForwarding(instr.rs2, r2);
+
+		pipe.idexs.push_back({ifid.seq, ifid.pc, instr, r1, r2});
+		pipe.ifids.pop_front();
+	}
+}
+
+void CPU::issue() {
+	while (!pipe.idexs.empty()) {
+		auto &idex = pipe.idexs.front();
+
+		Op op = idex.instr.op;
+		bool issued = false;
+		if (isMUL(op)) {
+			for (auto &mul : muls) {
+				if (!mul.busy()) {
+					mul.start(idex);
+					issued = true;
+					break;
+				}
+			}
+		} else if (isALU(op) || isALUI(op) || isUI(op)) {
+			for (auto &alu : alus) {
+				if (!alu.busy()) {
+					alu.start(idex);
+					issued = true;
+					break;
+				}
+			}
+		} else if (isBranch(op) || isJAL(op)) {
+			for (auto &bru : brus) {
+				if (!bru.busy()) {
+					bru.start(idex);
+					issued = true;
+					break;
+				}
+			}
+		} else if (isLoad(op) || isStore(op)) {
+			for (auto &lsu : lsus) {
+				if (!lsu.busy()) {
+					lsu.start(idex);
+					issued = true;
+					break;
+				}
+			}
+		}
+		if (!issued) break;
+		pipe.idexs.pop_front();
+	}
 }
 
 void CPU::execute() {
-	auto &idex = pipe.idex; auto &exmem = pipe.exmem;
-	if (!idex.valid) return;
+	for (auto &alu : alus) alu.step();
+	for (auto &mul : muls) mul.step();
+	for (auto &bru : brus) bru.step();
+	for (auto &lsu : lsus) lsu.step();
 
-	Op op = idex.instr.op;
-	uint32_t imm = idex.instr.imm, r1 = idex.r1, r2 = idex.r2;
-	
-	bool jumped = false;
-	bool should_halt = false;
-	uint32_t alu_out = 0;
-
-	if      (op == LUI)   alu_out = alu.exec(op, 0U, imm);
-	else if (op == AUIPC) alu_out = alu.exec(op, idex.pc, imm);
-
-	else if (isMUL(op))                               alu_out = mul.exec(op, r1, r2);
-	else if (isALU(op))                               alu_out = alu.exec(op, r1, r2);
-	else if (isALUI(op) || isLoad(op) || isStore(op)) alu_out = alu.exec(op, r1, imm);
-	
-	else if (isBranch(op)) {
-		jumped = bru.exec(op, r1, r2);
-		r2 = alu.exec(ADD, idex.pc, imm);  // target in r2
-	}
-	
-	else if (isJAL(op)) {
-		jumped = true;
-		alu_out = alu.exec(ADD, idex.pc, WORD_BYTES);     // return address in alu
-		r2 = (op == JAL) ?                                // target in r2
-			alu.exec(ADD, idex.pc, imm) :
-			alu.exec(ANDI, alu.exec(ADD, r1, imm), ~1U);  // ensure aligned
-
-		if (r2 >= end) should_halt = true;
-	}
-
-	exmem = {idex.pc, idex.instr, alu_out, r2, jumped, should_halt, true};
-	idex.valid = false;
+	for (auto &alu : alus) if (alu.done()) pipe.exmems.push_back(alu.getResult());
+	for (auto &mul : muls) if (mul.done()) pipe.exmems.push_back(mul.getResult());
+	for (auto &bru : brus) if (bru.done()) pipe.exmems.push_back(bru.getResult());
+	for (auto &lsu : lsus) if (lsu.done()) pipe.exmems.push_back(lsu.getResult());
 }
 
-void CPU::memory() {
-	auto &exmem = pipe.exmem; auto &memwb = pipe.memwb;
-	if (!exmem.valid) return;
+bool CPU::writeback() {
+	bool not_found = false;
+	while (!(not_found || pipe.exmems.empty())) {
+		not_found = true;
+		for (auto exmem = pipe.exmems.begin(); exmem != pipe.exmems.end(); exmem++) {
+			if (exmem->seq != next_commit) continue;
+			Op op = exmem->instr.op;
 
-	Op op = exmem.instr.op;
-	uint32_t addr = exmem.alu;
-	uint32_t val = exmem.r2;
-	if (isLoad(op)) val = lsu.load(op, addr);
-	else if (isStore(op)) lsu.store(op, addr, val);
+			uint32_t val;
+			if (isLoad(op) || isStore(op)) val = LoadStoreUnit(mem, log).exec(op, exmem->alu, exmem->r2);
 
-	memwb = {exmem.pc, exmem.instr, addr, val, exmem.should_halt, true};
-	exmem.valid = false;
-}
+			if (writesRegister(op))
+				if (isLoad(op)) regs.write(exmem->instr.rd, val);
+				else regs.write(exmem->instr.rd, exmem->alu);
 
-void CPU::writeback() {
-	auto &memwb = pipe.memwb;
-	if (!memwb.valid) return;
+			instruction_count++;
+			next_commit++;
+			not_found = false;
 
-	Op op = memwb.instr.op;
+			if (exmem->jumped) {
+				pc = exmem->r2;
+				seq = next_commit;
+				if (exmem->should_halt) { halted = true; out << "Reached end of program. Halting CPU. "; }
+				else out << "Control hazard: flushing pipeline, jumping to 0x" << hex << setw(8) << setfill('0') << pc << dec << ". ";
+				
+				pipe.flush();
+				for (auto &alu : alus) alu.flush();
+				for (auto &mul : muls) mul.flush();
+				for (auto &bru : brus) bru.flush();
+				for (auto &lsu : lsus) lsu.flush();
+				return true;
+			}
 
-	if (writesRegister(op)) {
-		uint8_t rd = memwb.instr.rd;
-		if (isLoad(op)) regs.write(rd, memwb.mem);
-		else            regs.write(rd, memwb.alu);
+			pipe.exmems.erase(exmem);
+			break;
+		}
 	}
 
-	if (memwb.should_halt) {
-		halted = true;
-		out << "Reached end of program. Halting CPU. ";
-	}
-	memwb.valid = false;
+	return false;
 }

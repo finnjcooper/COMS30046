@@ -2,7 +2,7 @@
 	"version": 6,
 	"configurePresets": [
 		{
-			"name": "default",
+			"name": "make",
 			"displayName": "GCC + Make",
 			"generator": "Unix Makefiles",
 			"binaryDir": "${sourceDir}/../build",
@@ -13,7 +13,7 @@
 			}
 		},
 		{
-			"name": "ninja",
+			"name": "default",
 			"displayName": "GCC + Ninja",
 			"generator": "Ninja",
 			"binaryDir": "${sourceDir}/../build",

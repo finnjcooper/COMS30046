@@ -56,10 +56,9 @@ void TUI::run() {
 		return false;
 	});
 
-	cpu.setStepCallback([&](const PipelineControl &ctrl, const CommitLog &log, const string &msg) {
+	cpu.setStepCallback([&](bool jmp, const CommitLog &log, const string &msg) {
 		message = msg;
-		stalled = ctrl.stall;
-		flushed = ctrl.jumped;
+		flushed = jmp;
 		highlighted_regs.clear();
 		for (const auto &rw : log.reg_writes) highlighted_regs.insert(rw.reg);
 		highlighted_mem.clear();
@@ -99,11 +98,10 @@ Element TUI::renderInstructions() {
 	uint32_t pc = cpu.getPC();
 	
 	map<uint32_t, pair<char, Color>> stages;
-	stages[pc] = {'F', Theme::IF};
-	if (pipe.ifid.valid)  stages[pipe.ifid.pc]  = {'D', Theme::ID};
-	if (pipe.idex.valid)  stages[pipe.idex.pc]  = {'X', Theme::EX};
-	if (pipe.exmem.valid) stages[pipe.exmem.pc] = {'M', Theme::MEM};
-	if (pipe.memwb.valid) stages[pipe.memwb.pc] = {'W', Theme::WB};
+	for (uint32_t i = 0; i < PIPELINE_WIDTH; i++) stages[pc + i * WORD_BYTES] = {'F', Theme::IF};
+	for (auto &ifid : pipe.ifids)                 stages[ifid.pc]  = {'D', Theme::ID};
+	for (auto &idex : pipe.idexs)                 stages[idex.pc]  = {'X', Theme::EX};
+	for (auto &exmem : pipe.exmems)               stages[exmem.pc] = {'W', Theme::WB};
 	
 	for (const auto &[addr, orig_instr] : disasm) {
 		stringstream ss;
@@ -179,7 +177,7 @@ Element TUI::renderMemory() {
 	const auto &mem = cpu.getMemory();
 	uint32_t sp = cpu.getRegisters().read(2);
 	
-	for (uint32_t addr = sp; addr < CPU::MEM_SIZE; addr += CPU::WORD_BYTES) {
+	for (uint32_t addr = sp; addr < CPU::MEM_SIZE; addr += WORD_BYTES) {
 		uint32_t word = mem.loadw(addr);
 		bool isSP = (addr == sp);
 		
