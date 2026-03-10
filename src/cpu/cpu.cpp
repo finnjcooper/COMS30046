@@ -61,7 +61,7 @@ void CPU::decode() {
 			out << "Data hazard. Stalling pipeline. ";
 			return;
 		}
-		
+
 		prevs.push_back(instr);
 
 		uint32_t r1 = regs.read(instr.rs1);

@@ -48,17 +48,17 @@ private:
 
 	int instruction_count = 0;
 	int cycle_count = 0;
+	CommitLog log;
+	Memory mem;
 	RegisterFile regs;
 	vector<LoadStoreUnit> lsus = vector<LoadStoreUnit>(LSU_COUNT, LoadStoreUnit(mem, log));
 	vector<BranchUnit> brus = vector<BranchUnit>(BRU_COUNT, BranchUnit(end));
 	vector<MulUnit> muls = vector<MulUnit>(MUL_COUNT);
 	vector<ALU> alus = vector<ALU>(ALU_COUNT);
-	Memory mem;
 	Pipeline pipe;
 
 	ostringstream out;
 	function<void(bool, const CommitLog &, const string &)> onStepCallback;
-	CommitLog log;
 
 	void stepSequential();
 
