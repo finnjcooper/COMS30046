@@ -23,8 +23,10 @@ struct EXMEM {
 	bool should_halt = false;
 };
 
-struct PipelineControl {
-	uint32_t target = 0;
+struct ROB {
+	uint32_t seq = 0, val = 0;
+	Instruction instr;
+	bool ready = false;
 	bool jumped = false;
 	bool should_halt = false;
 };

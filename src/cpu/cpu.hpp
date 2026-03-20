@@ -43,6 +43,7 @@ private:
 	uint32_t end = 0;
 	uint32_t seq = 0;
 	uint32_t next_commit = 0;
+	bool jumped = false;
 	bool halted = false;
 	bool pipelined = true;
 
@@ -66,5 +67,5 @@ private:
 	void decode();
 	void issue();
 	void execute();
-	bool writeback();
+	void writeback();
 };

@@ -11,8 +11,9 @@ void CPU::step() {
 
 	log.clear();
 	cycle_count++;
+	jumped = false;
 
-	bool jumped = writeback();
+	writeback();
 	execute();
 	decode();
 	issue();
@@ -23,12 +24,13 @@ void CPU::step() {
 
 void CPU::stepSequential() {
 	log.clear();
+	jumped = false;
 
 	fetch();
 	decode();
 	issue();
 	execute();
-	bool jumped = writeback();
+	writeback();
 
 	instruction_count++;
 	cycle_count += 5;
@@ -131,7 +133,7 @@ void CPU::execute() {
 	for (auto &lsu : lsus) if (lsu.done()) pipe.exmems.push_back(lsu.getResult());
 }
 
-bool CPU::writeback() {
+void CPU::writeback() {
 	bool not_found = false;
 	while (!(not_found || pipe.exmems.empty())) {
 		not_found = true;
@@ -161,13 +163,13 @@ bool CPU::writeback() {
 				for (auto &mul : muls) mul.flush();
 				for (auto &bru : brus) bru.flush();
 				for (auto &lsu : lsus) lsu.flush();
-				return true;
+
+				jumped = true;
+				return;
 			}
 
 			pipe.exmems.erase(exmem);
 			break;
 		}
 	}
-
-	return false;
 }
