@@ -1,8 +1,8 @@
 #include "cpu.hpp"
 
 CPU::CPU(Program prog, bool pipelined, bool forwarding) :
-	mem(prog.instrs, MEM_SIZE), regs(log), pc(prog.entry_point), end(prog.exit_point),
-	pipelined(pipelined), pipe(forwarding) {
+	mem(prog.instrs, MEM_SIZE), regs(NUM_REGISTERS, log), pc(prog.entry_point), end(prog.exit_point),
+	pipelined(pipelined), pipe(forwarding), rob(NUM_REGISTERS * 2) {
 	regs.write(2, MEM_SIZE - WORD_BYTES);
 }
 
@@ -46,22 +46,31 @@ string CPU::readout() {
 }
 
 void CPU::fetch() {
-	while (pipe.ifids.size() < PIPELINE_WIDTH) {
-		pipe.ifids.push_back({seq++, pc, mem.loadw(pc)});
+	while (pipe.decode_q.size() < PIPELINE_WIDTH) {
+		pipe.decode_q.push_back({seq++, pc, mem.loadw(pc)});
 		pc += WORD_BYTES;
 	}
 }
 
 void CPU::decode() {
 	vector<Instruction> prevs;
-	while (!pipe.ifids.empty()) {
-		auto &ifid = pipe.ifids.front();
+	while (!pipe.decode_q.empty()) {
+		auto &decode = pipe.decode_q.front();
 
-		Instruction instr = Decoder::decode(ifid.instr);
+		Instruction instr = Decoder::decode(decode.instr);
 
 		if (pipe.hasHazard(prevs, instr)) {
 			out << "Data hazard. Stalling pipeline. ";
 			return;
+		}
+
+		uint32_t tag = -1;
+		if (writesRegister(instr.op) && instr.rd != 0) {
+			tag = rob.allocate(instr.op, instr.rd);
+			if (tag == -1) {
+				out << "ROB full. Stalling pipeline. ";
+				return;
+			}
 		}
 
 		prevs.push_back(instr);
@@ -72,21 +81,21 @@ void CPU::decode() {
 		r1 = pipe.applyForwarding(instr.rs1, r1);
 		r2 = pipe.applyForwarding(instr.rs2, r2);
 
-		pipe.idexs.push_back({ifid.seq, ifid.pc, instr, r1, r2});
-		pipe.ifids.pop_front();
+		pipe.exec_q.push_back({decode.seq, decode.pc, instr, r1, r2, tag});
+		pipe.decode_q.pop_front();
 	}
 }
 
 void CPU::issue() {
-	while (!pipe.idexs.empty()) {
-		auto &idex = pipe.idexs.front();
+	while (!pipe.exec_q.empty()) {
+		auto &exec = pipe.exec_q.front();
 
-		Op op = idex.instr.op;
+		Op op = exec.instr.op;
 		bool issued = false;
 		if (isMUL(op)) {
 			for (auto &mul : muls) {
 				if (!mul.busy()) {
-					mul.start(idex);
+					mul.start(exec);
 					issued = true;
 					break;
 				}
@@ -94,7 +103,7 @@ void CPU::issue() {
 		} else if (isALU(op) || isALUI(op) || isUI(op)) {
 			for (auto &alu : alus) {
 				if (!alu.busy()) {
-					alu.start(idex);
+					alu.start(exec);
 					issued = true;
 					break;
 				}
@@ -102,7 +111,7 @@ void CPU::issue() {
 		} else if (isBranch(op) || isJAL(op)) {
 			for (auto &bru : brus) {
 				if (!bru.busy()) {
-					bru.start(idex);
+					bru.start(exec);
 					issued = true;
 					break;
 				}
@@ -110,14 +119,14 @@ void CPU::issue() {
 		} else if (isLoad(op) || isStore(op)) {
 			for (auto &lsu : lsus) {
 				if (!lsu.busy()) {
-					lsu.start(idex);
+					lsu.start(exec);
 					issued = true;
 					break;
 				}
 			}
 		}
 		if (!issued) break;
-		pipe.idexs.pop_front();
+		pipe.exec_q.pop_front();
 	}
 }
 
@@ -127,35 +136,33 @@ void CPU::execute() {
 	for (auto &bru : brus) bru.step();
 	for (auto &lsu : lsus) lsu.step();
 
-	for (auto &alu : alus) if (alu.done()) pipe.exmems.push_back(alu.getResult());
-	for (auto &mul : muls) if (mul.done()) pipe.exmems.push_back(mul.getResult());
-	for (auto &bru : brus) if (bru.done()) pipe.exmems.push_back(bru.getResult());
-	for (auto &lsu : lsus) if (lsu.done()) pipe.exmems.push_back(lsu.getResult());
+	for (auto &alu : alus) if (alu.done()) pipe.commit_q.push_back(alu.getResult());
+	for (auto &mul : muls) if (mul.done()) pipe.commit_q.push_back(mul.getResult());
+	for (auto &bru : brus) if (bru.done()) pipe.commit_q.push_back(bru.getResult());
+	for (auto &lsu : lsus) if (lsu.done()) pipe.commit_q.push_back(lsu.getResult());
 }
 
 void CPU::writeback() {
 	bool not_found = false;
-	while (!(not_found || pipe.exmems.empty())) {
+	while (!(not_found || pipe.commit_q.empty())) {
 		not_found = true;
-		for (auto exmem = pipe.exmems.begin(); exmem != pipe.exmems.end(); exmem++) {
-			if (exmem->seq != next_commit) continue;
-			Op op = exmem->instr.op;
+		for (auto commit = pipe.commit_q.begin(); commit != pipe.commit_q.end(); commit++) {
+			if (commit->seq != next_commit) continue;
+			Op op = commit->instr.op;
 
-			uint32_t val;
-			if (isLoad(op) || isStore(op)) val = LoadStoreUnit(mem, log).exec(op, exmem->alu, exmem->r2);
-
-			if (writesRegister(op))
-				if (isLoad(op)) regs.write(exmem->instr.rd, val);
-				else regs.write(exmem->instr.rd, exmem->alu);
+			if (writesRegister(op) && commit->tag != -1U) {
+				if (isLoad(op)) rob.write(commit->tag, commit->alu);
+				else rob.write(commit->tag, commit->alu);
+			}
 
 			instruction_count++;
 			next_commit++;
 			not_found = false;
 
-			if (exmem->jumped) {
-				pc = exmem->r2;
+			if (commit->jumped) {
+				pc = commit->r2;
 				seq = next_commit;
-				if (exmem->should_halt) { halted = true; out << "Reached end of program. Halting CPU. "; }
+				if (commit->should_halt) { halted = true; out << "Reached end of program. Halting CPU. "; }
 				else out << "Control hazard: flushing pipeline, jumping to 0x" << hex << setw(8) << setfill('0') << pc << dec << ". ";
 				
 				pipe.flush();
@@ -168,8 +175,21 @@ void CPU::writeback() {
 				return;
 			}
 
-			pipe.exmems.erase(exmem);
+			pipe.commit_q.erase(commit);
 			break;
 		}
+	}
+}
+
+void CPU::commit() {
+	while(rob.canCommit()) {
+		auto &entry = rob.front();
+
+		uint32_t val;
+		if (isLoad(entry.op) || isStore(entry.op)) val = LoadStoreUnit(mem, log).exec(entry.op, entry.store_addr, entry.store_value);
+
+		if (writesRegister(entry.op) && entry.dest_reg != 0)
+			regs.write(entry.dest_reg, entry.value);
+		rob.pop();
 	}
 }

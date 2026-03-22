@@ -5,44 +5,38 @@
 
 #define PIPELINE_WIDTH 4UL
 
-struct IFID {
-	uint32_t seq = 0, pc = -1U, instr = 0;
+struct DecodeEntry {
+	uint32_t seq = 0, pc = -1U, instr = 0, tag = -1;
 };
 
-struct IDEX {
+struct ExecEntry {
 	uint32_t seq = 0, pc = 0;
 	Instruction instr;
 	uint32_t r1 = 0, r2 = 0;
+	uint32_t tag = -1;
 };
 
-struct EXMEM {
+struct CommitEntry {
 	uint32_t seq = 0, pc = 0;
 	Instruction instr;
 	uint32_t alu = 0, r2 = 0;
 	bool jumped = false;
 	bool should_halt = false;
-};
-
-struct ROB {
-	uint32_t seq = 0, val = 0;
-	Instruction instr;
-	bool ready = false;
-	bool jumped = false;
-	bool should_halt = false;
+	uint32_t tag = -1;
 };
 
 class Pipeline {
 public:
 	Pipeline(bool forwarding = true) : forwarding(forwarding) {}
 
-	deque<IFID> ifids;
-	deque<IDEX> idexs;
-	deque<EXMEM> exmems;
+	deque<DecodeEntry> decode_q;
+	deque<ExecEntry> exec_q;
+	deque<CommitEntry> commit_q;
 	
 	void flush() {
-		ifids.clear();
-		idexs.clear();
-		exmems.clear();
+		decode_q.clear();
+		exec_q.clear();
+		commit_q.clear();
 	}
 
 	uint32_t applyForwarding(uint8_t rs, uint32_t reg_val) const {
@@ -56,15 +50,15 @@ public:
 
 		if (forwarding) {
 			// load-use hazard only
-			for (auto &idex : idexs)
+			for (auto &idex : exec_q)
 				if (isLoad(idex.instr.op) && hasDependency(instr, idex.instr)) return true;
-			for (auto &exmem : exmems)
+			for (auto &exmem : commit_q)
 				if (isLoad(exmem.instr.op) && hasDependency(instr, exmem.instr)) return true;
 		} else {
 			// general data hazard
-			for (auto &idex : idexs)
+			for (auto &idex : exec_q)
 				if (hasDependency(instr, idex.instr)) return true;
-			for (auto &exmem : exmems)
+			for (auto &exmem : commit_q)
 				if (hasDependency(instr, exmem.instr)) return true;
 		}
 		
@@ -78,7 +72,7 @@ private:
 		if (rs == 0) return reg_val;
 		
 		// loads aren't ready until writeback
-		for (auto &exmem : exmems)
+		for (auto &exmem : commit_q)
 			if (!isLoad(exmem.instr.op) && exmem.instr.rd == rs)
 				return exmem.alu;
 		

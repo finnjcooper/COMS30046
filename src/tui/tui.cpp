@@ -99,9 +99,9 @@ Element TUI::renderInstructions() {
 	
 	map<uint32_t, pair<char, Color>> stages;
 	for (uint32_t i = 0; i < PIPELINE_WIDTH; i++) stages[pc + i * WORD_BYTES] = {'F', Theme::IF};
-	for (auto &ifid : pipe.ifids)                 stages[ifid.pc]  = {'D', Theme::ID};
-	for (auto &idex : pipe.idexs)                 stages[idex.pc]  = {'X', Theme::EX};
-	for (auto &exmem : pipe.exmems)               stages[exmem.pc] = {'W', Theme::WB};
+	for (auto &ifid : pipe.decode_q)              stages[ifid.pc]  = {'D', Theme::ID};
+	for (auto &idex : pipe.exec_q)                stages[idex.pc]  = {'X', Theme::EX};
+	for (auto &exmem : pipe.commit_q)             stages[exmem.pc] = {'W', Theme::WB};
 	
 	for (const auto &[addr, orig_instr] : disasm) {
 		stringstream ss;
@@ -148,7 +148,7 @@ Element TUI::renderRegisters() {
 	Elements lines;
 	const auto &regs = cpu.getRegisters();
 	
-	for (uint8_t i = 0; i < RegisterFile::NUM_REGISTERS; i++) {
+	for (uint8_t i = 0; i < NUM_REGISTERS; i++) {
 		uint32_t val = regs.read(i);
 		string regname = regs.name(i);
 		

@@ -6,7 +6,7 @@ class ExecUnit {
 public:
 	virtual void step() = 0;
 	
-	void start(IDEX idex) {
+	void start(ExecEntry idex) {
 		current = idex;
 		cycles_remaining = cycles;
 		busy_ = true;
@@ -14,12 +14,12 @@ public:
 	
 	bool busy() const { return busy_; }
 	bool done() const { return done_; }
-	EXMEM getResult() { done_ = false; return result; }
+	CommitEntry getResult() { done_ = false; return result; }
 	void flush() { busy_ = false; done_ = false; }
 
 protected:
-	IDEX current;
-	EXMEM result;
+	ExecEntry current;
+	CommitEntry result;
 	size_t cycles = 1UL;
 	size_t cycles_remaining;
 	bool busy_ = false;

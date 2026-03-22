@@ -6,6 +6,7 @@ using namespace std;
 
 inline constexpr uint8_t XLEN = 32;
 inline constexpr uint8_t WORD_BYTES = XLEN / 8;
+inline constexpr uint8_t NUM_REGISTERS = 32;
 
 enum Op {
 	INVALID,

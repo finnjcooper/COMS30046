@@ -10,6 +10,7 @@
 #include "instruction.hpp"
 #include "decode.hpp"
 #include "pipeline.hpp"
+#include "tomasulo.hpp"
 #include "trace.hpp"
 #include "loader.hpp"
 
@@ -52,6 +53,7 @@ private:
 	CommitLog log;
 	Memory mem;
 	RegisterFile regs;
+	ROB rob;
 	vector<LoadStoreUnit> lsus = vector<LoadStoreUnit>(LSU_COUNT, LoadStoreUnit(mem, log));
 	vector<BranchUnit> brus = vector<BranchUnit>(BRU_COUNT, BranchUnit(end));
 	vector<MulUnit> muls = vector<MulUnit>(MUL_COUNT);
@@ -68,4 +70,5 @@ private:
 	void issue();
 	void execute();
 	void writeback();
+	void commit();
 };
