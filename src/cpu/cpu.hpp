@@ -8,6 +8,7 @@
 #include "memory.hpp"
 #include "decode.hpp"
 #include "rob.hpp"
+#include "lsq.hpp"
 #include "alu.hpp"
 #include "mul.hpp"
 #include "branch.hpp"
@@ -23,8 +24,8 @@ public:
 
 	static constexpr size_t MEM_SIZE = 64 * 1024ULL; // 64 KB
 	static constexpr uint8_t XLEN = 32U, WORD_BYTES = XLEN / 8, NUM_REGISTERS = 32U;
-	static constexpr size_t PIPELINE_WIDTH = 2ULL, RS_SIZE = 4ULL;
-	static constexpr size_t LSU_COUNT = 1ULL, BRU_COUNT = 1ULL, MUL_COUNT = 1ULL, ALU_COUNT = 1ULL;
+	static constexpr size_t PIPELINE_WIDTH = 16ULL, RS_SIZE = 16ULL;
+	static constexpr size_t LSU_COUNT = 16ULL, BRU_COUNT = 16ULL, MUL_COUNT = 16ULL, ALU_COUNT = 16ULL;
 
 	void step();
 
@@ -53,6 +54,7 @@ private:
 	Memory mem;
 	RegisterFile regs;
 	ReOrderBuffer rob;
+	LoadStoreQueue lsq;
 	RegisterAliasTable rat;
 	vector<ExecUnit*> brus, lsus, muls, alus;
 

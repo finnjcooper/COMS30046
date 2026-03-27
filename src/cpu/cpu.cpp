@@ -7,7 +7,7 @@ CPU::CPU(Program prog) :
 	regs.write(2, MEM_SIZE - WORD_BYTES);
 
 	for (size_t i = 0; i < BRU_COUNT; i++) brus.push_back(new BranchUnit(end, WORD_BYTES));
-	for (size_t i = 0; i < LSU_COUNT; i++) lsus.push_back(new LoadStoreUnit(mem, log));
+	for (size_t i = 0; i < LSU_COUNT; i++) lsus.push_back(new LoadStoreUnit(mem, lsq));
 	for (size_t i = 0; i < ALU_COUNT; i++) alus.push_back(new ArithmeticLogicUnit());
 	for (size_t i = 0; i < MUL_COUNT; i++) muls.push_back(new MulDivUnit());
 }
@@ -52,6 +52,7 @@ void CPU::flush(uint32_t tag) {
 	for (auto *mul : muls) mul->flush(tag);
 	for (auto *bru : brus) bru->flush(tag);
 	for (auto *lsu : lsus) lsu->flush(tag);
+	lsq.flush(tag);
 	rob.flush(tag);
 	rat.rebuild(rob);
 }
@@ -150,6 +151,7 @@ void CPU::dispatch() {
 		readOperand(rs2, Vk, Qk);
 
 		*slot = {true, op, Vj, Vk, Qj, Qk, pc, imm, tag};
+		if (isLoad(op) || isStore(op)) lsq.allocate(op, tag);
 
 		if (writesRegister(op) && rd != 0)
 			rat.set(rd, tag);
@@ -157,74 +159,6 @@ void CPU::dispatch() {
 		decode_q.pop_front();
 	}
 }
-
-// void CPU::dispatch() {
-// 	auto readOperand = [&](uint8_t rs, uint32_t &V, uint32_t &Q) {
-// 		if (rs == 0) {
-// 			V = 0;
-// 			Q = -1U;
-// 			return;
-// 		}
-
-// 		uint32_t prod_tag = rat.get(rs);
-// 		if (prod_tag == -1U) {
-// 			V = regs.read(rs);
-// 			Q = -1U;
-// 			return;
-// 		}
-
-// 		auto &prod = rob.get(prod_tag);
-// 		if (prod.ready) {
-// 			V = prod.value;   // producer already wrote back
-// 			Q = -1U;
-// 		} else {
-// 			V = 0;
-// 			Q = prod_tag;     // still waiting for broadcast
-// 		}
-// 	};
-
-// 	while (!decode_q.empty()) {
-// 		auto &decode = decode_q.front();
-
-// 		Op op = decode.instr.op;
-// 		uint8_t rd = decode.instr.rd, rs1 = decode.instr.rs1, rs2 = decode.instr.rs2;
-// 		uint32_t pc = decode.pc;
-// 		int32_t imm = decode.instr.imm;
-
-// 		if (op == INVALID) {
-// 			decode_q.pop_front();
-// 			return;
-// 		}
-
-// 		uint32_t tag = rob.allocate(op, rd);
-// 		if (tag == -1U) {
-// 			out << "Re-order buffer full. Stalling pipeline. ";
-// 			return;
-// 		}
-
-// 		uint32_t Qj = -1U, Qk = -1U, Vj = 0, Vk = 0;
-
-// 		readOperand(rs1, Vj, Qj);
-// 		readOperand(rs2, Vk, Qk);
-
-// 		RSEntry entry = {true, op, Vj, Vk, Qj, Qk, pc, imm, tag};
-
-// 		bool dispatched = false;
-
-// 		if (isALU(op) || isALUI(op) || isUI(op)) { for (auto &rs : rs_alu) if (!rs.busy) { rs = entry; dispatched = true; break; } }
-// 		else if (isMUL(op))                      { for (auto &rs : rs_mul) if (!rs.busy) { rs = entry; dispatched = true; break; } }
-// 		else if (isBranch(op) || isJAL(op))      { for (auto &rs : rs_bru) if (!rs.busy) { rs = entry; dispatched = true; break; } }
-// 		else if (isLoad(op) || isStore(op))      { for (auto &rs : rs_lsu) if (!rs.busy) { rs = entry; dispatched = true; break; } }
-
-// 		if (!dispatched) {
-// 			out << "Reservation stations full. Stalling pipeline. ";
-// 			return;
-// 		}
-
-// 		if (writesRegister(op) && rd != 0) rat.set(rd, tag);
-// 		decode_q.pop_front();
-// 	}
-// }
 
 void tryIssue(vector<RSEntry> &rs_vec, vector<ExecUnit*> &units) {
 	for (auto &rs : rs_vec)
@@ -237,11 +171,42 @@ void tryIssue(vector<RSEntry> &rs_vec, vector<ExecUnit*> &units) {
 				}
 }
 
+RSEntry* findRSEntry(vector<RSEntry> &rs_vec, uint32_t tag) {
+	for (auto &rs : rs_vec)
+		if (rs.busy && rs.tag == tag) return &rs;
+	return nullptr;
+}
+
+void tryIssueMemory(vector<RSEntry> &rs_vec, vector<ExecUnit*> &units, LoadStoreQueue &lsq) {
+	for (auto *unit : units) {
+		if (unit->busy()) continue;
+
+		bool issued = false;
+		for (auto &entry : lsq.getEntries()) {
+			if (entry.issued || entry.done) continue;
+
+			RSEntry *rs = findRSEntry(rs_vec, entry.tag);
+			if (!rs || rs->Qj != -1U || rs->Qk != -1U) continue;
+
+			uint32_t addr = rs->Vj + rs->imm;
+			if (isLoad(entry.op) && !lsq.canIssueLoad(entry.tag, addr)) continue;
+
+			unit->start(*rs);
+			rs->busy = false;
+			lsq.markIssued(entry.tag);
+			issued = true;
+			break;
+		}
+
+		if (!issued) break;
+	}
+}
+
 void CPU::issue() {
 	tryIssue(rs_alu, alus);
 	tryIssue(rs_mul, muls);
 	tryIssue(rs_bru, brus);
-	tryIssue(rs_lsu, lsus);
+	tryIssueMemory(rs_lsu, lsus, lsq);
 }
 
 void CPU::execute() {
@@ -290,7 +255,7 @@ void CPU::commit() {
 	while(rob.canCommit()) {
 		auto entry = rob.front();
 
-		if (isStore(entry.op)) LoadStoreUnit(mem, log).store(entry.op, entry.addr, entry.value);
+		if (isLoad(entry.op) || isStore(entry.op)) lsq.commit(entry.tag, mem, log);
 
 		if (writesRegister(entry.op) && entry.rd != 0) {
 			regs.write(entry.rd, entry.value);

@@ -5,9 +5,9 @@ HEADLESS_FLAG := $(if $(filter 1,$(HEADLESS)),--headless,)
 
 default: ninja
 ifeq ($(OS),Windows_NT)
-	.\build\main.exe --elf .\src\test\build\$(BENCH).elf $(HEADLESS_FLAG)
+	.\build\main.exe --elf .\build\$(BENCH).elf $(HEADLESS_FLAG)
 else
-	./build/main --elf ./src/test/build/$(BENCH).elf $(HEADLESS_FLAG)
+	./build/main --elf ./build/$(BENCH).elf $(HEADLESS_FLAG)
 endif
 
 headless:
