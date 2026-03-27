@@ -1,25 +1,24 @@
 #pragma once
 #include "instruction.hpp"
-#include "pipeline.hpp"
 
 class ExecUnit {
 public:
 	virtual void step() = 0;
 	
-	void start(ExecEntry idex) {
-		current = idex;
+	void start(RSEntry entry) {
+		current = entry;
 		cycles_remaining = cycles;
 		busy_ = true;
 	}
 	
 	bool busy() const { return busy_; }
 	bool done() const { return done_; }
-	CommitEntry getResult() { done_ = false; return result; }
+	ExecEntry getResult() { done_ = false; return result; }
 	void flush() { busy_ = false; done_ = false; }
 
 protected:
-	ExecEntry current;
-	CommitEntry result;
+	RSEntry current;
+	ExecEntry result;
 	size_t cycles = 1UL;
 	size_t cycles_remaining;
 	bool busy_ = false;

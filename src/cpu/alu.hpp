@@ -8,15 +8,15 @@ public:
 
 		cycles_remaining--;
 		if (cycles_remaining == 0) {
-			Op op = current.instr.op;
-			uint32_t r1 = current.r1, r2 = current.r2;
+			Op op = current.op;
+			uint32_t r1 = current.Vj, r2 = current.Vk;
 
-			if (isUI(op) || isALUI(op)) r2 = current.instr.imm;
+			if (isUI(op) || isALUI(op)) r2 = current.imm;
 			if (op == LUI)              r1 = 0U;
 			if (op == AUIPC)            r1 = current.pc;
 
 			uint32_t alu_out = exec(op, r1, r2);
-			result = {current.seq, current.pc, current.instr, alu_out, 0, false, false};
+			result = {current.op, alu_out, 0, 0, false, false, current.tag};
 			busy_ = false; done_ = true;
 		}
 	}

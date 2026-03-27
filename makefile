@@ -1,30 +1,25 @@
-
 BENCH ?= add
-PIPELINED ?= true
-FORWARDING ?= true
+HEADLESS ?= 0
 
-PIPELINED_FLAG :=
-ifeq ($(PIPELINED),true)
-	PIPELINED_FLAG := --pipelined
-endif
-
-FORWARDING_FLAG :=
-ifeq ($(FORWARDING),true)
-	FORWARDING_FLAG := --forwarding
-endif
+HEADLESS_FLAG := $(if $(filter 1,$(HEADLESS)),--headless,)
 
 default: ninja
 ifeq ($(OS),Windows_NT)
-	.\build\main.exe --elf .\src\test\build\$(BENCH).elf $(PIPELINED_FLAG) $(FORWARDING_FLAG)
+	.\build\main.exe --elf .\src\test\build\$(BENCH).elf $(HEADLESS_FLAG)
 else
-	./build/main --elf ./src/test/build/$(BENCH).elf $(PIPELINED_FLAG) $(FORWARDING_FLAG)
+	./build/main --elf ./src/test/build/$(BENCH).elf $(HEADLESS_FLAG)
 endif
+
+headless:
+	$(MAKE) HEADLESS=1
+
 
 ninja: src/
 	ninja -C build
 
 make: src/
 	make -C build
+
 
 cmake:
 	cmake --preset default src

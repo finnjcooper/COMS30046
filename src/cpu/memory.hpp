@@ -37,19 +37,6 @@ public:
 	uint8_t loadb(uint32_t addr) const { if (addr >= data.size()) throw out_of_range("Memory access out of range"); return data[addr]; }
 	uint16_t loadh(uint32_t addr) const { if (addr + 1 >= data.size()) throw out_of_range("Memory access out of range"); return (data[addr]) | (data[addr + 1] << 8); }
 	uint32_t loadw(uint32_t addr) const { if (addr + 3 >= data.size()) throw out_of_range("Memory access out of range"); return (data[addr]) | (data[addr + 1] << 8) | (data[addr + 2] << 16) | (data[addr + 3] << 24); }
-	
-	void printb() {
-		for (size_t addr = 0; addr < data.size(); addr++) {
-			cout << "0x" << setw(2) << setfill('0') << hex << (int)addr << ": 0x" << setw(2) << setfill('0') << (int)loadb(addr) << dec << endl;
-		}
-	}
-	
-	void printw() {
-		for (size_t addr = 0; addr < data.size(); addr += 4) {
-			if (loadw(addr) == 0) continue;
-			cout << "0x" << setw(8) << setfill('0') << hex << (int)addr << ": 0x" << setw(8) << setfill('0') << (int)loadw(addr) << dec << endl;
-		}
-	}
 
 private:
 	vector<uint8_t> data;

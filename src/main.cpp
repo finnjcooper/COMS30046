@@ -1,16 +1,11 @@
 #include "loader.hpp"
 #include "tui.hpp"
 #include <argparse/argparse.hpp>
-#include <csignal>
-
-static TUI *tui_ptr = nullptr;
-static void haltOnSignal(int) { if (tui_ptr) tui_ptr->halt(); }
 
 int main(int argc, char* argv[]) {
 	argparse::ArgumentParser program("RISC-V Simulator");
 	program.add_argument("--elf", "-e").help("path to the ELF binary to load and simulate").required();
-	program.add_argument("--pipelined", "-p").help("enable pipelined execution").flag();
-	program.add_argument("--forwarding", "-f").help("enable data forwarding").flag();
+	program.add_argument("--headless", "-H").help("run without the TUI").default_value(false).implicit_value(true);
 
 	try {
 		program.parse_args(argc, argv);
@@ -22,24 +17,24 @@ int main(int argc, char* argv[]) {
 	}
 
 	string elfPath = program.get<string>("--elf");
-	bool isPipelined = program.get<bool>("--pipelined");
-	bool isForwarding = program.get<bool>("--forwarding");
 
 	auto prog = Loader::ELF(elfPath);
 	string asmPath = elfPath.substr(0, elfPath.size() - 4) + ".asm";
 	auto disasm = Loader::ASM(asmPath);
 	
-	CPU cpu(prog, isPipelined, isForwarding);
+	CPU cpu(prog);
 	TUI tui(cpu, disasm);
 
-	tui_ptr = &tui;
-	signal(SIGINT, haltOnSignal);
-	signal(SIGTERM, haltOnSignal);
-	tui.run();
-	tui_ptr = nullptr;
+	if (program.get<bool>("--headless"))
+		while (cpu.running()) cpu.step();
+	else tui.run();
 
-	cout << "Instructions executed: " << cpu.getInstructionCount() << endl;
-	cout << "Cycles taken: " << cpu.getCycleCount() << endl;
+	auto instr_count = cpu.getInstructionCount();
+	auto cycle_count = cpu.getCycleCount();
+
+	cout << "Instructions executed: " << instr_count << endl;
+	cout << "Cycles taken: " << cycle_count << endl;
+	cout << "IPC: " << fixed << setprecision(3) << static_cast<float>(instr_count) / max(cycle_count, 1) << endl;
 
 	return 0;
 };

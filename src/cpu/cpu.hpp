@@ -1,35 +1,36 @@
 #pragma once
 #include <sstream>
 #include <functional>
+#include <deque>
+#include "instruction.hpp"
+#include "pipeline.hpp"
 #include "regfile.hpp"
 #include "memory.hpp"
+#include "decode.hpp"
+#include "rob.hpp"
 #include "alu.hpp"
 #include "mul.hpp"
 #include "branch.hpp"
 #include "loadstore.hpp"
-#include "instruction.hpp"
-#include "decode.hpp"
-#include "pipeline.hpp"
-#include "tomasulo.hpp"
-#include "trace.hpp"
 #include "loader.hpp"
 
 using namespace std;
 
 class CPU {
 public:
-	~CPU() = default;
-	CPU(Program prog, bool pipelined = true, bool forwarding = true);
+	~CPU();
+	CPU(Program prog);
 
-	static constexpr size_t MEM_SIZE = 64 * 1024; // 64 KB
-	static constexpr size_t LSU_COUNT = 2, BRU_COUNT = 2, MUL_COUNT = 1, ALU_COUNT = 2;
+	static constexpr size_t MEM_SIZE = 64 * 1024ULL; // 64 KB
+	static constexpr uint8_t XLEN = 32U, WORD_BYTES = XLEN / 8, NUM_REGISTERS = 32U;
+	static constexpr size_t PIPELINE_WIDTH = 1ULL;
+	static constexpr size_t LSU_COUNT = 1ULL, BRU_COUNT = 1ULL, MUL_COUNT = 1ULL, ALU_COUNT = 1ULL;
 
 	void step();
 
 	bool running() { return !halted; }
 	RegisterFile getRegisters() const { return regs; }
 	Memory getMemory() const { return mem; }
-	Pipeline getPipeline() const { return pipe; }
 	uint32_t getPC() const { return pc; }
 	int getInstructionCount() const { return instruction_count; }
 	int getCycleCount() const { return cycle_count; }
@@ -42,28 +43,30 @@ public:
 private:
 	uint32_t pc = 0;
 	uint32_t end = 0;
-	uint32_t seq = 0;
-	uint32_t next_commit = 0;
 	bool jumped = false;
 	bool halted = false;
-	bool pipelined = true;
 
 	int instruction_count = 0;
 	int cycle_count = 0;
+
 	CommitLog log;
 	Memory mem;
 	RegisterFile regs;
-	ROB rob;
-	vector<LoadStoreUnit> lsus = vector<LoadStoreUnit>(LSU_COUNT, LoadStoreUnit(mem, log));
-	vector<BranchUnit> brus = vector<BranchUnit>(BRU_COUNT, BranchUnit(end));
-	vector<MulUnit> muls = vector<MulUnit>(MUL_COUNT);
-	vector<ALU> alus = vector<ALU>(ALU_COUNT);
-	Pipeline pipe;
+	ReOrderBuffer rob;
+	RegisterAliasTable rat;
+	vector<ExecUnit*> brus = vector<ExecUnit*>(BRU_COUNT, new BranchUnit(end, WORD_BYTES));
+	vector<ExecUnit*> lsus = vector<ExecUnit*>(LSU_COUNT, new LoadStoreUnit(mem, log));
+	vector<ExecUnit*> muls = vector<ExecUnit*>(MUL_COUNT, new MulUnit());
+	vector<ExecUnit*> alus = vector<ExecUnit*>(ALU_COUNT, new ALU());
+
+	deque<FetchEntry> fetch_q;
+	deque<DecodeEntry> decode_q;
+	vector<RSEntry> rs_alu, rs_mul, rs_bru, rs_lsu;
 
 	ostringstream out;
 	function<void(bool, const CommitLog &, const string &)> onStepCallback;
 
-	void stepSequential();
+	void flush();
 
 	void fetch();
 	void decode();

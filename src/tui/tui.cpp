@@ -94,14 +94,14 @@ Element TUI::renderTitleBar() {
 Element TUI::renderInstructions() {
 	Elements lines;
 	
-	const auto &pipe = cpu.getPipeline();
-	uint32_t pc = cpu.getPC();
+	// const auto &pipe = cpu.getPipeline();
+	// uint32_t pc = cpu.getPC();
 	
 	map<uint32_t, pair<char, Color>> stages;
-	for (uint32_t i = 0; i < PIPELINE_WIDTH; i++) stages[pc + i * WORD_BYTES] = {'F', Theme::IF};
-	for (auto &ifid : pipe.decode_q)              stages[ifid.pc]  = {'D', Theme::ID};
-	for (auto &idex : pipe.exec_q)                stages[idex.pc]  = {'X', Theme::EX};
-	for (auto &exmem : pipe.commit_q)             stages[exmem.pc] = {'W', Theme::WB};
+	// for (uint32_t i = 0; i < CPU::PIPELINE_WIDTH; i++) stages[pc + i * CPU::WORD_BYTES] = {'F', Theme::IF};
+	// for (auto &ifid : pipe.decode_q)                   stages[ifid.pc]  = {'D', Theme::ID};
+	// for (auto &idex : pipe.exec_q)                     stages[idex.pc]  = {'X', Theme::EX};
+	// for (auto &exmem : pipe.commit_q)                  stages[exmem.pc] = {'W', Theme::WB};
 	
 	for (const auto &[addr, orig_instr] : disasm) {
 		stringstream ss;
@@ -135,7 +135,7 @@ Element TUI::renderInstructions() {
 			text(instr) | color(Theme::Text),
 		});
 
-		if (addr == pc) line |= focus;
+		// if (addr == pc) line |= focus;
 		lines.push_back(line);
 	}
 	
@@ -148,7 +148,7 @@ Element TUI::renderRegisters() {
 	Elements lines;
 	const auto &regs = cpu.getRegisters();
 	
-	for (uint8_t i = 0; i < NUM_REGISTERS; i++) {
+	for (uint8_t i = 0; i < CPU::NUM_REGISTERS; i++) {
 		uint32_t val = regs.read(i);
 		string regname = regs.name(i);
 		
@@ -177,7 +177,7 @@ Element TUI::renderMemory() {
 	const auto &mem = cpu.getMemory();
 	uint32_t sp = cpu.getRegisters().read(2);
 	
-	for (uint32_t addr = sp; addr < CPU::MEM_SIZE; addr += WORD_BYTES) {
+	for (uint32_t addr = sp; addr < CPU::MEM_SIZE; addr += CPU::WORD_BYTES) {
 		uint32_t word = mem.loadw(addr);
 		bool isSP = (addr == sp);
 		

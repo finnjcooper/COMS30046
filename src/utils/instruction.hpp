@@ -4,10 +4,6 @@
 
 using namespace std;
 
-inline constexpr uint8_t XLEN = 32;
-inline constexpr uint8_t WORD_BYTES = XLEN / 8;
-inline constexpr uint8_t NUM_REGISTERS = 32;
-
 enum Op {
 	INVALID,
 	// rv32i
@@ -31,7 +27,6 @@ inline bool isStore(Op op) { return op >= SB && op <= SW; }
 inline bool isBranch(Op op) { return op >= BEQ && op <= BGEU; }
 inline bool isJAL(Op op) { return op == JAL || op == JALR; }
 inline bool isUI(Op op) { return op == LUI || op == AUIPC; }
-
 inline bool writesRegister(Op op) { return isALU(op) || isALUI(op) || isMUL(op) || isLoad(op) || isUI(op) || isJAL(op); }
 
 struct Instruction {
@@ -39,7 +34,6 @@ struct Instruction {
 	uint8_t rd, rs1, rs2;
 	int32_t imm;
 };
-
 
 inline int32_t signExtend(uint32_t value, int bits) {
 	int32_t shift = 32 - bits;

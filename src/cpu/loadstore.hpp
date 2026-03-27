@@ -1,5 +1,6 @@
 #pragma once
 #include "memory.hpp"
+#include "trace.hpp"
 #include "exec.hpp"
 
 class LoadStoreUnit : public ExecUnit {
@@ -9,16 +10,18 @@ public:
 	void step() override {
 		if (!busy_) return;
 		if (--cycles_remaining == 0) {
-			uint32_t addr = current.r1 + current.instr.imm;
-			// uint32_t ls_out = exec(current.instr.op, addr, current.r2);
-			result = {current.seq, current.pc, current.instr, addr, current.r2, false, false};
+			uint32_t addr = current.Vj + current.imm;
+			uint32_t ls_out = exec(current.op, addr, current.Vk);
+			
+			result = {current.op, ls_out, addr, 0, false, false, current.tag};
+
 			busy_ = false; done_ = true;
 		}
 	}
 
 	uint32_t exec(Op op, uint32_t addr, uint32_t value) override {
 		if (isLoad(op)) return load(op, addr);
-		else if (isStore(op)) return store(op, addr, value);
+		else if (isStore(op)) value;
 		return 0;
 	}
 

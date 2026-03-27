@@ -3,15 +3,15 @@
 
 class BranchUnit : public ExecUnit {
 public:
-	BranchUnit(uint32_t end) : end(end) {}
+	BranchUnit(uint32_t end, uint8_t word_bytes) : end(end), WORD_BYTES(word_bytes) {}
 
 	void step() override {
 		if (!busy_) return;
 
 		cycles_remaining--;
 		if (cycles_remaining == 0) {
-			Op op = current.instr.op;
-			uint32_t r1 = current.r1, r2 = current.r2, imm = current.instr.imm;
+			Op op = current.op;
+			uint32_t r1 = current.Vj, r2 = current.Vk, imm = current.imm;
 			uint32_t alu_out = 0;
 			uint32_t target = current.pc + imm;
 			
@@ -22,13 +22,15 @@ public:
 				if (op == JALR) target = (r1 + imm) & ~1U;
 			}
 
-			result = {current.seq, current.pc, current.instr, alu_out, target, bru_out, bru_out && target >= end};
+			result = {current.op, alu_out, 0, target, bru_out, bru_out && target >= end, current.tag};
 			busy_ = false; done_ = true;
 		}
 	}
 
 private:
 	uint32_t end;
+	uint8_t WORD_BYTES;
+
 	uint32_t exec(Op op, uint32_t val1, uint32_t val2) override {
 		if (isJAL(op)) return true;
 		switch (op) {

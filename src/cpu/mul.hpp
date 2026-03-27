@@ -8,8 +8,8 @@ public:
 	void step() override {
 		if (!busy_) return;
 		if (--cycles_remaining == 0) {
-			uint32_t mul_out = exec(current.instr.op, current.r1, current.r2);
-			result = {current.seq, current.pc, current.instr, mul_out, 0, false, false};
+			uint32_t mul_out = exec(current.op, current.Vj, current.Vk);
+			result = {current.op, mul_out, 0, 0, false, false, current.tag};
 			busy_ = false; done_ = true;
 		}
 	}

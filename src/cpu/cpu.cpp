@@ -1,18 +1,23 @@
 #include "cpu.hpp"
 
-CPU::CPU(Program prog, bool pipelined, bool forwarding) :
-	mem(prog.instrs, MEM_SIZE), regs(NUM_REGISTERS, log), pc(prog.entry_point), end(prog.exit_point),
-	pipelined(pipelined), pipe(forwarding), rob(NUM_REGISTERS * 2) {
+CPU::CPU(Program prog) :
+	mem(prog.instrs, MEM_SIZE), regs(NUM_REGISTERS, log), rat(NUM_REGISTERS), rob(NUM_REGISTERS * 2), pc(prog.entry_point), end(prog.exit_point) {
 	regs.write(2, MEM_SIZE - WORD_BYTES);
 }
 
-void CPU::step() {
-	if (!pipelined) { stepSequential(); return; }
+CPU::~CPU() {
+	for (auto ptr : alus) delete ptr;
+	for (auto ptr : muls) delete ptr;
+	for (auto ptr : brus) delete ptr;
+	for (auto ptr : lsus) delete ptr;
+}
 
+void CPU::step() {
 	log.clear();
 	cycle_count++;
 	jumped = false;
 
+	commit();
 	writeback();
 	execute();
 	decode();
@@ -22,20 +27,19 @@ void CPU::step() {
 	if (onStepCallback) onStepCallback(jumped, log, readout());
 }
 
-void CPU::stepSequential() {
-	log.clear();
-	jumped = false;
-
-	fetch();
-	decode();
-	issue();
-	execute();
-	writeback();
-
-	instruction_count++;
-	cycle_count += 5;
-
-	if (onStepCallback) onStepCallback(jumped, log, readout());
+void CPU::flush() {
+	fetch_q.clear();
+	decode_q.clear();
+	rs_alu.clear();
+	rs_mul.clear();
+	rs_bru.clear();
+	rs_lsu.clear();
+	for (auto *alu : alus) alu->flush();
+	for (auto *mul : muls) mul->flush();
+	for (auto *bru : brus) bru->flush();
+	for (auto *lsu : lsus) lsu->flush();
+	rob.flush();
+	rat.flush();
 }
 
 string CPU::readout() {
@@ -46,150 +50,136 @@ string CPU::readout() {
 }
 
 void CPU::fetch() {
-	while (pipe.decode_q.size() < PIPELINE_WIDTH) {
-		pipe.decode_q.push_back({seq++, pc, mem.loadw(pc)});
+	while (fetch_q.size() < PIPELINE_WIDTH) {
+		fetch_q.push_back({pc, mem.loadw(pc)});
 		pc += WORD_BYTES;
 	}
 }
 
 void CPU::decode() {
-	vector<Instruction> prevs;
-	while (!pipe.decode_q.empty()) {
-		auto &decode = pipe.decode_q.front();
+	while (!fetch_q.empty()) {
+		auto &fetch = fetch_q.front();
 
-		Instruction instr = Decoder::decode(decode.instr);
-
-		if (pipe.hasHazard(prevs, instr)) {
-			out << "Data hazard. Stalling pipeline. ";
-			return;
-		}
-
-		uint32_t tag = -1;
-		if (writesRegister(instr.op) && instr.rd != 0) {
-			tag = rob.allocate(instr.op, instr.rd);
-			if (tag == -1) {
-				out << "ROB full. Stalling pipeline. ";
-				return;
-			}
-		}
-
-		prevs.push_back(instr);
-
-		uint32_t r1 = regs.read(instr.rs1);
-		uint32_t r2 = regs.read(instr.rs2);
-		
-		r1 = pipe.applyForwarding(instr.rs1, r1);
-		r2 = pipe.applyForwarding(instr.rs2, r2);
-
-		pipe.exec_q.push_back({decode.seq, decode.pc, instr, r1, r2, tag});
-		pipe.decode_q.pop_front();
+		Instruction instr = Decoder::decode(fetch.instr);
+		decode_q.push_back({fetch.pc, instr});
+		fetch_q.pop_front();
 	}
 }
 
 void CPU::issue() {
-	while (!pipe.exec_q.empty()) {
-		auto &exec = pipe.exec_q.front();
+	while (!decode_q.empty()) {
+		auto &decode = decode_q.front();
 
-		Op op = exec.instr.op;
-		bool issued = false;
-		if (isMUL(op)) {
-			for (auto &mul : muls) {
-				if (!mul.busy()) {
-					mul.start(exec);
-					issued = true;
-					break;
-				}
-			}
-		} else if (isALU(op) || isALUI(op) || isUI(op)) {
-			for (auto &alu : alus) {
-				if (!alu.busy()) {
-					alu.start(exec);
-					issued = true;
-					break;
-				}
-			}
-		} else if (isBranch(op) || isJAL(op)) {
-			for (auto &bru : brus) {
-				if (!bru.busy()) {
-					bru.start(exec);
-					issued = true;
-					break;
-				}
-			}
-		} else if (isLoad(op) || isStore(op)) {
-			for (auto &lsu : lsus) {
-				if (!lsu.busy()) {
-					lsu.start(exec);
-					issued = true;
+		Op op = decode.instr.op;
+		uint8_t rd = decode.instr.rd, rs1 = decode.instr.rs1, rs2 = decode.instr.rs2;
+		uint32_t pc = decode.pc;
+		int32_t imm = decode.instr.imm;
+
+		uint32_t tag = rob.allocate(op, rd);
+		if (tag == -1U) {
+			out << "ROB full. Stalling pipeline. ";
+			return;
+		}
+
+		uint32_t Qj = 0, Vj = 0, Qk = 0, Vk = 0;
+
+		if (rat.get(rs1) != -1U) Qj = rat.get(rs1);
+		else                     Vj = regs.read(rs1);
+		
+		if (rat.get(rs2) != -1U) Qk = rat.get(rs2);
+		else                     Vk = regs.read(rs2);
+
+		RSEntry entry = {true, op, Vj, Vk, Qj, Qk, pc, imm, tag};
+
+		if (isALU(op) || isALUI(op) || isUI(op)) rs_alu.push_back(entry);
+		else if (isMUL(op))                      rs_mul.push_back(entry);
+		else if (isBranch(op) || isJAL(op))      rs_bru.push_back(entry);
+		else if (isLoad(op) || isStore(op))      rs_lsu.push_back(entry);
+		
+		if (writesRegister(op) && rd != 0) rat.set(rd, tag);
+		decode_q.pop_front();
+	}
+}
+
+void tryIssue(vector<RSEntry> &rs_vec, vector<ExecUnit*> &units) {
+	for (auto &entry : rs_vec) {
+		if (!entry.busy) continue;
+		if (entry.Qj == 0 && entry.Qk == 0) {
+			for (auto *unit : units) {
+				if (!unit->busy()) {
+					unit->start(entry);
+					entry.busy = false; // need to remove from rs
 					break;
 				}
 			}
 		}
-		if (!issued) break;
-		pipe.exec_q.pop_front();
 	}
 }
 
 void CPU::execute() {
-	for (auto &alu : alus) alu.step();
-	for (auto &mul : muls) mul.step();
-	for (auto &bru : brus) bru.step();
-	for (auto &lsu : lsus) lsu.step();
+	tryIssue(rs_alu, alus);
+	tryIssue(rs_mul, muls);
+	tryIssue(rs_bru, brus);
+	tryIssue(rs_lsu, lsus);
 
-	for (auto &alu : alus) if (alu.done()) pipe.commit_q.push_back(alu.getResult());
-	for (auto &mul : muls) if (mul.done()) pipe.commit_q.push_back(mul.getResult());
-	for (auto &bru : brus) if (bru.done()) pipe.commit_q.push_back(bru.getResult());
-	for (auto &lsu : lsus) if (lsu.done()) pipe.commit_q.push_back(lsu.getResult());
+	for (auto *alu : alus) alu->step();
+	for (auto *mul : muls) mul->step();
+	for (auto *bru : brus) bru->step();
+	for (auto *lsu : lsus) lsu->step();
 }
 
 void CPU::writeback() {
-	bool not_found = false;
-	while (!(not_found || pipe.commit_q.empty())) {
-		not_found = true;
-		for (auto commit = pipe.commit_q.begin(); commit != pipe.commit_q.end(); commit++) {
-			if (commit->seq != next_commit) continue;
-			Op op = commit->instr.op;
+	auto handleResult = [&](ExecEntry exec) {
+		uint32_t tag = exec.tag;
+		rob.set(tag, exec.value, exec.addr);
 
-			if (writesRegister(op) && commit->tag != -1U) {
-				if (isLoad(op)) rob.write(commit->tag, commit->alu);
-				else rob.write(commit->tag, commit->alu);
+		auto broadcast = [&](RSEntry &rs) {
+			if (rs.Qj == tag) {
+				rs.Vj = exec.value;
+				rs.Qj = 0;
 			}
-
-			instruction_count++;
-			next_commit++;
-			not_found = false;
-
-			if (commit->jumped) {
-				pc = commit->r2;
-				seq = next_commit;
-				if (commit->should_halt) { halted = true; out << "Reached end of program. Halting CPU. "; }
-				else out << "Control hazard: flushing pipeline, jumping to 0x" << hex << setw(8) << setfill('0') << pc << dec << ". ";
-				
-				pipe.flush();
-				for (auto &alu : alus) alu.flush();
-				for (auto &mul : muls) mul.flush();
-				for (auto &bru : brus) bru.flush();
-				for (auto &lsu : lsus) lsu.flush();
-
-				jumped = true;
-				return;
+			if (rs.Qk == tag) {
+				rs.Vk = exec.value;
+				rs.Qk = 0;
 			}
+		};
 
-			pipe.commit_q.erase(commit);
-			break;
+		for (auto &rs : rs_alu) broadcast(rs);
+		for (auto &rs : rs_mul) broadcast(rs);
+		for (auto &rs : rs_bru) broadcast(rs);
+		for (auto &rs : rs_lsu) broadcast(rs);
+
+		if (exec.jumped) {
+			pc = exec.target;
+			if (exec.should_halt) { halted = true; out << "Reached end of program. Halting CPU. "; }
+			else out << "Control hazard: flushing pipeline, jumping to 0x" << hex << setw(8) << setfill('0') << pc << dec << ". ";
+
+			flush();
+
+			jumped = true;
 		}
-	}
+	};
+
+	for (auto *alu : alus) if (alu->done()) handleResult(alu->getResult());
+	for (auto *mul : muls) if (mul->done()) handleResult(mul->getResult());
+	for (auto *bru : brus) if (bru->done()) handleResult(bru->getResult());
+	for (auto *lsu : lsus) if (lsu->done()) handleResult(lsu->getResult());
 }
 
 void CPU::commit() {
 	while(rob.canCommit()) {
 		auto &entry = rob.front();
 
-		uint32_t val;
-		if (isLoad(entry.op) || isStore(entry.op)) val = LoadStoreUnit(mem, log).exec(entry.op, entry.store_addr, entry.store_value);
+		if (isStore(entry.op)) mem.storew(entry.addr, entry.value);
 
-		if (writesRegister(entry.op) && entry.dest_reg != 0)
+		if (writesRegister(entry.op) && entry.dest_reg != 0) {
 			regs.write(entry.dest_reg, entry.value);
+			if (rat.get(entry.dest_reg) == entry.tag)
+				rat.set(entry.dest_reg, -1U);
+		}
+
 		rob.pop();
+
+		instruction_count++;
 	}
 }

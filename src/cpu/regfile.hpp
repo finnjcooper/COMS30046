@@ -32,10 +32,30 @@ private:
 
 	vector<uint32_t> regs = vector<uint32_t>(num_regs, 0);
 
-	static constexpr const char* NAMES[NUM_REGISTERS] = {
+	static constexpr const char* NAMES[32] = {
 		"zero","ra","sp","gp","tp","t0","t1","t2",
 		"s0","s1","a0","a1","a2","a3","a4","a5",
 		"a6","a7","s2","s3","s4","s5","s6","s7",
 		"s8","s9","s10","s11","t3","t4","t5","t6"
 	};
+};
+
+class RegisterAliasTable {
+public:
+	RegisterAliasTable(size_t num_regs) : table(num_regs, -1U) {}
+
+	uint32_t get(uint32_t reg) const {
+		return table[reg];
+	}
+
+	void set(uint32_t reg, uint32_t tag) {
+		table[reg] = tag;
+	}
+
+	void flush() {
+		for (auto &entry : table) entry = -1U;
+	}
+
+private:
+	vector<uint32_t> table;
 };
