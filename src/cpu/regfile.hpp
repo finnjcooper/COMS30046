@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include "trace.hpp"
 #include "instruction.hpp"
+#include "rob.hpp"
 
 class RegisterFile {
 public:
@@ -17,7 +18,7 @@ public:
 		else if (index == 0) return; // discard writes to x0
 
 		uint32_t old = regs[index];
-		if (old != value) log.recordRegWrite(index, old, value);
+		log.recordRegWrite(index, old, value);
 		regs[index] = value;
 	}
 
@@ -52,8 +53,11 @@ public:
 		table[reg] = tag;
 	}
 
-	void flush() {
+	void rebuild(ReOrderBuffer &rob) {
 		for (auto &entry : table) entry = -1U;
+		for (auto &entry : rob.getEntries())
+			if (writesRegister(entry.op) && entry.rd != 0)
+				table[entry.rd] = entry.tag;
 	}
 
 private:

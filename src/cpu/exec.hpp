@@ -8,13 +8,13 @@ public:
 	void start(RSEntry entry) {
 		current = entry;
 		cycles_remaining = cycles;
-		busy_ = true;
+		busy_ = true; done_ = false;
 	}
 	
 	bool busy() const { return busy_; }
 	bool done() const { return done_; }
 	ExecEntry getResult() { done_ = false; return result; }
-	void flush() { busy_ = false; done_ = false; }
+	void flush(uint32_t tag) { if (current.tag > tag) { busy_ = false; done_ = false; } }
 
 protected:
 	RSEntry current;

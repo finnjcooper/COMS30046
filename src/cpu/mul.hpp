@@ -1,9 +1,9 @@
 #pragma once
 #include "exec.hpp"
 
-class MulUnit : public ExecUnit {
+class MulDivUnit : public ExecUnit {
 public:
-	MulUnit() { cycles = 1UL; }
+	MulDivUnit() { cycles = 1UL; }
 
 	void step() override {
 		if (!busy_) return;

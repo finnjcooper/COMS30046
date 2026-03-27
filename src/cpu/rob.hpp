@@ -1,11 +1,14 @@
 #pragma once
 #include "instruction.hpp"
+#include <deque>
+#include <algorithm>
+#include <stdexcept>
 
 struct ROBEntry {
-	bool busy, ready;
+	bool ready, jumped, should_halt;
 	Op op;
 
-	uint8_t dest_reg;
+	uint8_t rd;
 	uint32_t value, addr;
 
 	uint32_t tag;
@@ -13,47 +16,55 @@ struct ROBEntry {
 
 class ReOrderBuffer {
 public:
-	ReOrderBuffer(uint32_t size) : entries(size), head(0), tail(0), count(0) {}
+	ReOrderBuffer(uint32_t size) : max_size(size) {}
 
-	uint32_t allocate(Op op, uint8_t dest_reg) {
-		if (count == entries.size()) return -1U;
-		uint32_t tag = tail;
-		entries[tag] = {true, false, op, dest_reg, 0, 0, tag};
-		tail = (tail + 1) % entries.size();
-		count++;
+	std::deque<ROBEntry>& getEntries() { return entries; }
+
+	uint32_t allocate(Op op, uint8_t rd) {
+		if (entries.size() == max_size) return -1U;
+		uint32_t tag = next_tag++;
+		entries.push_back({false, false, false, op, rd, 0, 0, tag});
 		return tag;
 	}
 
-	void set(uint32_t tag, uint32_t value, uint32_t addr = 0) {
-		entries[tag].value = value;
-		entries[tag].addr = addr;
-		entries[tag].ready = true;
-	}
+	bool canCommit() const { return !entries.empty() && entries.front().ready; }
 
-	bool canCommit() const {
-		return count > 0 && entries[head].ready;
+	void set(uint32_t tag, uint32_t value, uint32_t addr = 0, bool jumped = false, bool should_halt = false) {
+		for (auto& entry : entries) {
+			if (entry.tag == tag) {
+				entry.value = value;
+				entry.addr = addr;
+				entry.ready = true;
+				entry.jumped = jumped;
+				entry.should_halt = should_halt;
+				break;
+			}
+		}
 	}
 
 	ROBEntry& get(uint32_t tag) {
-		return entries[tag];
+		for (auto& entry : entries) {
+			if (entry.tag == tag) return entry;
+		}
+
+		throw out_of_range("ROB tag not found");
 	}
 
-	ROBEntry& front() {
-		return entries[head];
-	}
+	ROBEntry& front() { return entries.front(); }
 
 	void pop() {
-		entries[head] = {};
-		head = (head + 1) % entries.size();
-		count--;
+		if (!entries.empty()) entries.pop_front();
 	}
 
-	void flush() {
-		for (auto &entry : entries) entry = {};
-		head = tail = count = 0;
+	void flush(uint32_t tag) {
+		entries.erase(
+			remove_if(entries.begin(), entries.end(), [tag](const ROBEntry& entry) { return entry.tag > tag; }),
+			entries.end()
+		);
 	}
 
 private:
-	vector<ROBEntry> entries;
-	uint32_t head, tail, count;
+	deque<ROBEntry> entries;
+	uint32_t max_size;
+	uint32_t next_tag = 0;
 };

@@ -27,11 +27,11 @@ struct RSEntry {
 
 	Op op;
 
-	uint32_t Vj = 0, Vk = 0;
-	uint32_t Qj = 0, Qk = 0;
+	uint32_t Vj = -1U, Vk = -1U;
+	uint32_t Qj = -1U, Qk = -1U;
 	
-	uint32_t pc = 0;
-	int32_t imm = 0;
+	uint32_t pc;
+	int32_t imm;
 
 	uint32_t tag = -1U;
 };

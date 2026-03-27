@@ -21,7 +21,7 @@ public:
 
 	uint32_t exec(Op op, uint32_t addr, uint32_t value) override {
 		if (isLoad(op)) return load(op, addr);
-		else if (isStore(op)) value;
+		else if (isStore(op)) return value;
 		return 0;
 	}
 
@@ -46,20 +46,27 @@ private:
 		}
 	}
 
+public:
 	uint32_t store(Op op, uint32_t addr, uint32_t value) {
 		switch (op) {
-			case SB:
-				mem.storeb(addr, value & 0xFF);
-				log.recordMemWrite(addr, mem.loadb(addr), value & 0xFF, 1);
+			case SB: {
+				uint8_t old_val = mem.loadb(addr), new_val = value & 0xFF;
+				mem.storeb(addr, new_val);
+				log.recordMemWrite(addr, old_val, new_val, 1);
 				break;
-			case SH:
-				mem.storeh(addr, value & 0xFFFF);
-				log.recordMemWrite(addr, mem.loadh(addr), value & 0xFFFF, 2);
+			}
+			case SH: {
+				uint16_t old_val = mem.loadh(addr), new_val = value & 0xFFFF;
+				mem.storeh(addr, new_val);
+				log.recordMemWrite(addr, old_val, new_val, 2);
 				break;
-			case SW:
+			}
+			case SW: {
+				uint32_t old_val = mem.loadw(addr);
 				mem.storew(addr, value);
-				log.recordMemWrite(addr, mem.loadw(addr), value, 4);
+				log.recordMemWrite(addr, old_val, value, 4);
 				break;
+			}
 			default:
 				break;
 		}

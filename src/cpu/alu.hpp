@@ -1,7 +1,7 @@
 #pragma once
 #include "exec.hpp"
 
-class ALU : public ExecUnit {
+class ArithmeticLogicUnit : public ExecUnit {
 public:
 	void step() override {
 		if (!busy_) return;
