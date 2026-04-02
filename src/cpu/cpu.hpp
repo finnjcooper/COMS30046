@@ -8,6 +8,7 @@
 #include "memory.hpp"
 #include "decode.hpp"
 #include "rob.hpp"
+#include "cdb.hpp"
 #include "lsq.hpp"
 #include "alu.hpp"
 #include "mul.hpp"
@@ -24,8 +25,9 @@ public:
 
 	static constexpr size_t MEM_SIZE = 64 * 1024ULL; // 64 KB
 	static constexpr uint8_t XLEN = 32U, WORD_BYTES = XLEN / 8, NUM_REGISTERS = 32U;
-	static constexpr size_t PIPELINE_WIDTH = 16ULL, RS_SIZE = 16ULL;
-	static constexpr size_t LSU_COUNT = 16ULL, BRU_COUNT = 16ULL, MUL_COUNT = 16ULL, ALU_COUNT = 16ULL;
+	static constexpr size_t PIPELINE_WIDTH = 2ULL, RS_SIZE = 4ULL;
+	static constexpr size_t CDB_COUNT = 2ULL;
+	static constexpr size_t LSU_COUNT = 2ULL, BRU_COUNT = 1ULL, MUL_COUNT = 1ULL, ALU_COUNT = 2ULL;
 
 	void step();
 
@@ -54,6 +56,7 @@ private:
 	Memory mem;
 	RegisterFile regs;
 	ReOrderBuffer rob;
+	CommonDataBus cdb = CommonDataBus(CDB_COUNT);
 	LoadStoreQueue lsq;
 	RegisterAliasTable rat;
 	vector<ExecUnit*> brus, lsus, muls, alus;
@@ -68,6 +71,11 @@ private:
 	ostringstream out;
 	function<void(bool, const CommitLog &, const string &)> onStepCallback;
 
+	void readOperand(uint8_t rs, uint32_t &V, uint32_t &Q);
+	RSEntry* findFreeSlot(vector<RSEntry> &rs_vec);
+	RSEntry* findRSEntry(vector<RSEntry> &rs_vec, uint32_t tag);
+	void tryIssue(vector<RSEntry> &rs_vec, vector<ExecUnit*> &units);
+	void tryIssueMemory();
 	void flush(uint32_t tag);
 
 	void fetch();

@@ -1,5 +1,5 @@
 #pragma once
-#include "instruction.hpp"
+#include "pipeline.hpp"
 
 class ExecUnit {
 public:
@@ -11,8 +11,9 @@ public:
 		busy_ = true; done_ = false;
 	}
 	
-	bool busy() const { return busy_; }
+	bool busy() const { return busy_ || done_; }
 	bool done() const { return done_; }
+	const ExecEntry& peekResult() const { return result; }
 	ExecEntry getResult() { done_ = false; return result; }
 	void flush(uint32_t tag) { if (current.tag > tag) { busy_ = false; done_ = false; } }
 

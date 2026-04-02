@@ -80,37 +80,45 @@ void CPU::decode() {
 	}
 }
 
+void CPU::readOperand(uint8_t rs, uint32_t &V, uint32_t &Q) {
+	if (rs == 0) {
+		V = 0;
+		Q = -1U;
+		return;
+	}
+
+	uint32_t prod_tag = rat.get(rs);
+	if (prod_tag == -1U) {
+		V = regs.read(rs);
+		Q = -1U;
+		return;
+	}
+
+	auto &prod = rob.get(prod_tag);
+	if (prod.ready) {
+		V = prod.value;
+		Q = -1U;
+	} else {
+		V = 0;
+		Q = prod_tag;
+	}
+}
+
+RSEntry* CPU::findFreeSlot(vector<RSEntry> &rs_vec) {
+	for (auto &rs : rs_vec)
+		if (!rs.busy) return &rs;
+
+	return nullptr;
+}
+
+RSEntry* CPU::findRSEntry(vector<RSEntry> &rs_vec, uint32_t tag) {
+	for (auto &rs : rs_vec)
+		if (rs.busy && rs.tag == tag) return &rs;
+
+	return nullptr;
+}
+
 void CPU::dispatch() {
-	auto readOperand = [&](uint8_t rs, uint32_t &V, uint32_t &Q) {
-		if (rs == 0) {
-			V = 0;
-			Q = -1U;
-			return;
-		}
-
-		uint32_t prod_tag = rat.get(rs);
-		if (prod_tag == -1U) {
-			V = regs.read(rs);
-			Q = -1U;
-			return;
-		}
-
-		auto &prod = rob.get(prod_tag);
-		if (prod.ready) {
-			V = prod.value;
-			Q = -1U;
-		} else {
-			V = 0;
-			Q = prod_tag;
-		}
-	};
-
-	auto findFreeSlot = [](vector<RSEntry> &rs_vec) -> RSEntry* {
-		for (auto &rs : rs_vec)
-			if (!rs.busy) return &rs;
-		return nullptr;
-	};
-
 	while (!decode_q.empty()) {
 		auto &decode = decode_q.front();
 
@@ -125,10 +133,10 @@ void CPU::dispatch() {
 		}
 
 		vector<RSEntry> *target_rs = nullptr;
-		if (isALU(op) || isALUI(op) || isUI(op))      target_rs = &rs_alu;
-		else if (isMUL(op))                           target_rs = &rs_mul;
-		else if (isBranch(op) || isJAL(op))           target_rs = &rs_bru;
-		else if (isLoad(op) || isStore(op))           target_rs = &rs_lsu;
+		if (isALU(op) || isALUI(op) || isUI(op)) target_rs = &rs_alu;
+		else if (isMUL(op))                      target_rs = &rs_mul;
+		else if (isBranch(op) || isJAL(op))      target_rs = &rs_bru;
+		else if (isLoad(op) || isStore(op))      target_rs = &rs_lsu;
 		else {
 			out << "Unsupported instruction. ";
 			return;
@@ -160,7 +168,7 @@ void CPU::dispatch() {
 	}
 }
 
-void tryIssue(vector<RSEntry> &rs_vec, vector<ExecUnit*> &units) {
+void CPU::tryIssue(vector<RSEntry> &rs_vec, vector<ExecUnit*> &units) {
 	for (auto &rs : rs_vec)
 		if (rs.busy && rs.Qj == -1U && rs.Qk == -1U)
 			for (auto *unit : units)
@@ -171,21 +179,15 @@ void tryIssue(vector<RSEntry> &rs_vec, vector<ExecUnit*> &units) {
 				}
 }
 
-RSEntry* findRSEntry(vector<RSEntry> &rs_vec, uint32_t tag) {
-	for (auto &rs : rs_vec)
-		if (rs.busy && rs.tag == tag) return &rs;
-	return nullptr;
-}
-
-void tryIssueMemory(vector<RSEntry> &rs_vec, vector<ExecUnit*> &units, LoadStoreQueue &lsq) {
-	for (auto *unit : units) {
+void CPU::tryIssueMemory() {
+	for (auto *unit : lsus) {
 		if (unit->busy()) continue;
 
 		bool issued = false;
 		for (auto &entry : lsq.getEntries()) {
 			if (entry.issued || entry.done) continue;
 
-			RSEntry *rs = findRSEntry(rs_vec, entry.tag);
+			RSEntry *rs = findRSEntry(rs_lsu, entry.tag);
 			if (!rs || rs->Qj != -1U || rs->Qk != -1U) continue;
 
 			uint32_t addr = rs->Vj + rs->imm;
@@ -206,7 +208,7 @@ void CPU::issue() {
 	tryIssue(rs_alu, alus);
 	tryIssue(rs_mul, muls);
 	tryIssue(rs_bru, brus);
-	tryIssueMemory(rs_lsu, lsus, lsq);
+	tryIssueMemory();
 }
 
 void CPU::execute() {
@@ -217,38 +219,26 @@ void CPU::execute() {
 }
 
 void CPU::writeback() {
-	auto handleResult = [&](ExecEntry exec) {
-		uint32_t tag = exec.tag;
-		rob.set(tag, exec.value, exec.addr, exec.jumped, exec.should_halt);
+	vector<ExecUnit*> ready_units;
 
-		auto broadcast = [&](RSEntry &rs) {
-			if (rs.Qj == tag) {
-				rs.Vj = exec.value;
-				rs.Qj = -1U;
-			}
-			if (rs.Qk == tag) {
-				rs.Vk = exec.value;
-				rs.Qk = -1U;
-			}
-		};
+	for (auto *alu : alus) if (alu->done()) ready_units.push_back(alu);
+	for (auto *mul : muls) if (mul->done()) ready_units.push_back(mul);
+	for (auto *bru : brus) if (bru->done()) ready_units.push_back(bru);
+	for (auto *lsu : lsus) if (lsu->done()) ready_units.push_back(lsu);
 
-		for (auto &rs : rs_alu) broadcast(rs);
-		for (auto &rs : rs_mul) broadcast(rs);
-		for (auto &rs : rs_bru) broadcast(rs);
-		for (auto &rs : rs_lsu) broadcast(rs);
+	array<vector<RSEntry>*, 4> rs_banks = {&rs_alu, &rs_mul, &rs_bru, &rs_lsu};
+	for (auto *unit : cdb.arbitrate(ready_units)) {
+		auto exec = unit->getResult();
+		cdb.broadcast(exec, rob, rs_banks);
 
 		if (exec.jumped) {
 			flush(exec.tag);
 			jumped = true;
 			pc = exec.target;
 			out << "Control hazard: flushing pipeline, jumping to 0x" << hex << exec.target << dec << ". ";
+			return;
 		}
-	};
-
-	for (auto *alu : alus) if (alu->done()) handleResult(alu->getResult());
-	for (auto *mul : muls) if (mul->done()) handleResult(mul->getResult());
-	for (auto *bru : brus) if (bru->done()) handleResult(bru->getResult());
-	for (auto *lsu : lsus) if (lsu->done()) handleResult(lsu->getResult());
+	}
 }
 
 void CPU::commit() {
