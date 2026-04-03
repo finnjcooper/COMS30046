@@ -11,7 +11,7 @@
 #include "lsq.hpp"
 #include "alu.hpp"
 #include "mul.hpp"
-#include "branch.hpp"
+#include "ctrl.hpp"
 #include "loadstore.hpp"
 #include "exec_path.hpp"
 #include "loader.hpp"
@@ -43,7 +43,7 @@ public:
 	string readout();
 
 private:
-	uint32_t pc = 0;
+	uint32_t pc = 0, end = 0;
 	bool jumped = false;
 	bool halted = false;
 

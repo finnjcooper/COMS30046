@@ -1,7 +1,7 @@
 #include "cpu.hpp"
 
 CPU::CPU(Program prog) : 
-	pc(prog.entry_point),
+	pc(prog.entry_point), end(prog.entry_point + prog.instrs.size()),
 	mem(prog.instrs, MEM_SIZE), regs(NUM_REGISTERS, log),
 	rob(NUM_REGISTERS * 2), rat(NUM_REGISTERS),
 	alus(([&] {
@@ -16,7 +16,7 @@ CPU::CPU(Program prog) :
 	}()), RS_SIZE),
 	ctrls(([&] {
 		vector<unique_ptr<ExecUnit>> units; units.reserve(CTRL_COUNT);
-		for (size_t i = 0; i < CTRL_COUNT; i++) units.emplace_back(make_unique<ControlUnit>(WORD_BYTES));
+		for (size_t i = 0; i < CTRL_COUNT; i++) units.emplace_back(make_unique<ControlUnit>(end, WORD_BYTES));
 		return units;
 	}()), RS_SIZE),
 	lsus(([&] {
@@ -25,7 +25,8 @@ CPU::CPU(Program prog) :
 		return units;
 	}()), RS_SIZE, lsq),
 	exec_paths {&alus, &muls, &ctrls, &lsus} {
-	regs.write(2, MEM_SIZE - WORD_BYTES);
+	regs.write(2, MEM_SIZE - WORD_BYTES); // stack pointer
+	regs.write(1, end); // return address
 }
 
 void CPU::step() {
@@ -152,7 +153,7 @@ void CPU::dispatch() {
 			return;
 		}
 
-		uint32_t tag = rob.allocate(op, rd);
+		uint32_t tag = rob.allocate(op, rd, pc);
 		if (tag == -1U) {
 			out << "Re-order buffer full. Stalling pipeline. ";
 			return;
@@ -203,7 +204,7 @@ void CPU::writeback() {
 
 void CPU::commit() {
 	size_t committed = 0;
-	while (committed++ < PIPELINE_WIDTH && rob.canCommit()) {
+	while (committed++ < PIPELINE_WIDTH && rob.can_commit()) {
 		auto entry = rob.front();
 
 		if (is_load(entry.op) || is_store(entry.op)) lsq.commit(entry.tag, mem, log);

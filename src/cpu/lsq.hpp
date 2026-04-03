@@ -25,8 +25,7 @@ public:
 		entries.push_back({op, tag});
 	}
 
-	std::deque<LSQEntry>& getEntries() { return entries; }
-	const std::deque<LSQEntry>& getEntries() const { return entries; }
+	const deque<LSQEntry>& get_entries() const { return entries; }
 
 	void markIssued(uint32_t tag) {
 		get(tag).issued = true;
@@ -79,7 +78,7 @@ public:
 
 	void commit(uint32_t tag, Memory &mem, CommitLog &log) {
 		if (entries.empty() || entries.front().tag != tag)
-			throw std::logic_error("LSQ commit order mismatch");
+			throw logic_error("LSQ commit order mismatch");
 
 		const auto entry = entries.front();
 		if (is_store(entry.op)) applyStore(entry, mem, log);
@@ -88,13 +87,13 @@ public:
 
 	void flush(uint32_t tag) {
 		entries.erase(
-			std::remove_if(entries.begin(), entries.end(), [tag](const LSQEntry &entry) { return entry.tag > tag; }),
+			remove_if(entries.begin(), entries.end(), [tag](const LSQEntry &entry) { return entry.tag > tag; }),
 			entries.end()
 		);
 	}
 
 private:
-	std::deque<LSQEntry> entries;
+	deque<LSQEntry> entries;
 
 	static uint8_t accessSize(Op op) {
 		switch (op) {
@@ -190,13 +189,13 @@ private:
 		for (size_t i = 0; i < entries.size(); i++)
 			if (entries[i].tag == tag) return i;
 
-		throw std::out_of_range("LSQ tag not found");
+		throw out_of_range("LSQ tag not found");
 	}
 
 	LSQEntry& get(uint32_t tag) {
 		for (auto &entry : entries)
 			if (entry.tag == tag) return entry;
 
-		throw std::out_of_range("LSQ tag not found");
+		throw out_of_range("LSQ tag not found");
 	}
 };

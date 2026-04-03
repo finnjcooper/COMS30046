@@ -5,29 +5,30 @@
 #include <stdexcept>
 
 struct ROBEntry {
-	bool ready, jumped, should_halt;
-	Op op;
+	bool ready = false, jumped = false, should_halt = false;
+	Op op = INVALID;
 
-	uint8_t rd;
-	uint32_t value, addr;
+	uint8_t rd = 0;
+	uint32_t value = 0, addr = 0;
+	uint32_t pc = 0;
 
-	uint32_t tag;
+	uint32_t tag = -1U;
 };
 
 class ReOrderBuffer {
 public:
 	ReOrderBuffer(uint32_t size) : max_size(size) {}
 
-	std::deque<ROBEntry>& getEntries() { return entries; }
+	const deque<ROBEntry>& get_entries() const { return entries; }
 
-	uint32_t allocate(Op op, uint8_t rd) {
+	uint32_t allocate(Op op, uint8_t rd, uint32_t pc) {
 		if (entries.size() == max_size) return -1U;
 		uint32_t tag = next_tag++;
-		entries.push_back({false, false, false, op, rd, 0, 0, tag});
+		entries.push_back({false, false, false, op, rd, 0, 0, pc, tag});
 		return tag;
 	}
 
-	bool canCommit() const { return !entries.empty() && entries.front().ready; }
+	bool can_commit() const { return !entries.empty() && entries.front().ready; }
 
 	void set(uint32_t tag, uint32_t value, uint32_t addr = 0, bool jumped = false, bool should_halt = false) {
 		for (auto& entry : entries) {
@@ -50,10 +51,7 @@ public:
 	}
 
 	ROBEntry& front() { return entries.front(); }
-
-	void pop() {
-		if (!entries.empty()) entries.pop_front();
-	}
+	void pop() { if (!entries.empty()) entries.pop_front(); }
 
 	void flush(uint32_t tag) {
 		entries.erase(

@@ -93,7 +93,7 @@ public:
 			if (unit->busy()) continue;
 
 			bool issued = false;
-			for (auto &entry : lsq.getEntries()) {
+			for (auto &entry : lsq.get_entries()) {
 				if (entry.issued || entry.done) continue;
 
 				RSEntry *rs = find_slot(entry.tag);

@@ -62,11 +62,9 @@ foreach(TEST_SOURCE ${TEST_SOURCES})
 	
 	add_custom_command(
 		OUTPUT ${ELF_OUTPUT}
-		COMMAND ${RISCV_GCC} ${RISCV_CFLAGS} ${RISCV_LDFLAGS}
-			${TEST_SOURCE} ${CMAKE_SOURCE_DIR}/test/startup/start.s
-			-o ${ELF_OUTPUT}
+		COMMAND ${RISCV_GCC} ${RISCV_CFLAGS} ${RISCV_LDFLAGS} ${TEST_SOURCE} -o ${ELF_OUTPUT}
 		COMMAND ${RISCV_OBJDUMP} -d ${ELF_OUTPUT} > ${ASM_OUTPUT}
-		DEPENDS ${TEST_SOURCE} ${CMAKE_SOURCE_DIR}/test/startup/start.s ${CMAKE_SOURCE_DIR}/test/startup/linker.ld
+		DEPENDS ${TEST_SOURCE} ${CMAKE_SOURCE_DIR}/test/startup/linker.ld
 		COMMENT "Building RISC-V benchmark: ${TEST_NAME}"
 	)
 	

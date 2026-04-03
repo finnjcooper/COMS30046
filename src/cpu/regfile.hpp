@@ -55,7 +55,7 @@ public:
 
 	void rebuild(ReOrderBuffer &rob) {
 		for (auto &entry : table) entry = -1U;
-		for (auto &entry : rob.getEntries())
+		for (auto &entry : rob.get_entries())
 			if (writes_register(entry.op) && entry.rd != 0)
 				table[entry.rd] = entry.tag;
 	}
