@@ -26,7 +26,6 @@ public:
 	static constexpr size_t MEM_SIZE = 64 * 1024ULL; // 64 KB
 	static constexpr uint8_t XLEN = 32U, WORD_BYTES = XLEN / 8, NUM_REGISTERS = 32U;
 	static constexpr size_t PIPELINE_WIDTH = 2ULL, RS_SIZE = 4ULL;
-	// static constexpr size_t CDB_COUNT = 2ULL;
 	static constexpr size_t LSU_COUNT = 2ULL, BRU_COUNT = 1ULL, MUL_COUNT = 1ULL, ALU_COUNT = 2ULL;
 
 	void step();
@@ -58,7 +57,8 @@ private:
 	ReOrderBuffer rob;
 	LoadStoreQueue lsq;
 	RegisterAliasTable rat;
-	ExecPath alus, muls, brus, lsus;
+	ExecPath alus, muls, brus;
+	LoadStoreExecPath lsus;
 	array<ExecPath*, 4> exec_paths;
 
 	deque<FetchEntry> fetch_q;

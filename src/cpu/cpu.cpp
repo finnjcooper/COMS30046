@@ -23,7 +23,7 @@ CPU::CPU(Program prog) :
 		vector<unique_ptr<ExecUnit>> units; units.reserve(LSU_COUNT);
 		for (size_t i = 0; i < LSU_COUNT; i++) units.emplace_back(make_unique<LoadStoreUnit>(mem, lsq));
 		return units;
-	}()), RS_SIZE, &lsq),
+	}()), RS_SIZE, lsq),
 	exec_paths {&alus, &muls, &brus, &lsus} {
 	regs.write(2, MEM_SIZE - WORD_BYTES);
 }
@@ -65,7 +65,6 @@ void CPU::flush(uint32_t tag) {
 	decode_q.clear();
 	for (auto *path : exec_paths)
 		path->flush(tag);
-	lsq.flush(tag);
 	rob.flush(tag);
 	rat.rebuild(rob);
 }
@@ -149,7 +148,7 @@ void CPU::dispatch() {
 		readOperand(rs2, Vk, Qk);
 
 		*rs = {true, op, Vj, Vk, Qj, Qk, pc, imm, tag};
-		if (isLoad(op) || isStore(op)) lsq.allocate(op, tag);
+		path.allocate(op, tag);
 
 		if (writesRegister(op) && rd != 0)
 			rat.set(rd, tag);
@@ -170,13 +169,11 @@ void CPU::execute() {
 
 void CPU::writeback() {
 	for (auto *path : exec_paths) {
-		for (const auto exec : path->finished()) {
+		for (const auto &exec : path->take_finished()) {
 			rob.set(exec.tag, exec.value, exec.addr, exec.jumped, exec.should_halt);
 			if (writesRegister(exec.op))
 				for (auto *other : exec_paths)
 					other->wake(exec.tag, exec.value);
-
-			path->consume(exec.tag);
 
 			if (exec.jumped) {
 				flush(exec.tag);
