@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <stdexcept>
 #include <vector>
 
 using namespace std;
@@ -14,19 +15,118 @@ enum Op {
 	BEQ, BNE, BLT, BGE, BLTU, BGEU,
 	JAL, JALR,
 	LUI, AUIPC,
+	ECALL,
 	// rv32m
 	MUL, MULH, MULHSU, MULHU, DIV, DIVU, REM, REMU
 };
 
-inline bool isALU(Op op) { return op >= ADD && op <= AND; }
-inline bool isALUI(Op op) { return op >= ADDI && op <= SRAI; }
-inline bool isMUL(Op op) { return op >= MUL && op <= REMU; }
-inline bool isLoad(Op op) { return op >= LB && op <= LHU; }
-inline bool isStore(Op op) { return op >= SB && op <= SW; }
-inline bool isBranch(Op op) { return op >= BEQ && op <= BGEU; }
-inline bool isJAL(Op op) { return op == JAL || op == JALR; }
-inline bool isUI(Op op) { return op == LUI || op == AUIPC; }
-inline bool writesRegister(Op op) { return isALU(op) || isALUI(op) || isMUL(op) || isLoad(op) || isUI(op) || isJAL(op); }
+enum ExecType {
+	LOGIC,
+	MULDIV,
+	CTRL,
+	LOADSTORE
+};
+
+inline bool is_ALU(Op op) {
+	switch (op) {
+		case ADD: case SUB: case SLL: case SLT: case SLTU: case XOR: case SRL: case SRA: case OR: case AND:
+			return true;
+		default:
+			return false;
+	}
+}
+
+inline bool is_ALUI(Op op) {
+	switch (op) {
+		case ADDI: case SLTI: case SLTIU: case XORI: case ORI: case ANDI: case SLLI: case SRLI: case SRAI:
+			return true;
+		default:
+			return false;
+	}
+}
+
+inline bool is_UI(Op op) {
+	switch (op) {
+		case LUI: case AUIPC:
+			return true;
+		default:
+			return false;
+	}
+}
+
+inline bool is_load(Op op) {
+	switch (op) {
+		case LB: case LH: case LW: case LBU: case LHU:
+			return true;
+		default:
+			return false;
+	}
+}
+
+inline bool is_store(Op op) {
+	switch (op) {
+		case SB: case SH: case SW:
+			return true;
+		default:
+			return false;
+	}
+}
+
+inline bool is_branch(Op op) {
+	switch (op) {
+		case BEQ: case BNE: case BLT: case BGE: case BLTU: case BGEU:
+			return true;
+		default:
+			return false;
+	}
+}
+
+inline bool is_jump(Op op) {
+	switch (op) {
+		case JAL: case JALR:
+			return true;
+		default:
+			return false;
+	}
+}
+
+inline bool is_control(Op op) {
+	return is_branch(op) || is_jump(op) || op == ECALL;
+}
+
+inline bool writes_register(Op op) {
+	switch (op) {
+		case ADD: case SUB: case SLL: case SLT: case SLTU: case XOR: case SRL: case SRA: case OR: case AND:
+		case ADDI: case SLTI: case SLTIU: case XORI: case ORI: case ANDI: case SLLI: case SRLI: case SRAI:
+		case LB: case LH: case LW: case LBU: case LHU:
+		case JAL: case JALR:
+		case LUI: case AUIPC:
+		case MUL: case MULH: case MULHSU: case MULHU: case DIV: case DIVU: case REM: case REMU:
+			return true;
+		default:
+			return false;
+	}
+}
+
+inline ExecType exec_type(Op op) {
+	switch (op) {
+		case ADD: case SUB: case SLL: case SLT: case SLTU: case XOR: case SRL: case SRA: case OR: case AND:
+		case ADDI: case SLTI: case SLTIU: case XORI: case ORI: case ANDI: case SLLI: case SRLI: case SRAI:
+		case LUI: case AUIPC:
+			return LOGIC;
+		case MUL: case MULH: case MULHSU: case MULHU: case DIV: case DIVU: case REM: case REMU:
+			return MULDIV;
+		case BEQ: case BNE: case BLT: case BGE: case BLTU: case BGEU:
+		case JAL: case JALR:
+		case ECALL:
+			return CTRL;
+		case LB: case LH: case LW: case LBU: case LHU:
+		case SB: case SH: case SW:
+			return LOADSTORE;
+		default:
+			throw invalid_argument("Invalid operation");
+	}
+}
 
 struct Instruction {
 	Op op = INVALID;

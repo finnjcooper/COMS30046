@@ -9,12 +9,12 @@ public:
 	RegisterFile(uint8_t num_regs, CommitLog &log) : num_regs(num_regs), log(log) {}
 
 	uint32_t read(uint8_t index) const {
-		if (index < 0 || index >= num_regs) throw out_of_range("Register index out of range");
+		if (index >= num_regs) throw out_of_range("Register index out of range");
 		return regs[index];
 	}
 
 	void write(uint8_t index, uint32_t value) {
-		if (index < 0 || index >= num_regs) throw out_of_range("Register index out of range");
+		if (index >= num_regs) throw out_of_range("Register index out of range");
 		else if (index == 0) return; // discard writes to x0
 
 		uint32_t old = regs[index];
@@ -23,7 +23,7 @@ public:
 	}
 
 	const char* name(uint8_t index) const {
-		if (index < 0 || index >= num_regs) throw out_of_range("Register index out of range");
+		if (index >= num_regs) throw out_of_range("Register index out of range");
 		return NAMES[index];
 	}
 
@@ -56,7 +56,7 @@ public:
 	void rebuild(ReOrderBuffer &rob) {
 		for (auto &entry : table) entry = -1U;
 		for (auto &entry : rob.getEntries())
-			if (writesRegister(entry.op) && entry.rd != 0)
+			if (writes_register(entry.op) && entry.rd != 0)
 				table[entry.rd] = entry.tag;
 	}
 

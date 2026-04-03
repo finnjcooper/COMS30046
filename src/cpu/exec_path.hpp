@@ -100,7 +100,7 @@ public:
 				if (!rs || rs->Qj != -1U || rs->Qk != -1U) continue;
 
 				uint32_t addr = rs->Vj + rs->imm;
-				if (isLoad(entry.op) && !lsq.canIssueLoad(entry.tag, addr)) continue;
+				if (is_load(entry.op) && !lsq.canIssueLoad(entry.tag, addr)) continue;
 
 				unit->start(*rs);
 				rs->busy = false;

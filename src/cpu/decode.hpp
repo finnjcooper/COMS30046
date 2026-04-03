@@ -98,7 +98,7 @@ public:
 			case 0x17:
 				return {AUIPC, rd, 0, 0, (int32_t)(instruction & 0xFFFFF000)};
 			case 0x73:
-				// if (instruction >> 20 == 0x000) return {ECALL, 0, 0, 0, 0};
+				if (instruction >> 20 == 0x000) return {ECALL, 0, 0, 0, 0};
 				// if (instruction >> 20 == 0x001) return {EBREAK, 0, 0, 0, 0};
 				break;
 		}

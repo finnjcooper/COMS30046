@@ -6,7 +6,7 @@ Program Loader::ELF(const string &filename) {
 	ELFIO::elfio elf;
 	if (!elf.load(filename)) {
 		cerr << "Could not open ELF file: " << filename << endl;
-		return { vector<uint8_t>(), 0, 0 };
+		return { vector<uint8_t>(), 0 };
 	}
 
 	uint32_t mem_size = 0;	
@@ -16,16 +16,6 @@ Program Loader::ELF(const string &filename) {
 			mem_size = std::max(mem_size, end);
 		}
 	}
-
-	uint32_t exit_point = 0;
-	for (const auto &sec : elf.sections) {
-		if (sec->get_name() == ".text") {
-			exit_point = static_cast<uint32_t>(sec->get_address() + sec->get_size());
-			break;
-		}
-	}
-
-	if (exit_point == 0) exit_point = mem_size;
 
 	auto memory = vector<uint8_t>(mem_size, 0);
 	for (const auto& seg : elf.segments) {
@@ -42,7 +32,7 @@ Program Loader::ELF(const string &filename) {
 		}
 	}
 
-	return { memory, static_cast<uint32_t>(elf.get_entry()), exit_point };
+	return { memory, static_cast<uint32_t>(elf.get_entry()) };
 }
 
 map<uint32_t, string> Loader::ASM(const string &filename) {

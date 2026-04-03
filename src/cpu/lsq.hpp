@@ -38,7 +38,7 @@ public:
 
 		for (size_t i = 0; i < load_idx; i++) {
 			const auto &entry = entries[i];
-			if (!isStore(entry.op)) continue;
+			if (!is_store(entry.op)) continue;
 			if (!entry.addr_ready) return false;
 			if (overlaps(addr, load_size, entry.addr, accessSize(entry.op)) && !entry.value_ready)
 				return false;
@@ -82,7 +82,7 @@ public:
 			throw std::logic_error("LSQ commit order mismatch");
 
 		const auto entry = entries.front();
-		if (isStore(entry.op)) applyStore(entry, mem, log);
+		if (is_store(entry.op)) applyStore(entry, mem, log);
 		entries.pop_front();
 	}
 
@@ -179,7 +179,7 @@ private:
 	uint8_t loadByte(size_t load_idx, uint32_t addr, const Memory &mem) const {
 		for (size_t i = load_idx; i-- > 0;) {
 			const auto &entry = entries[i];
-			if (!isStore(entry.op) || !coversByte(entry, addr) || !entry.value_ready) continue;
+			if (!is_store(entry.op) || !coversByte(entry, addr) || !entry.value_ready) continue;
 			return storeByte(entry, addr);
 		}
 

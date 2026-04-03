@@ -1,7 +1,7 @@
 #include "cpu.hpp"
 
 CPU::CPU(Program prog) : 
-	pc(prog.entry_point), end(prog.exit_point),
+	pc(prog.entry_point),
 	mem(prog.instrs, MEM_SIZE), regs(NUM_REGISTERS, log),
 	rob(NUM_REGISTERS * 2), rat(NUM_REGISTERS),
 	alus(([&] {
@@ -14,9 +14,9 @@ CPU::CPU(Program prog) :
 		for (size_t i = 0; i < MUL_COUNT; i++) units.emplace_back(make_unique<MulDivUnit>());
 		return units;
 	}()), RS_SIZE),
-	brus(([&] {
-		vector<unique_ptr<ExecUnit>> units; units.reserve(BRU_COUNT);
-		for (size_t i = 0; i < BRU_COUNT; i++) units.emplace_back(make_unique<BranchUnit>(end, WORD_BYTES));
+	ctrls(([&] {
+		vector<unique_ptr<ExecUnit>> units; units.reserve(CTRL_COUNT);
+		for (size_t i = 0; i < CTRL_COUNT; i++) units.emplace_back(make_unique<ControlUnit>(WORD_BYTES));
 		return units;
 	}()), RS_SIZE),
 	lsus(([&] {
@@ -24,7 +24,7 @@ CPU::CPU(Program prog) :
 		for (size_t i = 0; i < LSU_COUNT; i++) units.emplace_back(make_unique<LoadStoreUnit>(mem, lsq));
 		return units;
 	}()), RS_SIZE, lsq),
-	exec_paths {&alus, &muls, &brus, &lsus} {
+	exec_paths {&alus, &muls, &ctrls, &lsus} {
 	regs.write(2, MEM_SIZE - WORD_BYTES);
 }
 
@@ -52,11 +52,18 @@ void CPU::step() {
 	if (onStepCallback) onStepCallback(jumped, log, readout());
 }
 
-ExecPath& CPU::pathFor(Op op) {
-	if (isALU(op) || isALUI(op) || isUI(op)) return alus;
-	if (isMUL(op))                           return muls;
-	if (isBranch(op) || isJAL(op))           return brus;
-	if (isLoad(op) || isStore(op))           return lsus;
+ExecPath& CPU::get_path(Op op) {
+	switch (exec_type(op)) {
+		case LOGIC:
+			return alus;
+		case MULDIV:
+			return muls;
+		case CTRL:
+			return ctrls;
+		case LOADSTORE:
+			return lsus;
+	}
+
 	throw invalid_argument("Invalid operation");
 }
 
@@ -78,13 +85,20 @@ string CPU::readout() {
 
 void CPU::fetch() {
 	while (fetch_q.size() < PIPELINE_WIDTH) {
-		fetch_q.push_back({pc, mem.loadw(pc)});
+		try {
+			fetch_q.push_back({pc, mem.loadw(pc)});
+		} catch (const out_of_range &) {
+			halted = true;
+			out << "Instruction fetch out of range. Halting CPU. ";
+			return;
+		}
 		pc += WORD_BYTES;
 	}
 }
 
 void CPU::decode() {
-	while (!fetch_q.empty()) {
+	size_t decoded = 0;
+	while (decoded++ < PIPELINE_WIDTH && !fetch_q.empty()) {
 		auto &fetch = fetch_q.front();
 		Instruction instr = Decoder::decode(fetch.instr);
 		decode_q.push_back({fetch.pc, instr});
@@ -117,7 +131,8 @@ void CPU::readOperand(uint8_t rs, uint32_t &V, uint32_t &Q) {
 }
 
 void CPU::dispatch() {
-	while (!decode_q.empty()) {
+	size_t dispatched = 0;
+	while (dispatched++ < PIPELINE_WIDTH && !decode_q.empty()) {
 		auto &decode = decode_q.front();
 
 		Op op = decode.instr.op;
@@ -130,7 +145,7 @@ void CPU::dispatch() {
 			return;
 		}
 
-		ExecPath &path = pathFor(op);
+		ExecPath &path = get_path(op);
 		RSEntry* rs = path.find_slot();
 		if (!rs) {
 			out << "Reservation stations full. Stalling pipeline. ";
@@ -150,7 +165,7 @@ void CPU::dispatch() {
 		*rs = {true, op, Vj, Vk, Qj, Qk, pc, imm, tag};
 		path.allocate(op, tag);
 
-		if (writesRegister(op) && rd != 0)
+		if (writes_register(op) && rd != 0)
 			rat.set(rd, tag);
 
 		decode_q.pop_front();
@@ -171,7 +186,7 @@ void CPU::writeback() {
 	for (auto *path : exec_paths) {
 		for (const auto &exec : path->take_finished()) {
 			rob.set(exec.tag, exec.value, exec.addr, exec.jumped, exec.should_halt);
-			if (writesRegister(exec.op))
+			if (writes_register(exec.op))
 				for (auto *other : exec_paths)
 					other->wake(exec.tag, exec.value);
 
@@ -187,12 +202,13 @@ void CPU::writeback() {
 }
 
 void CPU::commit() {
-	while(rob.canCommit()) {
+	size_t committed = 0;
+	while (committed++ < PIPELINE_WIDTH && rob.canCommit()) {
 		auto entry = rob.front();
 
-		if (isLoad(entry.op) || isStore(entry.op)) lsq.commit(entry.tag, mem, log);
+		if (is_load(entry.op) || is_store(entry.op)) lsq.commit(entry.tag, mem, log);
 
-		if (writesRegister(entry.op) && entry.rd != 0) {
+		if (writes_register(entry.op) && entry.rd != 0) {
 			regs.write(entry.rd, entry.value);
 			if (rat.get(entry.rd) == entry.tag)
 				rat.set(entry.rd, -1U);
@@ -203,7 +219,7 @@ void CPU::commit() {
 
 		if (entry.should_halt) {
 			halted = true; 
-			out << "Reached end of program. Halting CPU. ";
+			out << "Program requested halt. Halting CPU. ";
 			return;
 		}
 	}

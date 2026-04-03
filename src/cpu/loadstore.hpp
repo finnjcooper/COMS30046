@@ -23,8 +23,8 @@ private:
 	LoadStoreQueue &lsq;
 
 	uint32_t exec(Op op, uint32_t addr, uint32_t value) override {
-		if (isLoad(op)) return lsq.completeLoad(current.tag, addr, mem);
-		if (isStore(op)) lsq.completeStore(current.tag, addr, value);
+		if (is_load(op)) return lsq.completeLoad(current.tag, addr, mem);
+		if (is_store(op)) lsq.completeStore(current.tag, addr, value);
 		return 0;
 	}
 };
