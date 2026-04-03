@@ -4,26 +4,18 @@ CPU::CPU(Program prog) :
 	pc(prog.entry_point), end(prog.entry_point + prog.instrs.size()),
 	mem(prog.instrs, MEM_SIZE), regs(NUM_REGISTERS, log),
 	rob(NUM_REGISTERS * 2), rat(NUM_REGISTERS),
-	alus(([&] {
-		vector<unique_ptr<ExecUnit>> units; units.reserve(ALU_COUNT);
-		for (size_t i = 0; i < ALU_COUNT; i++) units.emplace_back(make_unique<ArithmeticLogicUnit>());
-		return units;
-	}()), RS_SIZE),
-	muls(([&] {
-		vector<unique_ptr<ExecUnit>> units; units.reserve(MUL_COUNT);
-		for (size_t i = 0; i < MUL_COUNT; i++) units.emplace_back(make_unique<MulDivUnit>());
-		return units;
-	}()), RS_SIZE),
-	ctrls(([&] {
-		vector<unique_ptr<ExecUnit>> units; units.reserve(CTRL_COUNT);
-		for (size_t i = 0; i < CTRL_COUNT; i++) units.emplace_back(make_unique<ControlUnit>(end, WORD_BYTES));
-		return units;
-	}()), RS_SIZE),
-	lsus(([&] {
-		vector<unique_ptr<ExecUnit>> units; units.reserve(LSU_COUNT);
-		for (size_t i = 0; i < LSU_COUNT; i++) units.emplace_back(make_unique<LoadStoreUnit>(mem, lsq));
-		return units;
-	}()), RS_SIZE, lsq),
+	alus(ALU_COUNT, RS_SIZE, [] {
+		return make_unique<ArithmeticLogicUnit>();
+	}),
+	muls(MUL_COUNT, RS_SIZE, [] {
+		return make_unique<MulDivUnit>();
+	}),
+	ctrls(CTRL_COUNT, RS_SIZE, [this] {
+		return make_unique<ControlUnit>(end, WORD_BYTES);
+	}),
+	lsus(LSU_COUNT, RS_SIZE, lsq, [this] {
+		return make_unique<LoadStoreUnit>(mem, lsq);
+	}),
 	exec_paths {&alus, &muls, &ctrls, &lsus} {
 	regs.write(2, MEM_SIZE - WORD_BYTES); // stack pointer
 	regs.write(1, end); // return address
@@ -38,7 +30,7 @@ void CPU::step() {
 	writeback();
 
 	if (jumped || halted) {
-		if (onStepCallback) onStepCallback(jumped, log, readout());
+		if (on_step_callback) on_step_callback(jumped, log, readout());
 		return;
 	}
 
@@ -50,7 +42,7 @@ void CPU::step() {
 
 	fetch();
 
-	if (onStepCallback) onStepCallback(jumped, log, readout());
+	if (on_step_callback) on_step_callback(jumped, log, readout());
 }
 
 ExecPath& CPU::get_path(Op op) {
@@ -220,7 +212,7 @@ void CPU::commit() {
 
 		if (entry.should_halt) {
 			halted = true; 
-			out << "Program requested halt. Halting CPU. ";
+			out << "Returned outside the program range (0x" << hex << end << "). Halting CPU. ";
 			return;
 		}
 	}

@@ -18,7 +18,7 @@ public:
 		else if (index == 0) return; // discard writes to x0
 
 		uint32_t old = regs[index];
-		log.recordRegWrite(index, old, value);
+		log.record_reg_write(index, old, value);
 		regs[index] = value;
 	}
 

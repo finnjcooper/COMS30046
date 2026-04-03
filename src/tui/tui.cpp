@@ -56,7 +56,7 @@ void TUI::run() {
 		return false;
 	});
 
-	cpu.setStepCallback([&](bool jmp, const CommitLog &log, const string &msg) {
+	cpu.set_step_callback([&](bool jmp, const CommitLog &log, const string &msg) {
 		message = msg;
 		flushed = jmp;
 		highlighted_regs.clear();
@@ -146,7 +146,7 @@ Element TUI::renderInstructions() {
 
 Element TUI::renderRegisters() {
 	Elements lines;
-	const auto &regs = cpu.getRegisters();
+	const auto &regs = cpu.get_registers();
 	
 	for (uint8_t i = 0; i < CPU::NUM_REGISTERS; i++) {
 		uint32_t val = regs.read(i);
@@ -174,8 +174,8 @@ Element TUI::renderRegisters() {
 
 Element TUI::renderMemory() {
 	Elements lines;
-	const auto &mem = cpu.getMemory();
-	uint32_t sp = cpu.getRegisters().read(2);
+	const auto &mem = cpu.get_memory();
+	uint32_t sp = cpu.get_registers().read(2);
 	
 	for (uint32_t addr = sp; addr < CPU::MEM_SIZE; addr += CPU::WORD_BYTES) {
 		uint32_t word = mem.loadw(addr);
@@ -204,12 +204,12 @@ Element TUI::renderMemory() {
 }
 
 Element TUI::renderCPUStatus() {
-	float ipc = static_cast<float>(cpu.getInstructionCount()) / max(cpu.getCycleCount(), 1);
+	float ipc = static_cast<float>(cpu.get_instruction_count()) / max(cpu.get_cycle_count(), 1);
 	
 	stringstream pc_ss, cyc_ss, instr_ss, ipc_ss;
-	pc_ss << "0x" << hex << setw(8) << setfill('0') << cpu.getPC();
-	cyc_ss << cpu.getCycleCount();
-	instr_ss << cpu.getInstructionCount();
+	pc_ss << "0x" << hex << setw(8) << setfill('0') << cpu.get_PC();
+	cyc_ss << cpu.get_cycle_count();
+	instr_ss << cpu.get_instruction_count();
 	ipc_ss << fixed << setprecision(3) << ipc;
 	
 	Element status;

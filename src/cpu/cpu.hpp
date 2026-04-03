@@ -31,14 +31,14 @@ public:
 	void step();
 
 	bool running() const { return !halted; }
-	const RegisterFile& getRegisters() const { return regs; }
-	const Memory& getMemory() const { return mem; }
-	uint32_t getPC() const { return pc; }
-	int getInstructionCount() const { return instruction_count; }
-	int getCycleCount() const { return cycle_count; }
-	const CommitLog& getCommitLog() const { return log; }
+	const RegisterFile& get_registers() const { return regs; }
+	const Memory& get_memory() const { return mem; }
+	uint32_t get_PC() const { return pc; }
+	int get_instruction_count() const { return instruction_count; }
+	int get_cycle_count() const { return cycle_count; }
+	const CommitLog& get_commit_log() const { return log; }
 
-	void setStepCallback(function<void(bool, const CommitLog &, const string &)> callback) { onStepCallback = callback; }
+	void set_step_callback(function<void(bool, const CommitLog &, const string &)> callback) { on_step_callback = callback; }
 
 	string readout();
 
@@ -64,7 +64,7 @@ private:
 	deque<DecodeEntry> decode_q;
 
 	ostringstream out;
-	function<void(bool, const CommitLog &, const string &)> onStepCallback;
+	function<void(bool, const CommitLog &, const string &)> on_step_callback;
 
 	void readOperand(uint8_t rs, uint32_t &V, uint32_t &Q);
 	ExecPath& get_path(Op op);

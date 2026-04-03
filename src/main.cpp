@@ -29,8 +29,8 @@ int main(int argc, char* argv[]) {
 		while (cpu.running()) cpu.step();
 	else tui.run();
 
-	auto instr_count = cpu.getInstructionCount();
-	auto cycle_count = cpu.getCycleCount();
+	auto instr_count = cpu.get_instruction_count();
+	auto cycle_count = cpu.get_cycle_count();
 
 	cout << "Instructions executed: " << instr_count << endl;
 	cout << "Cycles taken: " << cycle_count << endl;

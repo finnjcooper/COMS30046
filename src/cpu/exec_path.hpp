@@ -8,7 +8,13 @@
 class ExecPath {
 public:
 	~ExecPath() = default;
-	ExecPath(vector<unique_ptr<ExecUnit>> units, size_t rs_size) : units(move(units)), stations(rs_size) {}
+
+	template <typename MakeUnit>
+	ExecPath(size_t unit_count, size_t rs_size, MakeUnit&& make_unit) : stations(rs_size) {
+		units.reserve(unit_count);
+		for (size_t i = 0; i < unit_count; i++)
+			units.emplace_back(make_unit());
+	}
 
 	RSEntry* find_slot() {
 		for (auto &rs : stations)
@@ -81,8 +87,9 @@ private:
 
 class LoadStoreExecPath : public ExecPath {
 public:
-	LoadStoreExecPath(vector<unique_ptr<ExecUnit>> units, size_t rs_size, LoadStoreQueue &lsq) :
-		ExecPath(move(units), rs_size), lsq(lsq) {}
+	template <typename MakeUnit>
+	LoadStoreExecPath(size_t unit_count, size_t rs_size, LoadStoreQueue &lsq, MakeUnit&& make_unit) :
+		ExecPath(unit_count, rs_size, forward<MakeUnit>(make_unit)), lsq(lsq) {}
 
 	void allocate(Op op, uint32_t tag) override {
 		lsq.allocate(op, tag);

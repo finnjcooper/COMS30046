@@ -122,9 +122,9 @@ private:
 	static uint32_t formatLoad(Op op, uint32_t raw) {
 		switch (op) {
 			case LB:
-				return signExtend(raw & 0xFF, 8);
+				return sign_extend(raw & 0xFF, 8);
 			case LH:
-				return signExtend(raw & 0xFFFF, 16);
+				return sign_extend(raw & 0xFFFF, 16);
 			case LW:
 				return raw;
 			case LBU:
@@ -155,19 +155,19 @@ private:
 			case SB: {
 				uint8_t old_val = mem.loadb(entry.addr), new_val = entry.value & 0xFF;
 				mem.storeb(entry.addr, new_val);
-				log.recordMemWrite(entry.addr, old_val, new_val, 1);
+				log.record_mem_write(entry.addr, old_val, new_val, 1);
 				break;
 			}
 			case SH: {
 				uint16_t old_val = mem.loadh(entry.addr), new_val = entry.value & 0xFFFF;
 				mem.storeh(entry.addr, new_val);
-				log.recordMemWrite(entry.addr, old_val, new_val, 2);
+				log.record_mem_write(entry.addr, old_val, new_val, 2);
 				break;
 			}
 			case SW: {
 				uint32_t old_val = mem.loadw(entry.addr);
 				mem.storew(entry.addr, entry.value);
-				log.recordMemWrite(entry.addr, old_val, entry.value, 4);
+				log.record_mem_write(entry.addr, old_val, entry.value, 4);
 				break;
 			}
 			default:
