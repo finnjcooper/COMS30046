@@ -26,14 +26,14 @@ public:
 	static constexpr size_t MEM_SIZE = 64 * 1024ULL; // 64 KB
 	static constexpr uint8_t XLEN = 32U, WORD_BYTES = XLEN / 8, NUM_REGISTERS = 32U;
 	static constexpr size_t PIPELINE_WIDTH = 2ULL, RS_SIZE = 4ULL;
-	static constexpr size_t LSU_COUNT = 2ULL, CTRL_COUNT = 1ULL, MUL_COUNT = 1ULL, ALU_COUNT = 2ULL;
+	static constexpr size_t LSU_COUNT = 1ULL, CTRL_COUNT = 1ULL, MUL_COUNT = 1ULL, ALU_COUNT = 2ULL;
 
 	void step();
 
 	bool running() const { return !halted; }
 	const RegisterFile& get_registers() const { return regs; }
 	const Memory& get_memory() const { return mem; }
-	uint32_t get_PC() const { return pc; }
+	uint32_t get_pc() const { return pc; }
 	int get_instruction_count() const { return instruction_count; }
 	int get_cycle_count() const { return cycle_count; }
 	const CommitLog& get_commit_log() const { return log; }
@@ -66,7 +66,7 @@ private:
 	ostringstream out;
 	function<void(bool, const CommitLog &, const string &)> on_step_callback;
 
-	void readOperand(uint8_t rs, uint32_t &V, uint32_t &Q);
+	void read_operand(uint8_t rs, uint32_t &V, uint32_t &Q);
 	ExecPath& get_path(Op op);
 	void flush(uint32_t tag);
 

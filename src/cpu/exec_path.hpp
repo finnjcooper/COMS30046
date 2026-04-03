@@ -3,11 +3,12 @@
 #include <memory>
 #include <utility>
 #include "exec.hpp"
+#include "lsq.hpp"
 #include "loadstore.hpp"
 
 class ExecPath {
 public:
-	~ExecPath() = default;
+	virtual ~ExecPath() = default;
 
 	template <typename MakeUnit>
 	ExecPath(size_t unit_count, size_t rs_size, MakeUnit&& make_unit) : stations(rs_size) {
@@ -35,7 +36,7 @@ public:
 
 	virtual void allocate(Op op, uint32_t tag) {}
 
-	void execute() {
+	virtual void execute() {
 		for (auto &unit : units) {
 			auto result = unit->step();
 			if (result) completed.push_back(result.value());
@@ -48,7 +49,7 @@ public:
 		return ready;
 	}
 
-	void wake(uint32_t tag, uint32_t value) {
+	virtual void wake(uint32_t tag, uint32_t value) {
 		for (auto &rs : stations) {
 			if (!rs.busy) continue;
 			if (rs.Qj == tag) { rs.Vj = value; rs.Qj = -1U; }
@@ -65,18 +66,13 @@ public:
 	};
 
 protected:
+	ExecPath() = default;
+
 	vector<unique_ptr<ExecUnit>> units;
 	vector<RSEntry> stations;
-
-	RSEntry* find_slot(uint32_t tag) {
-		for (auto &rs : stations)
-			if (rs.busy && rs.tag == tag) return &rs;
-		return nullptr;
-	};
-
-private:
 	vector<ExecEntry> completed;
 
+private:
 	void flush_completed(uint32_t tag) {
 		completed.erase(
 			remove_if(completed.begin(), completed.end(), [tag](const ExecEntry &entry) { return entry.tag > tag; }),
@@ -87,44 +83,47 @@ private:
 
 class LoadStoreExecPath : public ExecPath {
 public:
-	template <typename MakeUnit>
-	LoadStoreExecPath(size_t unit_count, size_t rs_size, LoadStoreQueue &lsq, MakeUnit&& make_unit) :
-		ExecPath(unit_count, rs_size, forward<MakeUnit>(make_unit)), lsq(lsq) {}
+	LoadStoreExecPath(size_t unit_count, LoadStoreQueue &lsq, Memory &mem) :
+		lsus(unit_count), lsq(lsq), mem(mem) {}
 
-	void allocate(Op op, uint32_t tag) override {
-		lsq.allocate(op, tag);
+	bool can_allocate() const {
+		return lsq.can_allocate();
+	}
+
+	void allocate(Op op, uint32_t tag, uint32_t Vj, uint32_t Vk, uint32_t Qj, uint32_t Qk, int32_t imm) {
+		lsq.allocate(op, tag, Vj, Vk, Qj, Qk, imm);
 	}
 
 	void issue() override {
-		for (auto &unit : units) {
-			if (unit->busy()) continue;
+		for (auto &unit : lsus) {
+			if (unit.busy()) continue;
 
-			bool issued = false;
-			for (auto &entry : lsq.get_entries()) {
-				if (entry.issued || entry.done) continue;
-
-				RSEntry *rs = find_slot(entry.tag);
-				if (!rs || rs->Qj != -1U || rs->Qk != -1U) continue;
-
-				uint32_t addr = rs->Vj + rs->imm;
-				if (is_load(entry.op) && !lsq.canIssueLoad(entry.tag, addr)) continue;
-
-				unit->start(*rs);
-				rs->busy = false;
-				lsq.markIssued(entry.tag);
-				issued = true;
-				break;
-			}
-
-			if (!issued) break;
+			auto tag = lsq.issue();
+			if (!tag) break;
+			unit.start(tag.value());
 		}
 	}
 
+	void execute() override {
+		for (auto &unit : lsus) {
+			auto tag = unit.step();
+			if (tag) completed.push_back(lsq.complete(tag.value(), mem));
+		}
+	}
+
+	void wake(uint32_t tag, uint32_t value) override {
+		lsq.wake(tag, value);
+	}
+
 	void flush(uint32_t tag) override {
+		for (auto &unit : lsus)
+			unit.flush(tag);
 		ExecPath::flush(tag);
 		lsq.flush(tag);
 	}
 
 private:
+	vector<LoadStoreUnit> lsus;
 	LoadStoreQueue &lsq;
+	Memory &mem;
 };

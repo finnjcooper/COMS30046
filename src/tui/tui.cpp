@@ -20,8 +20,8 @@ void TUI::run() {
 		return hbox(tabs);
 	});
 
-	auto regs_comp = Renderer([&] { return renderRegisters(); });
-	auto mem_comp = Renderer([&] { return renderMemory(); });
+	auto regs_comp = Renderer([&] { return render_registers(); });
+	auto mem_comp = Renderer([&] { return render_memory(); });
 	auto tab_container = Container::Tab({regs_comp, mem_comp}, &tab_selected);
 	
 	auto right_renderer = Renderer(tab_container, [&] {
@@ -32,12 +32,12 @@ void TUI::run() {
 	});
 
 	auto left_renderer = Renderer([&] {
-		return vbox({ text(""), renderInstructions() | flex });
+		return vbox({ text(""), render_instructions() | flex });
 	});
 
 	auto bottom_renderer = Renderer([&] {
 		return emptyElement();
-		// return renderCPUStatus();
+		// return render_cpu_status();
 	});
 
 	int left_size = 40;
@@ -67,42 +67,35 @@ void TUI::run() {
 
 	auto layout = Renderer(full_layout, [&] {
 		Element main = vbox({
-			renderTitleBar(),
+			render_title_bar(),
 			full_layout->Render() | flex,
-			renderCPUStatus(),
-			renderMessageBar(),
+			render_cpu_status(),
+			render_message_bar(),
 		});
 		
 		return dbox({
 			main | bgcolor(Theme::BG),
-			show_help ? renderHelpWindow() | center : emptyElement(),
+			show_help ? render_help_window() | center : emptyElement(),
 		});
 	});
 
 	screen.Loop(layout);
 }
 
-Element TUI::themedWindow(const string &title, Element content) {
+Element TUI::themed_window(const string &title, Element content) {
 	return window(text(" " + title + " ") | bold | color(Theme::Text), content) 
 		| color(Theme::Text) | bgcolor(Theme::BG);
 }
 
-Element TUI::renderTitleBar() {
+Element TUI::render_title_bar() {
 	return text(" RISC-V Simulator ") | center | bold | bgcolor(Theme::Bar) | color(Theme::BG);
 }
 
-Element TUI::renderInstructions() {
+Element TUI::render_instructions() {
 	Elements lines;
 	
-	// const auto &pipe = cpu.getPipeline();
-	// uint32_t pc = cpu.getPC();
-	
 	map<uint32_t, pair<char, Color>> stages;
-	// for (uint32_t i = 0; i < CPU::PIPELINE_WIDTH; i++) stages[pc + i * CPU::WORD_BYTES] = {'F', Theme::IF};
-	// for (auto &ifid : pipe.decode_q)                   stages[ifid.pc]  = {'D', Theme::ID};
-	// for (auto &idex : pipe.exec_q)                     stages[idex.pc]  = {'X', Theme::EX};
-	// for (auto &exmem : pipe.commit_q)                  stages[exmem.pc] = {'W', Theme::WB};
-	
+
 	for (const auto &[addr, orig_instr] : disasm) {
 		stringstream ss;
 		ss << hex << setw(8) << setfill('0') << addr;
@@ -139,12 +132,12 @@ Element TUI::renderInstructions() {
 		lines.push_back(line);
 	}
 	
-	return themedWindow("Instructions", 
+	return themed_window("Instructions", 
 		vbox(lines) | vscroll_indicator | frame | focusPositionRelative(0.0f, 0.5f)
 	);
 }
 
-Element TUI::renderRegisters() {
+Element TUI::render_registers() {
 	Elements lines;
 	const auto &regs = cpu.get_registers();
 	
@@ -169,10 +162,10 @@ Element TUI::renderRegisters() {
 		lines.push_back(line);
 	}
 	
-	return themedWindow("Registers", vbox(lines) | vscroll_indicator | frame);
+	return themed_window("Registers", vbox(lines) | vscroll_indicator | frame);
 }
 
-Element TUI::renderMemory() {
+Element TUI::render_memory() {
 	Elements lines;
 	const auto &mem = cpu.get_memory();
 	uint32_t sp = cpu.get_registers().read(2);
@@ -200,14 +193,14 @@ Element TUI::renderMemory() {
 		lines.push_back(line);
 	}
 	
-	return themedWindow("Stack", vbox(lines) | vscroll_indicator | frame | focusPositionRelative(0.0f, 1.0f));
+	return themed_window("Stack", vbox(lines) | vscroll_indicator | frame | focusPositionRelative(0.0f, 1.0f));
 }
 
-Element TUI::renderCPUStatus() {
+Element TUI::render_cpu_status() {
 	float ipc = static_cast<float>(cpu.get_instruction_count()) / max(cpu.get_cycle_count(), 1);
 	
 	stringstream pc_ss, cyc_ss, instr_ss, ipc_ss;
-	pc_ss << "0x" << hex << setw(8) << setfill('0') << cpu.get_PC();
+	pc_ss << "0x" << hex << setw(8) << setfill('0') << cpu.get_pc();
 	cyc_ss << cpu.get_cycle_count();
 	instr_ss << cpu.get_instruction_count();
 	ipc_ss << fixed << setprecision(3) << ipc;
@@ -233,14 +226,14 @@ Element TUI::renderCPUStatus() {
 	}) | bgcolor(Theme::BGLight);
 }
 
-Element TUI::renderMessageBar() {
+Element TUI::render_message_bar() {
 	return hbox({
 		text(" " + message) | flex,
 		text(" [Space] Step  [r] Run  [h] Help  [q] Quit "),
 	}) | bgcolor(Theme::Bar) | color(Theme::BG);
 }
 
-Element TUI::renderHelpWindow() {
+Element TUI::render_help_window() {
 	auto keyRow = [](const string &key, const string &desc) {
 		return hbox({
 			text("  "),

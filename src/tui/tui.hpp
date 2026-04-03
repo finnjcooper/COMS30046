@@ -62,13 +62,13 @@ private:
 	bool stalled = false;
 	bool flushed = false;
 
-	Element renderTitleBar();
-	Element renderInstructions();
-	Element renderRegisters();
-	Element renderMemory();
-	Element renderCPUStatus();
-	Element renderMessageBar();
-	Element renderHelpWindow();
+	Element render_title_bar();
+	Element render_instructions();
+	Element render_registers();
+	Element render_memory();
+	Element render_cpu_status();
+	Element render_message_bar();
+	Element render_help_window();
 	
-	Element themedWindow(const string &title, Element content);
+	Element themed_window(const string &title, Element content);
 };

@@ -1,30 +1,33 @@
 #pragma once
-#include "memory.hpp"
-#include "lsq.hpp"
-#include "exec.hpp"
+#include <cstdint>
+#include <optional>
 
-class LoadStoreUnit : public ExecUnit {
+class LoadStoreUnit {
 public:
-	LoadStoreUnit(Memory &memory, LoadStoreQueue &lsq) : mem(memory), lsq(lsq) { cycles = 1UL; }
-
-	optional<ExecEntry> step() override {
+	optional<uint32_t> step() {
 		if (!busy_) return nullopt;
 		if (--cycles_remaining != 0) return nullopt;
 
-		uint32_t addr = current.Vj + current.imm;
-		uint32_t ls_out = exec(current.op, addr, current.Vk);
-		
 		busy_ = false;
-		return ExecEntry {current.op, ls_out, addr, 0, false, false, current.tag};
+		return current_tag;
+	}
+
+	void start(uint32_t tag) {
+		current_tag = tag;
+		cycles_remaining = cycles;
+		busy_ = true;
+	}
+
+	bool busy() const { return busy_; }
+
+	void flush(uint32_t tag) {
+		if (busy_ && current_tag > tag) busy_ = false;
 	}
 
 private:
-	Memory &mem;
-	LoadStoreQueue &lsq;
+	static constexpr size_t cycles = 1UL;
 
-	uint32_t exec(Op op, uint32_t addr, uint32_t value) override {
-		if (is_load(op)) return lsq.completeLoad(current.tag, addr, mem);
-		if (is_store(op)) lsq.completeStore(current.tag, addr, value);
-		return 0;
-	}
+	size_t cycles_remaining = 0;
+	uint32_t current_tag = -1U;
+	bool busy_ = false;
 };

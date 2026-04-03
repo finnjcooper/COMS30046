@@ -3,7 +3,7 @@
 CPU::CPU(Program prog) : 
 	pc(prog.entry_point), end(prog.entry_point + prog.instrs.size()),
 	mem(prog.instrs, MEM_SIZE), regs(NUM_REGISTERS, log),
-	rob(NUM_REGISTERS * 2), rat(NUM_REGISTERS),
+	rob(NUM_REGISTERS * 2), lsq(RS_SIZE), rat(NUM_REGISTERS),
 	alus(ALU_COUNT, RS_SIZE, [] {
 		return make_unique<ArithmeticLogicUnit>();
 	}),
@@ -13,9 +13,7 @@ CPU::CPU(Program prog) :
 	ctrls(CTRL_COUNT, RS_SIZE, [this] {
 		return make_unique<ControlUnit>(end, WORD_BYTES);
 	}),
-	lsus(LSU_COUNT, RS_SIZE, lsq, [this] {
-		return make_unique<LoadStoreUnit>(mem, lsq);
-	}),
+	lsus(LSU_COUNT, lsq, mem),
 	exec_paths {&alus, &muls, &ctrls, &lsus} {
 	regs.write(2, MEM_SIZE - WORD_BYTES); // stack pointer
 	regs.write(1, end); // return address
@@ -60,6 +58,30 @@ ExecPath& CPU::get_path(Op op) {
 	throw invalid_argument("Invalid operation");
 }
 
+void CPU::read_operand(uint8_t rs, uint32_t &V, uint32_t &Q) {
+	if (rs == 0) {
+		V = 0;
+		Q = -1U;
+		return;
+	}
+
+	uint32_t src_tag = rat.get(rs);
+	if (src_tag == -1U) {
+		V = regs.read(rs);
+		Q = -1U;
+		return;
+	}
+
+	auto &src = rob.get(src_tag);
+	if (src.ready) {
+		V = src.value;
+		Q = -1U;
+	} else {
+		V = 0;
+		Q = src_tag;
+	}
+}
+
 void CPU::flush(uint32_t tag) {
 	fetch_q.clear();
 	decode_q.clear();
@@ -99,30 +121,6 @@ void CPU::decode() {
 	}
 }
 
-void CPU::readOperand(uint8_t rs, uint32_t &V, uint32_t &Q) {
-	if (rs == 0) {
-		V = 0;
-		Q = -1U;
-		return;
-	}
-
-	uint32_t prod_tag = rat.get(rs);
-	if (prod_tag == -1U) {
-		V = regs.read(rs);
-		Q = -1U;
-		return;
-	}
-
-	auto &prod = rob.get(prod_tag);
-	if (prod.ready) {
-		V = prod.value;
-		Q = -1U;
-	} else {
-		V = 0;
-		Q = prod_tag;
-	}
-}
-
 void CPU::dispatch() {
 	size_t dispatched = 0;
 	while (dispatched++ < PIPELINE_WIDTH && !decode_q.empty()) {
@@ -138,11 +136,20 @@ void CPU::dispatch() {
 			return;
 		}
 
-		ExecPath &path = get_path(op);
-		RSEntry* rs = path.find_slot();
-		if (!rs) {
-			out << "Reservation stations full. Stalling pipeline. ";
-			return;
+		ExecPath *path = nullptr;
+		RSEntry *rs = nullptr;
+		if (is_load(op) || is_store(op)) {
+			if (!lsus.can_allocate()) {
+				out << "Load/store queue full. Stalling pipeline. ";
+				return;
+			}
+		} else {
+			path = &get_path(op);
+			rs = path->find_slot();
+			if (!rs) {
+				out << "Reservation stations full. Stalling pipeline. ";
+				return;
+			}
 		}
 
 		uint32_t tag = rob.allocate(op, rd, pc);
@@ -152,11 +159,15 @@ void CPU::dispatch() {
 		}
 
 		uint32_t Qj = -1U, Qk = -1U, Vj = 0, Vk = 0;
-		readOperand(rs1, Vj, Qj);
-		readOperand(rs2, Vk, Qk);
+		read_operand(rs1, Vj, Qj);
+		read_operand(rs2, Vk, Qk);
 
-		*rs = {true, op, Vj, Vk, Qj, Qk, pc, imm, tag};
-		path.allocate(op, tag);
+		if (is_load(op) || is_store(op)) {
+			lsus.allocate(op, tag, Vj, Vk, Qj, Qk, imm);
+		} else {
+			*rs = {true, op, Vj, Vk, Qj, Qk, pc, imm, tag};
+			path->allocate(op, tag);
+		}
 
 		if (writes_register(op) && rd != 0)
 			rat.set(rd, tag);
@@ -212,7 +223,7 @@ void CPU::commit() {
 
 		if (entry.should_halt) {
 			halted = true; 
-			out << "Returned outside the program range (0x" << hex << end << "). Halting CPU. ";
+			out << "Returned outside the program range (0x" << hex << end << dec << "). Halting CPU. ";
 			return;
 		}
 	}

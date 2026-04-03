@@ -27,7 +27,7 @@ enum ExecType {
 	LOADSTORE
 };
 
-inline bool is_ALU(Op op) {
+inline bool is_alu(Op op) {
 	switch (op) {
 		case ADD: case SUB: case SLL: case SLT: case SLTU: case XOR: case SRL: case SRA: case OR: case AND:
 			return true;
@@ -36,7 +36,7 @@ inline bool is_ALU(Op op) {
 	}
 }
 
-inline bool is_ALUI(Op op) {
+inline bool is_alui(Op op) {
 	switch (op) {
 		case ADDI: case SLTI: case SLTIU: case XORI: case ORI: case ANDI: case SLLI: case SRLI: case SRAI:
 			return true;
@@ -45,7 +45,7 @@ inline bool is_ALUI(Op op) {
 	}
 }
 
-inline bool is_UI(Op op) {
+inline bool is_ui(Op op) {
 	switch (op) {
 		case LUI: case AUIPC:
 			return true;

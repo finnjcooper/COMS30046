@@ -10,7 +10,7 @@ public:
 		Op op = current.op;
 		uint32_t r1 = current.Vj, r2 = current.Vk;
 
-		if (is_UI(op) || is_ALUI(op)) r2 = current.imm;
+		if (is_ui(op) || is_alui(op)) r2 = current.imm;
 		if (op == LUI)                r1 = 0U;
 		if (op == AUIPC)              r1 = current.pc;
 
