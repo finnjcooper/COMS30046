@@ -35,8 +35,17 @@ public:
 	}
 
 	uint8_t loadb(uint32_t addr) const { if (addr >= data.size()) throw out_of_range("Memory access out of range"); return data[addr]; }
-	uint16_t loadh(uint32_t addr) const { if (addr + 1 >= data.size()) throw out_of_range("Memory access out of range"); return (data[addr]) | (data[addr + 1] << 8); }
-	uint32_t loadw(uint32_t addr) const { if (addr + 3 >= data.size()) throw out_of_range("Memory access out of range"); return (data[addr]) | (data[addr + 1] << 8) | (data[addr + 2] << 16) | (data[addr + 3] << 24); }
+	uint16_t loadh(uint32_t addr) const {
+		if (addr + 1 >= data.size()) throw out_of_range("Memory access out of range");
+		return static_cast<uint16_t>(static_cast<uint16_t>(data[addr]) | (static_cast<uint16_t>(data[addr + 1]) << 8));
+	}
+	uint32_t loadw(uint32_t addr) const {
+		if (addr + 3 >= data.size()) throw out_of_range("Memory access out of range");
+		return static_cast<uint32_t>(data[addr])
+			| (static_cast<uint32_t>(data[addr + 1]) << 8)
+			| (static_cast<uint32_t>(data[addr + 2]) << 16)
+			| (static_cast<uint32_t>(data[addr + 3]) << 24);
+	}
 
 private:
 	vector<uint8_t> data;

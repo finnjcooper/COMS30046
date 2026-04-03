@@ -43,9 +43,8 @@ public:
 	}
 
 	ROBEntry& get(uint32_t tag) {
-		for (auto& entry : entries) {
+		for (auto& entry : entries)
 			if (entry.tag == tag) return entry;
-		}
 
 		throw out_of_range("ROB tag not found");
 	}

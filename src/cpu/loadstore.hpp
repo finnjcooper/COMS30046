@@ -7,16 +7,15 @@ class LoadStoreUnit : public ExecUnit {
 public:
 	LoadStoreUnit(Memory &memory, LoadStoreQueue &lsq) : mem(memory), lsq(lsq) { cycles = 1UL; }
 
-	void step() override {
-		if (!busy_) return;
-		if (--cycles_remaining == 0) {
-			uint32_t addr = current.Vj + current.imm;
-			uint32_t ls_out = exec(current.op, addr, current.Vk);
-			
-			result = {current.op, ls_out, addr, 0, false, false, current.tag};
+	optional<ExecEntry> step() override {
+		if (!busy_) return nullopt;
+		if (--cycles_remaining != 0) return nullopt;
 
-			busy_ = false; done_ = true;
-		}
+		uint32_t addr = current.Vj + current.imm;
+		uint32_t ls_out = exec(current.op, addr, current.Vk);
+		
+		busy_ = false;
+		return ExecEntry {current.op, ls_out, addr, 0, false, false, current.tag};
 	}
 
 private:

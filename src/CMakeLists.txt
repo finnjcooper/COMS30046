@@ -16,7 +16,7 @@ FetchContent_Declare(ftxui
 FetchContent_MakeAvailable(ftxui)
 
 
-file(GLOB_RECURSE SOURCES "*.cpp")
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "*.cpp")
 add_executable(main ${SOURCES})
 
 add_library(lib INTERFACE)
@@ -52,7 +52,7 @@ set(RISCV_LDFLAGS
 	-T ${CMAKE_SOURCE_DIR}/test/startup/linker.ld
 )
 
-file(GLOB TEST_SOURCES "test/*.c")
+file(GLOB TEST_SOURCES CONFIGURE_DEPENDS "test/*.c")
 
 foreach(TEST_SOURCE ${TEST_SOURCES})
 	get_filename_component(TEST_NAME ${TEST_SOURCE} NAME_WE)

@@ -3,27 +3,24 @@
 
 class ArithmeticLogicUnit : public ExecUnit {
 public:
-	void step() override {
-		if (!busy_) return;
+	optional<ExecEntry> step() override {
+		if (!busy_) return nullopt;
+		if (--cycles_remaining != 0) return nullopt;
 
-		cycles_remaining--;
-		if (cycles_remaining == 0) {
-			Op op = current.op;
-			uint32_t r1 = current.Vj, r2 = current.Vk;
+		Op op = current.op;
+		uint32_t r1 = current.Vj, r2 = current.Vk;
 
-			if (isUI(op) || isALUI(op)) r2 = current.imm;
-			if (op == LUI)              r1 = 0U;
-			if (op == AUIPC)            r1 = current.pc;
+		if (isUI(op) || isALUI(op)) r2 = current.imm;
+		if (op == LUI)              r1 = 0U;
+		if (op == AUIPC)            r1 = current.pc;
 
-			uint32_t alu_out = exec(op, r1, r2);
-			result = {current.op, alu_out, 0, 0, false, false, current.tag};
-			busy_ = false; done_ = true;
-		}
+		uint32_t alu_out = exec(op, r1, r2);
+		busy_ = false;
+		return ExecEntry {current.op, alu_out, 0, 0, false, false, current.tag};
 	}
 
 private:
 	uint32_t exec(Op op, uint32_t operand1, uint32_t operand2) override {
-		
 		if (isLoad(op) || isStore(op)) return operand1 + operand2;
 
 		switch (op) {
