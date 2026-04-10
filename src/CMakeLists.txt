@@ -37,7 +37,7 @@ set(RISCV_CFLAGS
 	-march=rv32im
 	-mabi=ilp32
 	-mno-relax
-	-O0
+	-O2
 	-ffreestanding
 	-fno-pic
 	-fno-pie

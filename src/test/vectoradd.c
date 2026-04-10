@@ -1,11 +1,11 @@
 int main() {
-	int a[10] = {6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-	int b[10] = {4, 4, 4, 4, 4, 4, 4, 4, 4, 4};
-	int c[10];
+	static volatile int a[10] = {6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+	static volatile int b[10] = {4, 4, 4, 4, 4, 4, 4, 4, 4, 4};
+	volatile int c[10];
 	
-	for (int i = 0; i < 10; i++) {
+	for (volatile int i = 0; i < 10; i++) {
 		c[i] = a[i] + b[i];
 	}
 
-	return 0;
+	return c[9];
 }

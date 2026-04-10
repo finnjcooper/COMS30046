@@ -16,5 +16,5 @@ int main() {
 	int c[N][N];
 	mat_mul(a, b, c);
 
-	return 0;
+	return c[N - 1][N - 1];
 }

@@ -31,10 +31,11 @@ int main(int argc, char* argv[]) {
 
 	auto instr_count = cpu.get_instruction_count();
 	auto cycle_count = cpu.get_cycle_count();
+	auto ipc = static_cast<float>(instr_count) / max(cycle_count, 1);
 
 	cout << "Instructions executed: " << instr_count << endl;
 	cout << "Cycles taken: " << cycle_count << endl;
-	cout << "IPC: " << fixed << setprecision(3) << static_cast<float>(instr_count) / max(cycle_count, 1) << endl;
+	cout << "IPC: " << fixed << setprecision(3) << ipc << endl;
 
 	return 0;
 };

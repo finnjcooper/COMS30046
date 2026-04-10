@@ -23,12 +23,13 @@ void CPU::step() {
 	log.clear();
 	cycle_count++;
 	jumped = false;
+	stalled = false;
 
 	commit();
 	writeback();
 
 	if (jumped || halted) {
-		if (on_step_callback) on_step_callback(jumped, log, readout());
+		if (on_step_callback) on_step_callback(jumped, stalled, log, readout());
 		return;
 	}
 
@@ -40,7 +41,7 @@ void CPU::step() {
 
 	fetch();
 
-	if (on_step_callback) on_step_callback(jumped, log, readout());
+	if (on_step_callback) on_step_callback(jumped, stalled, log, readout());
 }
 
 ExecPath& CPU::get_path(Op op) {
@@ -99,7 +100,7 @@ string CPU::readout() {
 }
 
 void CPU::fetch() {
-	while (fetch_q.size() < PIPELINE_WIDTH) {
+	while (fetch_q.size() < CORE_WIDTH) {
 		try {
 			fetch_q.push_back({pc, mem.loadw(pc)});
 		} catch (const out_of_range &) {
@@ -113,7 +114,7 @@ void CPU::fetch() {
 
 void CPU::decode() {
 	size_t decoded = 0;
-	while (decoded++ < PIPELINE_WIDTH && !fetch_q.empty()) {
+	while (decoded++ < CORE_WIDTH && !fetch_q.empty()) {
 		auto &fetch = fetch_q.front();
 		Instruction instr = Decoder::decode(fetch.instr);
 		decode_q.push_back({fetch.pc, instr});
@@ -123,7 +124,7 @@ void CPU::decode() {
 
 void CPU::dispatch() {
 	size_t dispatched = 0;
-	while (dispatched++ < PIPELINE_WIDTH && !decode_q.empty()) {
+	while (dispatched++ < CORE_WIDTH && !decode_q.empty()) {
 		auto &decode = decode_q.front();
 
 		Op op = decode.instr.op;
@@ -141,6 +142,7 @@ void CPU::dispatch() {
 		if (is_load(op) || is_store(op)) {
 			if (!lsus.can_allocate()) {
 				out << "Load/store queue full. Stalling pipeline. ";
+				stalled = true;
 				return;
 			}
 		} else {
@@ -148,6 +150,7 @@ void CPU::dispatch() {
 			rs = path->find_slot();
 			if (!rs) {
 				out << "Reservation stations full. Stalling pipeline. ";
+				stalled = true;
 				return;
 			}
 		}
@@ -155,6 +158,7 @@ void CPU::dispatch() {
 		uint32_t tag = rob.allocate(op, rd, pc);
 		if (tag == -1U) {
 			out << "Re-order buffer full. Stalling pipeline. ";
+			stalled = true;
 			return;
 		}
 
@@ -207,7 +211,7 @@ void CPU::writeback() {
 
 void CPU::commit() {
 	size_t committed = 0;
-	while (committed++ < PIPELINE_WIDTH && rob.can_commit()) {
+	while (committed++ < CORE_WIDTH && rob.can_commit()) {
 		auto entry = rob.front();
 
 		if (is_load(entry.op) || is_store(entry.op)) lsq.commit(entry.tag, mem, log);

@@ -1,9 +1,9 @@
 int main() {
-	int a = 5;
-	int b = 3;
-	int c = a * b;
-	int d = a / b;
-	int e = a % b;
+	volatile int a = 5;
+	volatile int b = 3;
+	volatile int c = a * b;
+	volatile int d = a / b;
+	volatile int e = a % b;
 
-	return 0;
+	return c + d + e;
 }

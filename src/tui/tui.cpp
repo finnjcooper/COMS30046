@@ -56,9 +56,10 @@ void TUI::run() {
 		return false;
 	});
 
-	cpu.set_step_callback([&](bool jmp, const CommitLog &log, const string &msg) {
+	cpu.set_step_callback([&](bool jmp, bool stall, const CommitLog &log, const string &msg) {
 		message = msg;
 		flushed = jmp;
+		stalled = stall;
 		highlighted_regs.clear();
 		for (const auto &rw : log.reg_writes) highlighted_regs.insert(rw.reg);
 		highlighted_mem.clear();
@@ -93,8 +94,6 @@ Element TUI::render_title_bar() {
 
 Element TUI::render_instructions() {
 	Elements lines;
-	
-	map<uint32_t, pair<char, Color>> stages;
 
 	for (const auto &[addr, orig_instr] : disasm) {
 		stringstream ss;
@@ -114,21 +113,12 @@ Element TUI::render_instructions() {
 			}
 		}
 
-		auto it = stages.find(addr);
-		auto [stage, stage_col] = (it != stages.end()) ? it->second : make_pair(' ', Theme::BG);
-
-		Element stage_badge = text(string(" ") + stage + " ") | bold;
-		if (it != stages.end()) stage_badge |= bgcolor(stage_col) | color(Theme::BG);
-
 		Element line = hbox({
-			stage_badge,
-			text(" "),
 			text("0x" + ss.str()) | color(Theme::Accent),
 			text("  "),
 			text(instr) | color(Theme::Text),
 		});
 
-		// if (addr == pc) line |= focus;
 		lines.push_back(line);
 	}
 	

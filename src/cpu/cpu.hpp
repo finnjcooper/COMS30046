@@ -25,7 +25,7 @@ public:
 
 	static constexpr size_t MEM_SIZE = 64 * 1024ULL; // 64 KB
 	static constexpr uint8_t XLEN = 32U, WORD_BYTES = XLEN / 8, NUM_REGISTERS = 32U;
-	static constexpr size_t PIPELINE_WIDTH = 2ULL, RS_SIZE = 4ULL;
+	static constexpr size_t CORE_WIDTH = 2ULL, RS_SIZE = 4ULL;
 	static constexpr size_t LSU_COUNT = 1ULL, CTRL_COUNT = 1ULL, MUL_COUNT = 1ULL, ALU_COUNT = 2ULL;
 
 	void step();
@@ -38,13 +38,14 @@ public:
 	int get_cycle_count() const { return cycle_count; }
 	const CommitLog& get_commit_log() const { return log; }
 
-	void set_step_callback(function<void(bool, const CommitLog &, const string &)> callback) { on_step_callback = callback; }
+	void set_step_callback(function<void(bool, bool, const CommitLog &, const string &)> callback) { on_step_callback = callback; }
 
 	string readout();
 
 private:
 	uint32_t pc = 0, end = 0;
 	bool jumped = false;
+	bool stalled = false;
 	bool halted = false;
 
 	int instruction_count = 0;
@@ -64,7 +65,7 @@ private:
 	deque<DecodeEntry> decode_q;
 
 	ostringstream out;
-	function<void(bool, const CommitLog &, const string &)> on_step_callback;
+	function<void(bool, bool, const CommitLog &, const string &)> on_step_callback;
 
 	void read_operand(uint8_t rs, uint32_t &V, uint32_t &Q);
 	ExecPath& get_path(Op op);
