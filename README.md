@@ -16,15 +16,13 @@ A makefile is included in the root directory to automate this process.
 
 `make` will then build and run the simulator.
 
+`make headless` will build and run the simulator without the TUI.
+
 Flags
 ---
 
 `BENCH` will set the benchmark c file to run from the /test folder (add.c by default), e.g. `make BENCH=vectoradd` - omit the .c  
 New c programs can be written and simulated by placing them in /test and specifying with `BENCH=...`.
-
-`PIPELINED` will set whether to use pipelined execution (true by default), e.g. `make PIPELINED=false`
-
-`FORWARDING` will set whether to use operand forwarding (true by default), e.g. `make BENCH=branch FORWARDING=false`
 
 Terminal Interface
 ---

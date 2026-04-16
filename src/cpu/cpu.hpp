@@ -7,6 +7,7 @@
 #include "regfile.hpp"
 #include "memory.hpp"
 #include "decode.hpp"
+#include "branch.hpp"
 #include "rob.hpp"
 #include "alu.hpp"
 #include "mul.hpp"
@@ -58,6 +59,7 @@ private:
 	ExecPath alus, muls, ctrls;
 	LoadStorePath lsus;
 	array<ExecPath*, 4> exec_paths;
+	BranchPredictor* bp;
 
 	deque<FetchEntry> fetch_q;
 	deque<DecodeEntry> decode_q;

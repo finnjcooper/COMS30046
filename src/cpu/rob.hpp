@@ -30,14 +30,14 @@ public:
 
 	bool can_commit() const { return !entries.empty() && entries.front().ready; }
 
-	void set(uint32_t tag, uint32_t value, uint32_t addr = 0, bool jumped = false, bool should_halt = false) {
+	void update(ExecEntry exec) {
 		for (auto& entry : entries) {
-			if (entry.tag == tag) {
-				entry.value = value;
-				entry.addr = addr;
+			if (entry.tag == exec.tag) {
+				entry.value = exec.value;
+				entry.addr = exec.addr;
+				entry.jumped = exec.jumped;
+				entry.should_halt = exec.should_halt;
 				entry.ready = true;
-				entry.jumped = jumped;
-				entry.should_halt = should_halt;
 				break;
 			}
 		}

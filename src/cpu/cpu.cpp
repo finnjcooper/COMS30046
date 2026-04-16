@@ -180,7 +180,7 @@ void CPU::execute() {
 void CPU::writeback() {
 	for (auto *path : exec_paths) {
 		for (const auto &exec : path->take_finished()) {
-			rob.set(exec.tag, exec.value, exec.addr, exec.jumped, exec.should_halt);
+			rob.update(exec);
 			if (writes_register(exec.op))
 				for (auto *other : exec_paths)
 					other->wake(exec.tag, exec.value);
