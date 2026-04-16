@@ -1,10 +1,9 @@
 #pragma once
 #include <algorithm>
 #include <memory>
+#include <stdexcept>
 #include <utility>
 #include "exec.hpp"
-#include "lsq.hpp"
-#include "loadstore.hpp"
 
 class ExecPath {
 public:
@@ -17,11 +16,25 @@ public:
 			units.emplace_back(make_unit());
 	}
 
-	RSEntry* find_slot() {
+	virtual bool can_allocate() const {
+		for (const auto &rs : stations)
+			if (!rs.busy) return true;
+		return false;
+	}
+
+	virtual RSEntry* find_slot() {
 		for (auto &rs : stations)
 			if (!rs.busy) return &rs;
 		return nullptr;
 	};
+
+	virtual void dispatch(const RSEntry &entry) {
+		auto *rs = find_slot();
+		if (!rs) throw logic_error("Reservation stations full");
+
+		*rs = entry;
+		allocate(entry.op, entry.tag);
+	}
 
 	virtual void issue() {
 		for (auto &rs : stations)
@@ -72,58 +85,10 @@ protected:
 	vector<RSEntry> stations;
 	vector<ExecEntry> completed;
 
-private:
 	void flush_completed(uint32_t tag) {
 		completed.erase(
 			remove_if(completed.begin(), completed.end(), [tag](const ExecEntry &entry) { return entry.tag > tag; }),
 			completed.end()
 		);
 	}
-};
-
-class LoadStoreExecPath : public ExecPath {
-public:
-	LoadStoreExecPath(size_t unit_count, LoadStoreQueue &lsq, Memory &mem) :
-		lsus(unit_count), lsq(lsq), mem(mem) {}
-
-	bool can_allocate() const {
-		return lsq.can_allocate();
-	}
-
-	void allocate(Op op, uint32_t tag, uint32_t Vj, uint32_t Vk, uint32_t Qj, uint32_t Qk, int32_t imm) {
-		lsq.allocate(op, tag, Vj, Vk, Qj, Qk, imm);
-	}
-
-	void issue() override {
-		for (auto &unit : lsus) {
-			if (unit.busy()) continue;
-
-			auto tag = lsq.issue();
-			if (!tag) break;
-			unit.start(tag.value());
-		}
-	}
-
-	void execute() override {
-		for (auto &unit : lsus) {
-			auto tag = unit.step();
-			if (tag) completed.push_back(lsq.complete(tag.value(), mem));
-		}
-	}
-
-	void wake(uint32_t tag, uint32_t value) override {
-		lsq.wake(tag, value);
-	}
-
-	void flush(uint32_t tag) override {
-		for (auto &unit : lsus)
-			unit.flush(tag);
-		ExecPath::flush(tag);
-		lsq.flush(tag);
-	}
-
-private:
-	vector<LoadStoreUnit> lsus;
-	LoadStoreQueue &lsq;
-	Memory &mem;
 };

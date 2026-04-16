@@ -3,7 +3,7 @@
 CPU::CPU(Program prog) : 
 	pc(prog.entry_point), end(prog.entry_point + prog.instrs.size()),
 	mem(prog.instrs, MEM_SIZE), regs(NUM_REGISTERS, log),
-	rob(NUM_REGISTERS * 2), lsq(RS_SIZE), rat(NUM_REGISTERS),
+	rob(NUM_REGISTERS * 2), rat(NUM_REGISTERS),
 	alus(ALU_COUNT, RS_SIZE, [] {
 		return make_unique<ArithmeticLogicUnit>();
 	}),
@@ -13,7 +13,7 @@ CPU::CPU(Program prog) :
 	ctrls(CTRL_COUNT, RS_SIZE, [this] {
 		return make_unique<ControlUnit>(end, WORD_BYTES);
 	}),
-	lsus(LSU_COUNT, lsq, mem),
+	lsus(LSU_COUNT, LSQ_SIZE, mem),
 	exec_paths {&alus, &muls, &ctrls, &lsus} {
 	regs.write(2, MEM_SIZE - WORD_BYTES); // stack pointer
 	regs.write(1, end); // return address
@@ -137,22 +137,14 @@ void CPU::dispatch() {
 			return;
 		}
 
-		ExecPath *path = nullptr;
-		RSEntry *rs = nullptr;
-		if (is_load(op) || is_store(op)) {
-			if (!lsus.can_allocate()) {
+		ExecPath &path = get_path(op);
+		if (!path.can_allocate()) {
+			if (is_load(op) || is_store(op))
 				out << "Load/store queue full. Stalling pipeline. ";
-				stalled = true;
-				return;
-			}
-		} else {
-			path = &get_path(op);
-			rs = path->find_slot();
-			if (!rs) {
+			else
 				out << "Reservation stations full. Stalling pipeline. ";
-				stalled = true;
-				return;
-			}
+			stalled = true;
+			return;
 		}
 
 		uint32_t tag = rob.allocate(op, rd, pc);
@@ -166,12 +158,7 @@ void CPU::dispatch() {
 		read_operand(rs1, Vj, Qj);
 		read_operand(rs2, Vk, Qk);
 
-		if (is_load(op) || is_store(op)) {
-			lsus.allocate(op, tag, Vj, Vk, Qj, Qk, imm);
-		} else {
-			*rs = {true, op, Vj, Vk, Qj, Qk, pc, imm, tag};
-			path->allocate(op, tag);
-		}
+		path.dispatch({true, op, Vj, Vk, Qj, Qk, pc, imm, tag});
 
 		if (writes_register(op) && rd != 0)
 			rat.set(rd, tag);
@@ -214,7 +201,8 @@ void CPU::commit() {
 	while (committed++ < CORE_WIDTH && rob.can_commit()) {
 		auto entry = rob.front();
 
-		if (is_load(entry.op) || is_store(entry.op)) lsq.commit(entry.tag, mem, log);
+		if (is_load(entry.op) || is_store(entry.op))
+			if (!lsus.commit(entry.tag, log)) return;
 
 		if (writes_register(entry.op) && entry.rd != 0) {
 			regs.write(entry.rd, entry.value);

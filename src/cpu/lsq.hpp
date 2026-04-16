@@ -63,15 +63,16 @@ public:
 		return ExecEntry {entry.op, entry.Vk, entry.addr, 0, false, false, entry.tag};
 	}
 
-	void commit(uint32_t tag, Memory &mem, CommitLog &log) {
-		if (entries.empty()) return;
+	bool commit(uint32_t tag, Memory &mem, CommitLog &log) {
+		if (entries.empty()) return false;
 
 		const auto entry = entries.front();
-		if (!entry.done) return;
 		if (entry.tag != tag) throw logic_error("LSQ head tag does not match commit tag");
+		if (!entry.done) return false;
 
 		if (is_store(entry.op)) store(entry, mem, log);
 		entries.pop_front();
+		return true;
 	}
 
 	void wake(uint32_t tag, uint32_t value) {
@@ -175,7 +176,7 @@ private:
 		}
 	}
 
-	bool ready_to_issue(const LSQEntry &entry) {
+	bool ready_to_issue(const LSQEntry &entry) const {
 		if (entry.issued || entry.done || entry.Qj != -1U) return false;
 		if (is_store(entry.op) && entry.Qk != -1U) return false;
 		if (is_load(entry.op) && !can_issue_load(entry)) return false;
