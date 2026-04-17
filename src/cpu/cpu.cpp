@@ -4,11 +4,15 @@ CPU::CPU(const Program &prog, const Config &config) :
 	pc(prog.entry_point), end(prog.entry_point + prog.instrs.size()),
 	mem(prog.instrs, MEM_SIZE), regs(NUM_REGISTERS, log),
 	width(config.pipe_width), rob(NUM_REGISTERS * 2), rat(NUM_REGISTERS),
-	branch_pred([config] {
+	branch_pred([config]() -> unique_ptr<BranchPredictor> {
 		if (config.branch_pred == "static_taken") {
 			return make_unique<StaticBranchPredictor>(true);
 		} else if (config.branch_pred == "static_not_taken") {
 			return make_unique<StaticBranchPredictor>(false);
+		} else if (config.branch_pred == "one_bit") {
+			return make_unique<OneBitPredictor>();
+		} else if (config.branch_pred == "two_bit") {
+			return make_unique<TwoBitPredictor>();
 		} else {
 			throw invalid_argument("Invalid branch prediction strategy");
 		}
@@ -234,8 +238,11 @@ void CPU::writeback() {
 					jumped = true;
 					pc = target;
 					out << "Branch misprediction: flushing pipeline. ";
+					branch_mispreds++;
 					return;
 				}
+
+				branch_preds++;
 			}
 		}
 	}

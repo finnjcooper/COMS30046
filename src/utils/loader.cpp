@@ -88,6 +88,7 @@ Config Loader::config(const string &filename) {
 		config.ctrl_count = json.value("ctrl-count", config.ctrl_count);
 		config.vec_count = json.value("vec-count", config.vec_count);
 		config.lsu_count = json.value("lsu-count", config.lsu_count);
+		config.branch_pred = json.value("branch", config.branch_pred);
 	} catch (const nlohmann::json::exception &e) {
 		cerr << "Could not parse config file: " << filename << " (" << e.what() << "). Using default config." << endl;
 	}

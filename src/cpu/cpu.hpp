@@ -35,6 +35,8 @@ public:
 	uint32_t get_pc() const { return pc; }
 	int get_instruction_count() const { return instruction_count; }
 	int get_cycle_count() const { return cycle_count; }
+	int get_branch_preds() const { return branch_preds; }
+	int get_branch_mispreds() const { return branch_mispreds; }
 	const CommitLog& get_commit_log() const { return log; }
 
 	void set_step_callback(function<void(bool, bool, const CommitLog &, const string &)> callback) { on_step_callback = callback; }
@@ -49,6 +51,8 @@ private:
 
 	int instruction_count = 0;
 	int cycle_count = 0;
+	int branch_preds = 0;
+	int branch_mispreds = 0;
 
 	size_t width = 0;
 

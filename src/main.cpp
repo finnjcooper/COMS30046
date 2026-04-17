@@ -34,10 +34,16 @@ int main(int argc, char* argv[]) {
 	auto instr_count = cpu.get_instruction_count();
 	auto cycle_count = cpu.get_cycle_count();
 	auto ipc = static_cast<float>(instr_count) / max(cycle_count, 1);
+	auto branch_preds = cpu.get_branch_preds();
+	auto branch_mispreds = cpu.get_branch_mispreds();
+	auto mispred_rate = branch_preds ? 100.0 * branch_mispreds / (branch_mispreds + branch_preds) : 0.0;
 
 	cout << "Instructions executed: " << instr_count << endl;
 	cout << "Cycles taken: " << cycle_count << endl;
 	cout << "IPC: " << fixed << setprecision(3) << ipc << endl;
+	cout << "Branch predictions: " << branch_preds << endl;
+	cout << "Branch mispredictions: " << branch_mispreds << endl;
+	cout << "Branch misprediction rate: " << fixed << setprecision(2) << mispred_rate << "%" << endl;
 
 	return 0;
 };
