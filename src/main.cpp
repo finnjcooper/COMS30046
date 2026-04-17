@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
 	cout << "IPC: " << fixed << setprecision(3) << ipc << endl;
 	cout << "Branch predictions: " << branch_preds << endl;
 	cout << "Branch mispredictions: " << branch_mispreds << endl;
-	cout << "Branch misprediction rate: " << fixed << setprecision(2) << mispred_rate << "%" << endl;
+	cout << "Misprediction rate: " << fixed << setprecision(2) << mispred_rate << "%" << endl;
 
 	return 0;
 };

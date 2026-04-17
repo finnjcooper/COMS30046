@@ -59,6 +59,9 @@ private:
 	string message = "";
 	set<uint8_t> highlighted_regs;
 	set<uint32_t> highlighted_mem;
+	int disasm_focus = 0;
+	int regs_focus = 0;
+	int stack_focus = 0;
 	bool show_help = false;
 	bool stalled = false;
 	bool flushed = false;

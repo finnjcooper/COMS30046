@@ -1,11 +1,11 @@
 {
-	"pipe-width": 2,
+	"pipe-width": 1,
 	"rs-size": 8,
 	"lsq-size": 8,
-	"alu-count": 2,
+	"alu-count": 1,
 	"mul-count": 1,
 	"ctrl-count": 1,
 	"vec-count": 1,
-	"lsu-count": 2,
+	"lsu-count": 1,
 	"branch": "static_taken"
 }

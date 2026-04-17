@@ -63,14 +63,19 @@ set(RISCV_CFLAGS
 	-fno-stack-protector
 )
 
+set(LINKER ${CMAKE_SOURCE_DIR}/test/startup/linker.ld)
 set(RISCV_LDFLAGS
 	-nostdlib
 	-static
 	-no-pie
-	-T ${CMAKE_SOURCE_DIR}/test/startup/linker.ld
+	-T ${LINKER}
 )
 
-file(GLOB TEST_SOURCES CONFIGURE_DEPENDS "test/*.c")
+set(BENCH_SOURCE_DIR ${CMAKE_SOURCE_DIR}/bench/src)
+set(BENCH_BINARY_DIR ${CMAKE_SOURCE_DIR}/bench/build)
+
+file(GLOB TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/test/*.c")
+file(GLOB BENCH_SOURCES CONFIGURE_DEPENDS "${BENCH_SOURCE_DIR}/*.c")
 
 foreach(TEST_SOURCE ${TEST_SOURCES})
 	get_filename_component(TEST_NAME ${TEST_SOURCE} NAME_WE)
@@ -82,9 +87,26 @@ foreach(TEST_SOURCE ${TEST_SOURCES})
 		OUTPUT ${ELF_OUTPUT}
 		COMMAND ${RISCV_GCC} ${RISCV_CFLAGS} ${RISCV_LDFLAGS} ${TEST_SOURCE} -o ${ELF_OUTPUT}
 		COMMAND ${RISCV_OBJDUMP} -d ${ELF_OUTPUT} > ${ASM_OUTPUT}
-		DEPENDS ${TEST_SOURCE} ${CMAKE_SOURCE_DIR}/test/startup/linker.ld
-		COMMENT "Building RISC-V benchmark: ${TEST_NAME}"
+		DEPENDS ${TEST_SOURCE} ${LINKER}
+		COMMENT "Building RISC-V test: ${TEST_NAME}"
 	)
 	
 	add_custom_target(${TEST_NAME}_elf ALL DEPENDS ${ELF_OUTPUT})
+endforeach()
+
+foreach(BENCH_SOURCE ${BENCH_SOURCES})
+	get_filename_component(BENCH_NAME ${BENCH_SOURCE} NAME_WE)
+	
+	set(ELF_OUTPUT ${BENCH_BINARY_DIR}/${BENCH_NAME}.elf)
+	set(ASM_OUTPUT ${BENCH_BINARY_DIR}/${BENCH_NAME}.asm)
+	
+	add_custom_command(
+		OUTPUT ${ELF_OUTPUT}
+		COMMAND ${RISCV_GCC} ${RISCV_CFLAGS} ${RISCV_LDFLAGS} ${BENCH_SOURCE} -o ${ELF_OUTPUT}
+		COMMAND ${RISCV_OBJDUMP} -d ${ELF_OUTPUT} > ${ASM_OUTPUT}
+		DEPENDS ${BENCH_SOURCE} ${LINKER}
+		COMMENT "Building RISC-V benchmark: ${BENCH_NAME}"
+	)
+	
+	add_custom_target(${BENCH_NAME}_bench_elf ALL DEPENDS ${ELF_OUTPUT})
 endforeach()

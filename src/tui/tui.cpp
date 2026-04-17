@@ -1,5 +1,29 @@
 #include "tui.hpp"
 
+static int clamp_index(int index, int item_count) {
+	if (item_count <= 0) return 0;
+	if (index < 0) return 0;
+	if (index >= item_count) return item_count - 1;
+	return index;
+}
+
+static int stack_line_count(const CPU &cpu) {
+	const uint32_t sp = cpu.get_registers().read(2);
+	if (sp >= CPU::MEM_SIZE) return 0;
+	const uint32_t remaining = CPU::MEM_SIZE - sp;
+	return static_cast<int>((remaining + CPU::WORD_BYTES - 1) / CPU::WORD_BYTES);
+}
+
+static bool scroll_on_hover(Event event, const Box &panel_box, int item_count, int &focus_index) {
+	if (!event.is_mouse() || item_count <= 0) return false;
+	if (!panel_box.Contain(event.mouse().x, event.mouse().y)) return false;
+	if (event.mouse().button != Mouse::WheelUp && event.mouse().button != Mouse::WheelDown) return false;
+
+	focus_index += (event.mouse().button == Mouse::WheelDown) ? 1 : -1;
+	focus_index = clamp_index(focus_index, item_count);
+	return true;
+}
+
 void TUI::halt() {
 	screen.Exit();
 }
@@ -7,6 +31,19 @@ void TUI::halt() {
 void TUI::run() {
 	vector<string> tab_values = {"Registers", "Stack"};
 	int tab_selected = 0;
+	Box left_panel_box;
+	Box right_panel_box;
+
+	auto sync_disasm_focus_with_pc = [&] {
+		int idx = 0;
+		for (auto it = disasm.begin(); it != disasm.end(); ++it, ++idx) {
+			if (it->first == cpu.get_pc()) {
+				disasm_focus = idx;
+				return;
+			}
+		}
+	};
+	sync_disasm_focus_with_pc();
 
 	auto tab_renderer = Renderer([&] {
 		Elements tabs;
@@ -28,12 +65,12 @@ void TUI::run() {
 		return vbox({
 			tab_renderer->Render() | align_right,
 			tab_container->Render() | flex,
-		});
+		}) | reflect(right_panel_box);
 	});
 
 	auto left_renderer = Renderer([&] {
 		return vbox({ text(""), render_instructions() | flex });
-	});
+	}) | reflect(left_panel_box);
 
 	auto bottom_renderer = Renderer([&] {
 		return emptyElement();
@@ -48,6 +85,14 @@ void TUI::run() {
 	// auto full_layout = ResizableSplitBottom(bottom_renderer, main_split, &bottom_size);
 
 	auto full_layout = CatchEvent(main_split, [&](Event event) {
+		if (scroll_on_hover(event, left_panel_box, static_cast<int>(disasm.size()), disasm_focus)) return true;
+
+		const int right_item_count = (tab_selected == 0)
+			? static_cast<int>(CPU::NUM_REGISTERS)
+			: stack_line_count(cpu);
+		int &right_focus = (tab_selected == 0) ? regs_focus : stack_focus;
+		if (scroll_on_hover(event, right_panel_box, right_item_count, right_focus)) return true;
+
 		if (event == Event::Character('q') || event == Event::Escape) { screen.Exit(); return true; }
 		if (event == Event::Character(' ') || event == Event::Return) { if (cpu.running()) cpu.step(); return true; }
 		if (event == Event::Character('r')) { while (cpu.running()) cpu.step(); return true; }
@@ -60,6 +105,7 @@ void TUI::run() {
 		message = msg;
 		flushed = jmp;
 		stalled = stall;
+		sync_disasm_focus_with_pc();
 		highlighted_regs.clear();
 		for (const auto &rw : log.reg_writes) highlighted_regs.insert(rw.reg);
 		highlighted_mem.clear();
@@ -94,6 +140,8 @@ Element TUI::render_title_bar() {
 
 Element TUI::render_instructions() {
 	Elements lines;
+	disasm_focus = clamp_index(disasm_focus, static_cast<int>(disasm.size()));
+	int line_index = 0;
 
 	for (const auto &[addr, orig_instr] : disasm) {
 		stringstream ss;
@@ -118,8 +166,10 @@ Element TUI::render_instructions() {
 			text("  "),
 			text(instr) | color(Theme::Text),
 		});
+		if (line_index == disasm_focus) line |= focus | bgcolor(Theme::BGLight);
 
 		lines.push_back(line);
+		line_index++;
 	}
 	
 	return themed_window("Instructions", 
@@ -130,6 +180,7 @@ Element TUI::render_instructions() {
 Element TUI::render_registers() {
 	Elements lines;
 	const auto &regs = cpu.get_registers();
+	regs_focus = clamp_index(regs_focus, static_cast<int>(CPU::NUM_REGISTERS));
 	
 	for (uint8_t i = 0; i < CPU::NUM_REGISTERS; i++) {
 		uint32_t val = regs.read(i);
@@ -148,17 +199,20 @@ Element TUI::render_registers() {
 			text("  "),
 			text(val_ss.str()) | (highlighted_regs.count(i) ? color(Theme::RegsModified) | bold : color(Theme::Regs)),
 		});
+		if (static_cast<int>(i) == regs_focus) line |= focus | bgcolor(Theme::BGLight);
 		
 		lines.push_back(line);
 	}
 	
-	return themed_window("Registers", vbox(lines) | vscroll_indicator | frame);
+	return themed_window("Registers", vbox(lines) | vscroll_indicator | frame | focusPositionRelative(0.0f, 0.0f));
 }
 
 Element TUI::render_memory() {
 	Elements lines;
 	const auto &mem = cpu.get_memory();
 	uint32_t sp = cpu.get_registers().read(2);
+	stack_focus = clamp_index(stack_focus, stack_line_count(cpu));
+	int line_index = 0;
 	
 	for (uint32_t addr = sp; addr < CPU::MEM_SIZE; addr += CPU::WORD_BYTES) {
 		uint32_t word = mem.loadw(addr);
@@ -178,12 +232,13 @@ Element TUI::render_memory() {
 			text(val_ss.str()) | color(valColour) | (highlighted_mem.count(addr) || isSP ? bold : nothing),
 			isSP ? (text("  ◄ sp") | color(Theme::SP) | bold) : emptyElement(),
 		});
-		
-		if (isSP) line |= focus;
+
+		if (line_index == stack_focus) line |= focus | bgcolor(Theme::BGLight);
 		lines.push_back(line);
+		line_index++;
 	}
 	
-	return themed_window("Stack", vbox(lines) | vscroll_indicator | frame | focusPositionRelative(0.0f, 1.0f));
+	return themed_window("Stack", vbox(lines) | vscroll_indicator | frame | focusPositionRelative(0.0f, 0.0f));
 }
 
 Element TUI::render_cpu_status() {
@@ -243,6 +298,7 @@ Element TUI::render_help_window() {
 			text(""),
 			separatorLight(),
 			text(""),
+			keyRow("Mouse wheel", "Scroll hovered panel"),
 			keyRow("Tab", "Cycle right window tabs"),
 			keyRow("h", "Toggle this help"),
 			text(""),
