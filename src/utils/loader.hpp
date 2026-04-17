@@ -4,6 +4,9 @@
 #include <map>
 #include <cstdint>
 #include <iostream>
+#include <fstream>
+#include <elfio/elfio.hpp>
+#include <nlohmann/json.hpp>
 
 using namespace std;
 

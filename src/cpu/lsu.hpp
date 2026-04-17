@@ -1,8 +1,5 @@
 #pragma once
 #include <cstddef>
-#include <cstdint>
-#include <optional>
-#include <vector>
 #include "exec_path.hpp"
 #include "lsq.hpp"
 #include "memory.hpp"
@@ -19,7 +16,7 @@ public:
 
 	void start(uint32_t tag) {
 		current_tag = tag;
-		cycles_remaining = cycles;
+		cycles_remaining = cycles(LB);
 		busy_ = true;
 	}
 
@@ -30,8 +27,6 @@ public:
 	}
 
 private:
-	static constexpr size_t cycles = 1UL;
-
 	size_t cycles_remaining = 0;
 	uint32_t current_tag = -1U;
 	bool busy_ = false;

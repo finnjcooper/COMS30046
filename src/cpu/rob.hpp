@@ -1,8 +1,8 @@
 #pragma once
-#include "instruction.hpp"
 #include <deque>
 #include <algorithm>
-#include <stdexcept>
+#include "decode.hpp"
+#include "exec.hpp"
 
 struct ROBEntry {
 	bool ready = false, jumped = false, should_halt = false;

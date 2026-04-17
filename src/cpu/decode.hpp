@@ -1,5 +1,12 @@
 #pragma once
-#include "instruction.hpp"
+#include "helpers.hpp"
+
+struct DecodeEntry {
+	uint32_t pc = 0;
+	Instruction instr;
+	bool pred_taken = false;
+	uint32_t pred_target = 0;
+};
 
 class Decoder {
 public:

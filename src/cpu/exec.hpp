@@ -1,6 +1,31 @@
 #pragma once
 #include <optional>
-#include "pipeline.hpp"
+#include "helpers.hpp"
+
+struct ExecEntry {
+	Op op = INVALID;
+
+	uint32_t value = 0, addr = 0;
+
+	uint32_t target = 0;
+	bool jumped = false, should_halt = false;
+
+	uint32_t tag = -1U;
+};
+
+struct RSEntry {
+	bool busy = false;
+
+	Op op = INVALID;
+
+	uint32_t Vj = 0, Vk = 0;
+	uint32_t Qj = -1U, Qk = -1U;
+	
+	uint32_t pc = 0;
+	int32_t imm = 0;
+
+	uint32_t tag = -1U;
+};
 
 class ExecUnit {
 public:
@@ -9,7 +34,7 @@ public:
 	
 	void start(const RSEntry &entry) {
 		current = entry;
-		cycles_remaining = cycles;
+		cycles_remaining = cycles(current.op);
 		busy_ = true;
 	}
 	
@@ -18,7 +43,6 @@ public:
 
 protected:
 	RSEntry current;
-	size_t cycles = 1UL;
 	size_t cycles_remaining;
 	bool busy_ = false;
 

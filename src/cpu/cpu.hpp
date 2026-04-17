@@ -2,13 +2,13 @@
 #include <sstream>
 #include <functional>
 #include <deque>
-#include "instruction.hpp"
-#include "pipeline.hpp"
+#include "helpers.hpp"
 #include "regfile.hpp"
 #include "memory.hpp"
 #include "decode.hpp"
 #include "branch.hpp"
 #include "rob.hpp"
+#include "rat.hpp"
 #include "alu.hpp"
 #include "mul.hpp"
 #include "ctrl.hpp"
@@ -17,7 +17,10 @@
 #include "exec_path.hpp"
 #include "loader.hpp"
 
-using namespace std;
+struct FetchEntry {
+	uint32_t pc = 0;
+	uint32_t instr = 0;
+};
 
 class CPU {
 public:

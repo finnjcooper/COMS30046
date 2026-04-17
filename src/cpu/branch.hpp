@@ -1,5 +1,5 @@
 #pragma once
-#include "instruction.hpp"
+#include "isa.hpp"
 
 class BranchPredictor {
 public:

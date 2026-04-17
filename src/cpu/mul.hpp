@@ -4,8 +4,6 @@
 
 class MulDivUnit : public ExecUnit {
 public:
-	MulDivUnit() { cycles = 1UL; }
-
 	optional<ExecEntry> step() override {
 		if (!busy_) return nullopt;
 		if (--cycles_remaining != 0) return nullopt;

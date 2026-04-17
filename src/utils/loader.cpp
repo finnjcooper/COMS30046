@@ -1,7 +1,4 @@
 #include "loader.hpp"
-#include <fstream>
-#include <elfio/elfio.hpp>
-#include <nlohmann/json.hpp>
 
 Program Loader::ELF(const string &filename) {
 	ELFIO::elfio elf;
@@ -37,7 +34,6 @@ Program Loader::ELF(const string &filename) {
 }
 
 map<uint32_t, string> Loader::ASM(const string &filename) {
-
 	map<uint32_t, string> disasm;
 	ifstream file(filename);
 	string line;

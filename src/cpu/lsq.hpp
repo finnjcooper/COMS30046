@@ -2,10 +2,8 @@
 #include <algorithm>
 #include <deque>
 #include <optional>
-#include <stdexcept>
-#include "instruction.hpp"
+#include "helpers.hpp"
 #include "memory.hpp"
-#include "pipeline.hpp"
 #include "trace.hpp"
 
 struct LSQEntry {
@@ -41,7 +39,7 @@ public:
 
 	optional<uint32_t> issue() {
 		for (auto &entry : entries) {
-			if (!ready_to_issue(entry)) continue;
+			if (!can_issue(entry)) continue;
 			entry.issued = true;
 			return entry.tag;
 		}
@@ -176,7 +174,7 @@ private:
 		}
 	}
 
-	bool ready_to_issue(const LSQEntry &entry) const {
+	bool can_issue(const LSQEntry &entry) const {
 		if (entry.issued || entry.done || entry.Qj != -1U) return false;
 		if (is_store(entry.op) && entry.Qk != -1U) return false;
 		if (is_load(entry.op) && !can_issue_load(entry)) return false;
@@ -189,10 +187,20 @@ private:
 		for (size_t i = 0; i < load_idx; i++) {
 			const auto &entry = entries[i];
 			if (!is_store(entry.op)) continue;
-			return false;
+			if (entry.Qj != -1U) return false;
+			if (overlaps(entry, load_entry)) return false;
 		}
 
 		return true;
+	}
+
+	static bool overlaps(const LSQEntry &a, const LSQEntry &b) {
+		uint64_t a_start = a.addr;
+		uint64_t b_start = b.addr;
+		uint64_t a_end = a_start + access_size(a.op);
+		uint64_t b_end = b_start + access_size(b.op);
+
+		return a_start < b_end && b_start < a_end;
 	}
 
 	size_t index_of(uint32_t tag) const {
