@@ -17,14 +17,15 @@ enum Op {
 	LUI, AUIPC,
 	ECALL,
 	// rv32m
-	MUL, MULH, MULHSU, MULHU, DIV, DIVU, REM, REMU
+	MUL, MULH, MULHSU, MULHU, DIV, DIVU, REM, REMU,
 };
 
 enum ExecType {
 	LOGIC,
 	MULDIV,
 	CTRL,
-	LOADSTORE
+	VECTOR,
+	LOADSTORE,
 };
 
 inline bool is_alu(Op op) {

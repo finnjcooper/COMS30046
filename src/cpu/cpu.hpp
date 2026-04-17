@@ -12,6 +12,7 @@
 #include "alu.hpp"
 #include "mul.hpp"
 #include "ctrl.hpp"
+#include "vec.hpp"
 #include "lsu.hpp"
 #include "exec_path.hpp"
 #include "loader.hpp"
@@ -25,8 +26,8 @@ public:
 
 	static constexpr size_t MEM_SIZE = 64 * 1024ULL; // 64 KB
 	static constexpr uint8_t XLEN = 32U, WORD_BYTES = XLEN / 8, NUM_REGISTERS = 32U;
-	static constexpr size_t CORE_WIDTH = 2ULL, RS_SIZE = 4ULL, LSQ_SIZE = 8ULL;
-	static constexpr size_t LSU_COUNT = 1ULL, CTRL_COUNT = 1ULL, MUL_COUNT = 1ULL, ALU_COUNT = 2ULL;
+	static constexpr size_t CORE_WIDTH = 2LL, RS_SIZE = 8ULL, LSQ_SIZE = 8ULL;
+	static constexpr size_t ALU_COUNT = 2ULL, MUL_COUNT = 1ULL, CTRL_COUNT = 1ULL, VEC_COUNT = 1ULL, LSU_COUNT = 2ULL;
 
 	void step();
 
@@ -56,7 +57,7 @@ private:
 	RegisterFile regs;
 	ReOrderBuffer rob;
 	RegisterAliasTable rat;
-	ExecPath alus, muls, ctrls;
+	ExecPath alus, muls, ctrls, vecs;
 	LoadStorePath lsus;
 	array<ExecPath*, 4> exec_paths;
 	BranchPredictor* bp;

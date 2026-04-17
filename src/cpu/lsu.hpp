@@ -72,10 +72,10 @@ public:
 	}
 
 	void flush(uint32_t tag) override {
+		lsq.flush(tag);
 		for (auto &unit : lsus)
 			unit.flush(tag);
-		ExecPath::flush(tag);
-		lsq.flush(tag);
+		flush_completed(tag);
 	}
 
 	bool commit(uint32_t tag, CommitLog &log) {

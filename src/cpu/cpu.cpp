@@ -13,6 +13,9 @@ CPU::CPU(Program prog) :
 	ctrls(CTRL_COUNT, RS_SIZE, [this] {
 		return make_unique<ControlUnit>(end, WORD_BYTES);
 	}),
+	vecs(VEC_COUNT, RS_SIZE, [] {
+		return make_unique<VectorUnit>();
+	}),
 	lsus(LSU_COUNT, LSQ_SIZE, mem),
 	exec_paths {&alus, &muls, &ctrls, &lsus} {
 	regs.write(2, MEM_SIZE - WORD_BYTES); // stack pointer
@@ -52,6 +55,8 @@ ExecPath& CPU::get_path(Op op) {
 			return muls;
 		case CTRL:
 			return ctrls;
+		case VECTOR:
+			return vecs;
 		case LOADSTORE:
 			return lsus;
 	}

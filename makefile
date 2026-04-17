@@ -15,10 +15,10 @@ headless:
 
 
 ninja: src/
-	ninja -C build
+	ninja -C build -j 0
 
 make: src/
-	make -C build
+	make -C build -j 0
 
 
 cmake:
