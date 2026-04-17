@@ -24,7 +24,8 @@ public:
 			jumped = exec(op, r1, r2);
 		}
 
-		bool should_halt = target >= end;
+		uint32_t next_pc = jumped ? target : current.pc + WORD_BYTES;
+		bool should_halt = next_pc >= end;
 
 		busy_ = false;
 		return ExecEntry {current.op, alu_out, 0, target, jumped, should_halt, current.tag};

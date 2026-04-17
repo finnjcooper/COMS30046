@@ -6,6 +6,10 @@
 
 struct ROBEntry {
 	bool ready = false, jumped = false, should_halt = false;
+	
+	bool pred_taken = false;
+	uint32_t pred_target = 0;
+
 	Op op = INVALID;
 
 	uint8_t rd = 0;
@@ -21,10 +25,10 @@ public:
 
 	const deque<ROBEntry>& get_entries() const { return entries; }
 
-	uint32_t allocate(Op op, uint8_t rd, uint32_t pc) {
+	uint32_t allocate(DecodeEntry decode) {
 		if (entries.size() == max_size) return -1U;
 		uint32_t tag = next_tag++;
-		entries.push_back({false, false, false, op, rd, 0, 0, pc, tag});
+		entries.push_back({false, false, false, decode.pred_taken, decode.pred_target, decode.instr.op, decode.instr.rd, 0, 0, decode.pc, tag});
 		return tag;
 	}
 

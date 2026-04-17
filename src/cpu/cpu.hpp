@@ -22,12 +22,10 @@ using namespace std;
 class CPU {
 public:
 	~CPU() = default;
-	CPU(Program prog);
+	CPU(const Program &prog, const Config &config);
 
-	static constexpr size_t MEM_SIZE = 64 * 1024ULL; // 64 KB
-	static constexpr uint8_t XLEN = 32U, WORD_BYTES = XLEN / 8, NUM_REGISTERS = 32U;
-	static constexpr size_t CORE_WIDTH = 2LL, RS_SIZE = 8ULL, LSQ_SIZE = 8ULL;
-	static constexpr size_t ALU_COUNT = 2ULL, MUL_COUNT = 1ULL, CTRL_COUNT = 1ULL, VEC_COUNT = 1ULL, LSU_COUNT = 2ULL;
+	static constexpr size_t MEM_SIZE = 64 * 1024ULL; // 64KB
+	static constexpr uint8_t WORD_BYTES = 4ULL, NUM_REGISTERS = 32ULL;
 
 	void step();
 
@@ -52,6 +50,8 @@ private:
 	int instruction_count = 0;
 	int cycle_count = 0;
 
+	size_t width = 0;
+
 	CommitLog log;
 	Memory mem;
 	RegisterFile regs;
@@ -59,8 +59,8 @@ private:
 	RegisterAliasTable rat;
 	ExecPath alus, muls, ctrls, vecs;
 	LoadStorePath lsus;
-	array<ExecPath*, 4> exec_paths;
-	BranchPredictor* bp;
+	array<ExecPath*, 4ULL> exec_paths;
+	unique_ptr<BranchPredictor> branch_pred;
 
 	deque<FetchEntry> fetch_q;
 	deque<DecodeEntry> decode_q;

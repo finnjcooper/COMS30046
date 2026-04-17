@@ -12,7 +12,8 @@ public:
 	StaticBranchPredictor(bool should_take = true) : should_take(should_take) {}
 
 	bool predict(uint32_t pc, Instruction instr) override {
-		if (is_jump(instr.op)) return true;
+		if (instr.op == JALR) return false;
+		if (instr.op == JAL) return true;
 		return should_take;
 	}
 

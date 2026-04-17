@@ -1,6 +1,7 @@
 #include "loader.hpp"
 #include <fstream>
 #include <elfio/elfio.hpp>
+#include <nlohmann/json.hpp>
 
 Program Loader::ELF(const string &filename) {
 	ELFIO::elfio elf;
@@ -9,11 +10,11 @@ Program Loader::ELF(const string &filename) {
 		return { vector<uint8_t>(), 0 };
 	}
 
-	uint32_t mem_size = 0;	
+	uint32_t mem_size = 0;
 	for (const auto& seg : elf.segments) {
 		if (seg->get_type() == ELFIO::PT_LOAD) {
-			uint32_t end = seg->get_virtual_address() + seg->get_memory_size();
-			mem_size = std::max(mem_size, end);
+			uint32_t seg_end = seg->get_virtual_address() + seg->get_memory_size();
+			mem_size = max(mem_size, seg_end);
 		}
 	}
 
@@ -67,4 +68,29 @@ map<uint32_t, string> Loader::ASM(const string &filename) {
 	}
 	
 	return disasm;
+}
+
+Config Loader::config(const string &filename) {
+	Config config;
+	ifstream file(filename);
+	if (!file.is_open()) {
+		cerr << "Could not open config file: " << filename << ". Using default config." << endl;
+		return config;
+	}
+
+	try {
+		auto json = nlohmann::json::parse(file);
+		config.pipe_width = json.value("pipe-width", config.pipe_width);
+		config.rs_size = json.value("rs-size", config.rs_size);
+		config.lsq_size = json.value("lsq-size", config.lsq_size);
+		config.alu_count = json.value("alu-count", config.alu_count);
+		config.mul_count = json.value("mul-count", config.mul_count);
+		config.ctrl_count = json.value("ctrl-count", config.ctrl_count);
+		config.vec_count = json.value("vec-count", config.vec_count);
+		config.lsu_count = json.value("lsu-count", config.lsu_count);
+	} catch (const nlohmann::json::exception &e) {
+		cerr << "Could not parse config file: " << filename << " (" << e.what() << "). Using default config." << endl;
+	}
+
+	return config;
 }

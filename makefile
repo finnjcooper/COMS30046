@@ -1,4 +1,4 @@
-BENCH ?= add
+BENCH ?= vectoradd
 HEADLESS ?= 0
 
 HEADLESS_FLAG := $(if $(filter 1,$(HEADLESS)),--headless,)
@@ -15,10 +15,10 @@ headless:
 
 
 ninja: src/
-	ninja -C build -j 0
+	ninja -C build
 
 make: src/
-	make -C build -j 0
+	make -C build
 
 
 cmake:

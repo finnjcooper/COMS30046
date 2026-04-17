@@ -1,22 +1,31 @@
 #include "cpu.hpp"
 
-CPU::CPU(Program prog) : 
+CPU::CPU(const Program &prog, const Config &config) : 
 	pc(prog.entry_point), end(prog.entry_point + prog.instrs.size()),
 	mem(prog.instrs, MEM_SIZE), regs(NUM_REGISTERS, log),
-	rob(NUM_REGISTERS * 2), rat(NUM_REGISTERS),
-	alus(ALU_COUNT, RS_SIZE, [] {
+	width(config.pipe_width), rob(NUM_REGISTERS * 2), rat(NUM_REGISTERS),
+	branch_pred([config] {
+		if (config.branch_pred == "static_taken") {
+			return make_unique<StaticBranchPredictor>(true);
+		} else if (config.branch_pred == "static_not_taken") {
+			return make_unique<StaticBranchPredictor>(false);
+		} else {
+			throw invalid_argument("Invalid branch prediction strategy");
+		}
+	}()),
+	alus(config.alu_count, config.rs_size, [] {
 		return make_unique<ArithmeticLogicUnit>();
 	}),
-	muls(MUL_COUNT, RS_SIZE, [] {
+	muls(config.mul_count, config.rs_size, [] {
 		return make_unique<MulDivUnit>();
 	}),
-	ctrls(CTRL_COUNT, RS_SIZE, [this] {
+	ctrls(config.ctrl_count, config.rs_size, [this] {
 		return make_unique<ControlUnit>(end, WORD_BYTES);
 	}),
-	vecs(VEC_COUNT, RS_SIZE, [] {
+	vecs(config.vec_count, config.rs_size, [] {
 		return make_unique<VectorUnit>();
 	}),
-	lsus(LSU_COUNT, LSQ_SIZE, mem),
+	lsus(config.lsu_count, config.lsq_size, mem),
 	exec_paths {&alus, &muls, &ctrls, &lsus} {
 	regs.write(2, MEM_SIZE - WORD_BYTES); // stack pointer
 	regs.write(1, end); // return address
@@ -29,6 +38,7 @@ void CPU::step() {
 	stalled = false;
 
 	commit();
+
 	writeback();
 
 	if (jumped || halted) {
@@ -91,7 +101,7 @@ void CPU::read_operand(uint8_t rs, uint32_t &V, uint32_t &Q) {
 void CPU::flush(uint32_t tag) {
 	fetch_q.clear();
 	decode_q.clear();
-	for (auto *path : exec_paths)
+	for (const auto &path : exec_paths)
 		path->flush(tag);
 	rob.flush(tag);
 	rat.rebuild(rob);
@@ -105,7 +115,7 @@ string CPU::readout() {
 }
 
 void CPU::fetch() {
-	while (fetch_q.size() < CORE_WIDTH) {
+	while (fetch_q.size() < width) {
 		try {
 			fetch_q.push_back({pc, mem.loadw(pc)});
 		} catch (const out_of_range &) {
@@ -119,17 +129,32 @@ void CPU::fetch() {
 
 void CPU::decode() {
 	size_t decoded = 0;
-	while (decoded++ < CORE_WIDTH && !fetch_q.empty()) {
+	while (decoded++ < width && !fetch_q.empty()) {
 		auto &fetch = fetch_q.front();
 		Instruction instr = Decoder::decode(fetch.instr);
-		decode_q.push_back({fetch.pc, instr});
+
+		bool pred_taken = false;
+		uint32_t pred_target = fetch.pc + WORD_BYTES;
+
+		if (is_branch(instr.op) || is_jump(instr.op)) {
+			pred_taken = branch_pred->predict(fetch.pc, instr);
+			if (pred_taken) pred_target = fetch.pc + instr.imm;
+		}
+
+		decode_q.push_back({fetch.pc, instr, pred_taken, pred_target});
 		fetch_q.pop_front();
+
+		if (pred_taken) {
+			fetch_q.clear();
+			pc = pred_target;
+			break;
+		}
 	}
 }
 
 void CPU::dispatch() {
 	size_t dispatched = 0;
-	while (dispatched++ < CORE_WIDTH && !decode_q.empty()) {
+	while (dispatched++ < width && !decode_q.empty()) {
 		auto &decode = decode_q.front();
 
 		Op op = decode.instr.op;
@@ -152,7 +177,7 @@ void CPU::dispatch() {
 			return;
 		}
 
-		uint32_t tag = rob.allocate(op, rd, pc);
+		uint32_t tag = rob.allocate(decode);
 		if (tag == -1U) {
 			out << "Re-order buffer full. Stalling pipeline. ";
 			stalled = true;
@@ -173,29 +198,44 @@ void CPU::dispatch() {
 }
 
 void CPU::issue() {
-	for (auto *path : exec_paths)
+	for (const auto &path : exec_paths)
 		path->issue();
 }
 
 void CPU::execute() {
-	for (auto *path : exec_paths)
+	for (const auto &path : exec_paths)
 		path->execute();
 }
 
 void CPU::writeback() {
-	for (auto *path : exec_paths) {
+	for (const auto &path : exec_paths) {
 		for (const auto &exec : path->take_finished()) {
 			rob.update(exec);
 			if (writes_register(exec.op))
-				for (auto *other : exec_paths)
+				for (const auto &other : exec_paths)
 					other->wake(exec.tag, exec.value);
 
-			if (exec.jumped) {
-				flush(exec.tag);
-				jumped = true;
-				pc = exec.target;
-				out << "Control hazard: flushing pipeline, jumping to 0x" << hex << exec.target << dec << ". ";
-				return;
+			if (is_control(exec.op)) {
+				auto &entry = rob.get(exec.tag);
+
+				bool taken = exec.jumped;
+				uint32_t target =
+					taken ? exec.target : entry.pc + WORD_BYTES;
+
+				if (is_branch(exec.op))
+					branch_pred->update(entry.pc, taken);
+
+				bool mispred =
+					taken != entry.pred_taken ||
+					target != entry.pred_target;
+
+				if (mispred) {
+					flush(exec.tag);
+					jumped = true;
+					pc = target;
+					out << "Branch misprediction: flushing pipeline. ";
+					return;
+				}
 			}
 		}
 	}
@@ -203,7 +243,7 @@ void CPU::writeback() {
 
 void CPU::commit() {
 	size_t committed = 0;
-	while (committed++ < CORE_WIDTH && rob.can_commit()) {
+	while (committed++ < width && rob.can_commit()) {
 		auto entry = rob.front();
 
 		if (is_load(entry.op) || is_store(entry.op))

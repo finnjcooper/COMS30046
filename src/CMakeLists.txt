@@ -13,7 +13,22 @@ FetchContent_Declare(ftxui
 	GIT_TAG v6.1.9
 )
 
-FetchContent_MakeAvailable(ftxui)
+FetchContent_Declare(argparse
+    GIT_REPOSITORY https://github.com/p-ranav/argparse
+	GIT_TAG v3.2
+)
+
+FetchContent_Declare(nlohmann_json
+	GIT_REPOSITORY https://github.com/nlohmann/json
+	GIT_TAG v3.11.3
+)
+
+FetchContent_Declare(elfio
+	GIT_REPOSITORY https://github.com/serge1/ELFIO
+	GIT_TAG Release_3.12
+)
+
+FetchContent_MakeAvailable(argparse elfio ftxui nlohmann_json)
 
 
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "*.cpp")
@@ -28,6 +43,9 @@ target_link_libraries(main PRIVATE
 	ftxui::screen
 	ftxui::dom
 	ftxui::component
+	argparse::argparse
+	elfio::elfio
+	nlohmann_json::nlohmann_json
 )
 
 set(RISCV_GCC "riscv64-unknown-elf-gcc")

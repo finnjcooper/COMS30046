@@ -44,7 +44,7 @@ namespace Theme {
 
 class TUI {
 public:
-	TUI(CPU &cpu, const map<uint32_t, string> &disasm) : cpu(cpu), disasm(disasm) {}
+	TUI(CPU &cpu, const map<uint32_t, string> &disasm) : cpu(cpu), config(config), disasm(disasm) {}
 	~TUI() { halt(); }
 
 	void run();
@@ -52,6 +52,7 @@ public:
 
 private:
 	CPU &cpu;
+	const Config &config;
 	const map<uint32_t, string> &disasm;
 	ScreenInteractive screen = ScreenInteractive::Fullscreen();
 	

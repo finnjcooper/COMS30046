@@ -5,7 +5,8 @@
 int main(int argc, char* argv[]) {
 	argparse::ArgumentParser program("RISC-V Simulator");
 	program.add_argument("--elf", "-e").help("path to the ELF binary to load and simulate").required();
-	program.add_argument("--headless", "-H").help("run without the TUI").default_value(false).implicit_value(true);
+	program.add_argument("--headless", "-h").help("run without the TUI").default_value(false).implicit_value(true);
+	program.add_argument("--config", "-c").help("path to the configuration file").default_value("./config.json");
 
 	try {
 		program.parse_args(argc, argv);
@@ -17,12 +18,13 @@ int main(int argc, char* argv[]) {
 	}
 
 	string elfPath = program.get<string>("--elf");
+	string asmPath = elfPath.substr(0, elfPath.size() - 4) + ".asm";
 
 	auto prog = Loader::ELF(elfPath);
-	string asmPath = elfPath.substr(0, elfPath.size() - 4) + ".asm";
 	auto disasm = Loader::ASM(asmPath);
-	
-	CPU cpu(prog);
+	auto config = Loader::config(program.get<string>("--config"));
+
+	CPU cpu(prog, config);
 	TUI tui(cpu, disasm);
 
 	if (program.get<bool>("--headless"))
