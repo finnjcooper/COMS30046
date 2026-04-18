@@ -80,7 +80,7 @@ public:
 			if (entry.Qj == tag) {
 				entry.Qj = -1U;
 				entry.Vj = value;
-				update_addr(entry);
+				entry.addr = value + entry.imm;
 			}
 
 			if (is_store(entry.op) && entry.Qk == tag) {
@@ -107,7 +107,7 @@ private:
 				return 1;
 			case LH: case LHU: case SH:
 				return 2;
-			case LW: case SW:
+			case LW: case SW: case FLW: case FSW:
 				return 4;
 			default:
 				return 0;
@@ -116,35 +116,22 @@ private:
 
 	static uint32_t format_load(Op op, uint32_t raw) {
 		switch (op) {
-			case LB:
-				return sign_extend(raw & 0xFF, 8);
-			case LH:
-				return sign_extend(raw & 0xFFFF, 16);
+			case LB: return sign_extend(raw & 0xFF, 8);
+			case LH: return sign_extend(raw & 0xFFFF, 16);
 			case LW:
-				return raw;
-			case LBU:
-				return raw & 0xFF;
-			case LHU:
-				return raw & 0xFFFF;
-			default:
-				return 0;
+			case FLW: return raw;
+			case LBU: return raw & 0xFF;
+			case LHU: return raw & 0xFFFF;
+			default: return 0;
 		}
-	}
-
-	static void update_addr(LSQEntry &entry) {
-		entry.addr = entry.Vj + entry.imm;
 	}
 
 	static uint32_t load(const LSQEntry &entry, const Memory &mem) {
 		switch (entry.op) {
-			case LB: case LBU:
-				return mem.loadb(entry.addr);
-			case LH: case LHU:
-				return mem.loadh(entry.addr);
-			case LW:
-				return mem.loadw(entry.addr);
-			default:
-				return 0;
+			case LB: case LBU: return mem.loadb(entry.addr);
+			case LH: case LHU: return mem.loadh(entry.addr);
+			case LW: case FLW: return mem.loadw(entry.addr);
+			default: return 0;
 		}
 	}
 
@@ -163,7 +150,8 @@ private:
 				log.record_mem_write(entry.addr, old_val, new_val, 2);
 				break;
 			}
-			case SW: {
+			case SW:
+			case FSW: {
 				uint32_t old_val = mem.loadw(entry.addr);
 				mem.storew(entry.addr, entry.Vk);
 				log.record_mem_write(entry.addr, old_val, entry.Vk, 4);

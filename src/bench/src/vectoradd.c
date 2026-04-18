@@ -7,5 +7,5 @@ int main() {
 		c[i] = a[i] + b[i];
 	}
 
-	return c[9];
+	return 0;
 }

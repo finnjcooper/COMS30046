@@ -2,8 +2,8 @@
 
 CPU::CPU(const Program &prog, const Config &config) : 
 	pc(prog.entry_point), end(prog.entry_point + prog.instrs.size()),
-	mem(prog.instrs, MEM_SIZE), regs(NUM_REGISTERS, log),
-	width(config.pipe_width), rob(NUM_REGISTERS * 2), rat(NUM_REGISTERS),
+	mem(prog.instrs, MEM_SIZE), regs(NUM_REGISTERS, log), fregs(NUM_FLOAT_REGISTERS, flog),
+	width(config.pipe_width), rob(NUM_REGISTERS * 2), rat(NUM_REGISTERS), frat(NUM_FLOAT_REGISTERS),
 	branch_pred([config]() -> unique_ptr<BranchPredictor> {
 		if (config.branch_pred == "static_taken") {
 			return make_unique<StaticBranchPredictor>(true);
@@ -26,11 +26,14 @@ CPU::CPU(const Program &prog, const Config &config) :
 	ctrls(config.ctrl_count, config.rs_size, [this] {
 		return make_unique<ControlUnit>(end, WORD_BYTES);
 	}),
+	fpus(config.fpu_count, config.rs_size, [] {
+		return make_unique<FloatingPointUnit>();
+	}),
 	vecs(config.vec_count, config.rs_size, [] {
 		return make_unique<VectorUnit>();
 	}),
 	lsus(config.lsu_count, config.lsq_size, mem),
-	exec_paths {&alus, &muls, &ctrls, &lsus} {
+	exec_paths {&alus, &muls, &ctrls, &lsus, &fpus, &vecs} {
 	regs.write(2, MEM_SIZE - WORD_BYTES); // stack pointer
 	regs.write(1, end); // return address
 }
@@ -63,22 +66,36 @@ void CPU::step() {
 
 ExecPath& CPU::get_path(Op op) {
 	switch (exec_type(op)) {
-		case LOGIC:
-			return alus;
-		case MULDIV:
-			return muls;
-		case CTRL:
-			return ctrls;
-		case VECTOR:
-			return vecs;
-		case LOADSTORE:
-			return lsus;
+		case ExecType::LOGIC: return alus;
+		case ExecType::MULDIV: return muls;
+		case ExecType::CTRL: return ctrls;
+		case ExecType::FLOAT: return fpus;
+		case ExecType::VECTOR: return vecs;
+		case ExecType::LOADSTORE: return lsus;
 	}
 
 	throw invalid_argument("Invalid operation");
 }
 
-void CPU::read_operand(uint8_t rs, uint32_t &V, uint32_t &Q) {
+RegisterFile& CPU::get_regfile(Op op) {
+	switch(reg_type(op)) {
+		case RegType::INT: return regs;
+		case RegType::FLOAT: return fregs;
+	}
+
+	throw invalid_argument("Invalid register file");
+}
+
+RegisterAliasTable& CPU::get_rat(Op op) {
+	switch(reg_type(op)) {
+		case RegType::INT: return rat;
+		case RegType::FLOAT: return frat;
+	}
+
+	throw invalid_argument("Invalid register file");
+}
+
+void CPU::read_operand(uint8_t rs, uint32_t &V, uint32_t &Q, RegisterFile &regs, RegisterAliasTable &rat) {
 	if (rs == 0) {
 		V = 0;
 		Q = -1U;
@@ -109,6 +126,7 @@ void CPU::flush(uint32_t tag) {
 		path->flush(tag);
 	rob.flush(tag);
 	rat.rebuild(rob);
+	frat.rebuild(rob);
 }
 
 string CPU::readout() {
@@ -162,7 +180,7 @@ void CPU::dispatch() {
 		auto &decode = decode_q.front();
 
 		Op op = decode.instr.op;
-		uint8_t rd = decode.instr.rd, rs1 = decode.instr.rs1, rs2 = decode.instr.rs2;
+		uint8_t rd = decode.instr.rd, rs1 = decode.instr.rs1, rs2 = decode.instr.rs2, rs3 = decode.instr.rs3;
 		uint32_t pc = decode.pc;
 		int32_t imm = decode.instr.imm;
 
@@ -188,14 +206,15 @@ void CPU::dispatch() {
 			return;
 		}
 
-		uint32_t Qj = -1U, Qk = -1U, Vj = 0, Vk = 0;
-		read_operand(rs1, Vj, Qj);
-		read_operand(rs2, Vk, Qk);
+		uint32_t Qj = -1U, Qk = -1U, Ql = -1U, Vj = 0, Vk = 0, Vl = 0;
+		read_operand(rs1, Vj, Qj, get_regfile(op), get_rat(op));
+		read_operand(rs2, Vk, Qk, get_regfile(op), get_rat(op));
+		read_operand(rs3, Vl, Ql, get_regfile(op), get_rat(op));
 
-		path.dispatch({true, op, Vj, Vk, Qj, Qk, pc, imm, tag});
+		path.dispatch({true, op, Vj, Vk, Vl, Qj, Qk, Ql, pc, imm, tag});
 
 		if (writes_register(op) && rd != 0)
-			rat.set(rd, tag);
+			get_rat(op).set(rd, tag);
 
 		decode_q.pop_front();
 	}
@@ -257,9 +276,9 @@ void CPU::commit() {
 			if (!lsus.commit(entry.tag, log)) return;
 
 		if (writes_register(entry.op) && entry.rd != 0) {
-			regs.write(entry.rd, entry.value);
-			if (rat.get(entry.rd) == entry.tag)
-				rat.set(entry.rd, -1U);
+			get_regfile(entry.op).write(entry.rd, entry.value);
+			if (get_rat(entry.op).get(entry.rd) == entry.tag)
+				get_rat(entry.op).set(entry.rd, -1U);
 		}
 
 		rob.pop();

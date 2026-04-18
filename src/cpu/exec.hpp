@@ -18,8 +18,8 @@ struct RSEntry {
 
 	Op op = INVALID;
 
-	uint32_t Vj = 0, Vk = 0;
-	uint32_t Qj = -1U, Qk = -1U;
+	uint32_t Vj = 0, Vk = 0, Vl = 0;
+	uint32_t Qj = -1U, Qk = -1U, Ql = -1U;
 	
 	uint32_t pc = 0;
 	int32_t imm = 0;

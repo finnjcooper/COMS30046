@@ -52,7 +52,7 @@ set(RISCV_GCC "riscv64-unknown-elf-gcc")
 set(RISCV_OBJDUMP "riscv64-unknown-elf-objdump")
 
 set(RISCV_CFLAGS
-	-march=rv32im
+	-march=rv32imf
 	-mabi=ilp32
 	-mno-relax
 	-O2

@@ -12,6 +12,7 @@
 #include "alu.hpp"
 #include "mul.hpp"
 #include "ctrl.hpp"
+#include "fpu.hpp"
 #include "vec.hpp"
 #include "lsu.hpp"
 #include "exec_path.hpp"
@@ -28,7 +29,7 @@ public:
 	CPU(const Program &prog, const Config &config);
 
 	static constexpr size_t MEM_SIZE = 64 * 1024ULL; // 64KB
-	static constexpr uint8_t WORD_BYTES = 4ULL, NUM_REGISTERS = 32ULL;
+	static constexpr uint8_t WORD_BYTES = 4ULL, NUM_REGISTERS = 32ULL, NUM_FLOAT_REGISTERS = 32ULL;
 
 	void step();
 
@@ -60,13 +61,15 @@ private:
 	size_t width = 0;
 
 	CommitLog log;
+	CommitLog flog;
 	Memory mem;
-	RegisterFile regs;
+	IntegerRegisterFile regs;
+	FloatRegisterFile fregs;
 	ReOrderBuffer rob;
-	RegisterAliasTable rat;
-	ExecPath alus, muls, ctrls, vecs;
+	RegisterAliasTable rat, frat;
+	ExecPath alus, muls, ctrls, fpus, vecs;
 	LoadStorePath lsus;
-	array<ExecPath*, 4ULL> exec_paths;
+	array<ExecPath*, 6ULL> exec_paths;
 	unique_ptr<BranchPredictor> branch_pred;
 
 	deque<FetchEntry> fetch_q;
@@ -75,8 +78,10 @@ private:
 	ostringstream out;
 	function<void(bool, bool, const CommitLog &, const string &)> on_step_callback;
 
-	void read_operand(uint8_t rs, uint32_t &V, uint32_t &Q);
+	void read_operand(uint8_t rs, uint32_t &V, uint32_t &Q, RegisterFile &regs, RegisterAliasTable &rat);
 	ExecPath& get_path(Op op);
+	RegisterFile& get_regfile(Op op);
+	RegisterAliasTable& get_rat(Op op);
 	void flush(uint32_t tag);
 
 	void fetch();

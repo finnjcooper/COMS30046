@@ -31,6 +31,7 @@ inline bool is_ui(Op op) {
 inline bool is_load(Op op) {
 	switch (op) {
 		case LB: case LH: case LW: case LBU: case LHU:
+		case FLW:
 			return true;
 		default:
 			return false;
@@ -40,6 +41,7 @@ inline bool is_load(Op op) {
 inline bool is_store(Op op) {
 	switch (op) {
 		case SB: case SH: case SW:
+		case FSW:
 			return true;
 		default:
 			return false;
@@ -94,6 +96,14 @@ inline bool writes_register(Op op) {
 		case JAL: case JALR:
 		case LUI: case AUIPC:
 		case MUL: case MULH: case MULHSU: case MULHU: case DIV: case DIVU: case REM: case REMU:
+		case FLW:
+		case FMADD_S: case FMSUB_S: case FNMADD_S: case FNMSUB_S:
+		case FADD_S: case FSUB_S: case FMUL_S: case FDIV_S: case FSQRT_S:
+		case FSGNJ_S: case FSGNJN_S: case FSGNJX_S:
+		case FMIN_S: case FMAX_S: case FEQ_S: case FLT_S: case FLE_S:
+		case FCVT_W_S: case FCVT_WU_S: case FCVT_S_W: case FCVT_S_WU:
+		case FMV_X_W: case FMV_W_X:
+		case FCLASS_S:
 			return true;
 		default:
 			return false;
