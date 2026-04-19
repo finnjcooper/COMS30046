@@ -37,7 +37,7 @@ public:
 
 	virtual void issue() {
 		for (auto &rs : stations)
-			if (rs.busy && rs.Qj == -1U && rs.Qk == -1U)
+			if (rs.busy && rs.Qj == -1U && rs.Qk == -1U && rs.Ql == -1U)
 				for (auto &unit : units) {
 					if (unit->busy()) continue;
 					unit->start(rs);
@@ -66,6 +66,7 @@ public:
 			if (!rs.busy) continue;
 			if (rs.Qj == tag) { rs.Vj = value; rs.Qj = -1U; }
 			if (rs.Qk == tag) { rs.Vk = value; rs.Qk = -1U; }
+			if (rs.Ql == tag) { rs.Vl = value; rs.Ql = -1U; }
 		}
 	}
 

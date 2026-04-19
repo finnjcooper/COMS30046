@@ -82,6 +82,7 @@ Config Loader::config(const string &filename) {
 		config.alu_count = json.value("alu-count", config.alu_count);
 		config.mul_count = json.value("mul-count", config.mul_count);
 		config.ctrl_count = json.value("ctrl-count", config.ctrl_count);
+		config.fpu_count = json.value("fpu-count", config.fpu_count);
 		config.vec_count = json.value("vec-count", config.vec_count);
 		config.lsu_count = json.value("lsu-count", config.lsu_count);
 		config.branch_pred = json.value("branch", config.branch_pred);

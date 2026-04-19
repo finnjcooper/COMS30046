@@ -23,6 +23,7 @@ struct RSEntry {
 	
 	uint32_t pc = 0;
 	int32_t imm = 0;
+	uint8_t rm = 0;
 
 	uint32_t tag = -1U;
 };
@@ -46,5 +47,5 @@ protected:
 	size_t cycles_remaining;
 	bool busy_ = false;
 
-	virtual uint32_t exec(Op op, uint32_t operand1, uint32_t operand2) = 0;
+	virtual uint32_t exec(Op op, uint32_t operand1, uint32_t operand2, uint32_t operand3 = 0) = 0;
 };

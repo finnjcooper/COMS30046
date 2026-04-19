@@ -84,36 +84,42 @@ inline bool is_div(Op op) {
 	}
 }
 
-inline bool is_control(Op op) {
-	return is_branch(op) || is_jump(op) || op == ECALL;
-}
-
-inline bool writes_register(Op op) {
+inline bool is_fadd(Op op) {
 	switch (op) {
-		case ADD: case SUB: case SLL: case SLT: case SLTU: case XOR: case SRL: case SRA: case OR: case AND:
-		case ADDI: case SLTI: case SLTIU: case XORI: case ORI: case ANDI: case SLLI: case SRLI: case SRAI:
-		case LB: case LH: case LW: case LBU: case LHU:
-		case JAL: case JALR:
-		case LUI: case AUIPC:
-		case MUL: case MULH: case MULHSU: case MULHU: case DIV: case DIVU: case REM: case REMU:
-		case FLW:
-		case FMADD_S: case FMSUB_S: case FNMADD_S: case FNMSUB_S:
-		case FADD_S: case FSUB_S: case FMUL_S: case FDIV_S: case FSQRT_S:
-		case FSGNJ_S: case FSGNJN_S: case FSGNJX_S:
-		case FMIN_S: case FMAX_S: case FEQ_S: case FLT_S: case FLE_S:
+		case FADD_S: case FSUB_S: case FMIN_S: case FMAX_S:
 		case FCVT_W_S: case FCVT_WU_S: case FCVT_S_W: case FCVT_S_WU:
-		case FMV_X_W: case FMV_W_X:
-		case FCLASS_S:
 			return true;
 		default:
 			return false;
 	}
 }
 
+inline bool is_fmul(Op op) {
+	switch (op) {
+		case FMUL_S:
+		case FMADD_S: case FMSUB_S: case FNMSUB_S: case FNMADD_S:
+			return true;
+		default:
+			return false;
+	}
+}
+
+inline bool is_control(Op op) {
+	return is_branch(op) || is_jump(op) || op == ECALL;
+}
+
+inline bool writes_register(Op op) {
+	return dst_type(op) != RegType::NONE;
+}
+
 inline size_t cycles(Op op) {
 	if (is_load(op) || is_store(op)) return 2UL;
 	if (is_mul(op)) return 3UL;
 	if (is_div(op)) return 8UL;
+	if (is_fadd(op)) return 3UL;
+	if (is_fmul(op)) return 4UL;
+	if (op == FDIV_S) return 10UL;
+	if (op == FSQRT_S) return 12UL;
 	return 1UL;
 }
 

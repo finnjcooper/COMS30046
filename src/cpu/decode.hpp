@@ -102,10 +102,10 @@ public:
 				uint8_t fmt = f7 & 0x03;
 				uint8_t f5 = f7 >> 2;
 				switch (f5) {
-					case 0x00: return {FADD_S, rd, rs1, rs2, 0};
-					case 0x01: return {FSUB_S, rd, rs1, rs2, 0};
-					case 0x02: return {FMUL_S, rd, rs1, rs2, 0};
-					case 0x03: return {FDIV_S, rd, rs1, rs2, 0};
+					case 0x00: return {FADD_S, rd, rs1, rs2, 0, 0, f3};
+					case 0x01: return {FSUB_S, rd, rs1, rs2, 0, 0, f3};
+					case 0x02: return {FMUL_S, rd, rs1, rs2, 0, 0, f3};
+					case 0x03: return {FDIV_S, rd, rs1, rs2, 0, 0, f3};
 					case 0x04:
 						if (f3 == 0x00) return {FSGNJ_S, rd, rs1, rs2, 0};
 						if (f3 == 0x01) return {FSGNJN_S, rd, rs1, rs2, 0};
@@ -116,7 +116,7 @@ public:
 						if (f3 == 0x01) return {FMAX_S, rd, rs1, rs2, 0};
 						break;
 					case 0x0B:
-						if (rs2 == 0x00) return {FSQRT_S, rd, rs1, 0, 0};
+						if (rs2 == 0x00) return {FSQRT_S, rd, rs1, 0, 0, 0, f3};
 						break;
 					case 0x14:
 						if (f3 == 0x00) return {FLE_S, rd, rs1, rs2, 0};
@@ -124,12 +124,12 @@ public:
 						if (f3 == 0x02) return {FEQ_S, rd, rs1, rs2, 0};
 						break;
 					case 0x18:
-						if (rs2 == 0x00) return {FCVT_W_S, rd, rs1, 0, 0};
-						if (rs2 == 0x01) return {FCVT_WU_S, rd, rs1, 0, 0};
+						if (rs2 == 0x00) return {FCVT_W_S, rd, rs1, 0, 0, 0, f3};
+						if (rs2 == 0x01) return {FCVT_WU_S, rd, rs1, 0, 0, 0, f3};
 						break;
 					case 0x1A:
-						if (rs2 == 0x00) return {FCVT_S_W, rd, rs1, 0, 0};
-						if (rs2 == 0x01) return {FCVT_S_WU, rd, rs1, 0, 0};
+						if (rs2 == 0x00) return {FCVT_S_W, rd, rs1, 0, 0, 0, f3};
+						if (rs2 == 0x01) return {FCVT_S_WU, rd, rs1, 0, 0, 0, f3};
 						break;
 					case 0x1C:
 						if (rs2 == 0x00 && f3 == 0x00) return {FMV_X_W, rd, rs1, 0, 0};
@@ -184,6 +184,6 @@ private:
 	static Instruction fmadd(Op op, uint32_t instruction, uint8_t rd, uint8_t rs1, uint8_t rs2, uint8_t rm) {
 		uint8_t fmt = (instruction >> 25) & 0x03;
 		uint8_t rs3 = (instruction >> 27) & 0x1F;
-		return {op, rd, rs1, rs2, 0, rs3};
+		return {op, rd, rs1, rs2, 0, rs3, rm};
 	}
 };

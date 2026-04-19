@@ -11,7 +11,7 @@ endif
 
 .PHONY: all cmake clean
 
-default: test
+default: bench
 
 headless:
 	$(MAKE) HEADLESS=1
@@ -19,9 +19,9 @@ headless:
 
 bench: all
 ifeq ($(OS),Windows_NT)
-	.\build\main.exe --elf .\src\bench\build\$(KERNEL).elf $(HEADLESS_FLAG)
+	.\build\main.exe --elf .\bench\build\$(KERNEL).elf $(HEADLESS_FLAG)
 else
-	./build/main --elf ./src/bench/build/$(KERNEL).elf $(HEADLESS_FLAG)
+	./build/main --elf ./bench/build/$(KERNEL).elf $(HEADLESS_FLAG)
 endif
 
 test: all
@@ -31,7 +31,7 @@ else
 	./build/main --elf ./build/$(KERNEL).elf $(HEADLESS_FLAG)
 endif
 
-all: src/
+all: src/ bench/
 	cmake --build build -j
 
 

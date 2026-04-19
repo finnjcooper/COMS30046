@@ -1,4 +1,4 @@
-#define N 10
+#define N 64
 
 #if defined(__GNUC__)
 #define BENCHMARK_NOINLINE __attribute__((noinline, noclone))
@@ -8,19 +8,28 @@
 #define BENCHMARK_KEEP_ALIVE(value) do { (void)sizeof(value); } while (0)
 #endif
 
-BENCHMARK_NOINLINE void vector_add(int *a, int *b, int *c, int n) {
+BENCHMARK_NOINLINE int dot_product(int a[N], int b[N], int n) {
+	int sum = 0;
+
 	for (int i = 0; i < n; i++) {
-		c[i] = a[i] + b[i];
+		sum += a[i] * b[i];
 	}
+
+	return sum;
 }
 
 int main() {
-	int a[N] = {6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-	int b[N] = {4, 4, 4, 4, 4, 4, 4, 4, 4, 4};
-	int c[N];
-	
-	vector_add(a, b, c, N);
-	BENCHMARK_KEEP_ALIVE(c);
+	int a[N];
+	int b[N];
+	int result;
+
+	for (int i = 0; i < N; i++) {
+		a[i] = i + 1;
+		b[i] = N - i;
+	}
+
+	result = dot_product(a, b, N);
+	BENCHMARK_KEEP_ALIVE(result);
 
 	return 0;
 }

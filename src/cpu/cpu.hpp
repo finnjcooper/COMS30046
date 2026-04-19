@@ -28,9 +28,6 @@ public:
 	~CPU() = default;
 	CPU(const Program &prog, const Config &config);
 
-	static constexpr size_t MEM_SIZE = 64 * 1024ULL; // 64KB
-	static constexpr uint8_t WORD_BYTES = 4ULL, NUM_REGISTERS = 32ULL, NUM_FLOAT_REGISTERS = 32ULL;
-
 	void step();
 
 	bool running() const { return !halted; }
@@ -39,8 +36,8 @@ public:
 	uint32_t get_pc() const { return pc; }
 	int get_instruction_count() const { return instruction_count; }
 	int get_cycle_count() const { return cycle_count; }
-	int get_branch_preds() const { return branch_preds; }
-	int get_branch_mispreds() const { return branch_mispreds; }
+	int get_branch_count() const { return branch_count; }
+	int get_mispred_count() const { return mispred_count; }
 	const CommitLog& get_commit_log() const { return log; }
 
 	void set_step_callback(function<void(bool, bool, const CommitLog &, const string &)> callback) { on_step_callback = callback; }
@@ -55,8 +52,8 @@ private:
 
 	int instruction_count = 0;
 	int cycle_count = 0;
-	int branch_preds = 0;
-	int branch_mispreds = 0;
+	int branch_count = 0;
+	int mispred_count = 0;
 
 	size_t width = 0;
 
@@ -78,10 +75,10 @@ private:
 	ostringstream out;
 	function<void(bool, bool, const CommitLog &, const string &)> on_step_callback;
 
-	void read_operand(uint8_t rs, uint32_t &V, uint32_t &Q, RegisterFile &regs, RegisterAliasTable &rat);
+	void read_operand(uint8_t rs, RegType type, uint32_t &V, uint32_t &Q);
 	ExecPath& get_path(Op op);
-	RegisterFile& get_regfile(Op op);
-	RegisterAliasTable& get_rat(Op op);
+	RegisterFile& regfile(RegType type);
+	RegisterAliasTable& alias_table(RegType type);
 	void flush(uint32_t tag);
 
 	void fetch();

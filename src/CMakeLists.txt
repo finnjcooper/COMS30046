@@ -30,9 +30,13 @@ FetchContent_Declare(elfio
 
 FetchContent_MakeAvailable(argparse elfio ftxui nlohmann_json)
 
-
-file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "*.cpp")
-add_executable(main ${SOURCES})
+set(MAIN_SOURCES
+	main.cpp
+	cpu/cpu.cpp
+	tui/tui.cpp
+	utils/loader.cpp
+)
+add_executable(main ${MAIN_SOURCES})
 
 add_library(lib INTERFACE)
 target_include_directories(lib INTERFACE lib/)
@@ -63,6 +67,7 @@ set(RISCV_CFLAGS
 	-fno-stack-protector
 )
 
+set(STARTUP ${CMAKE_SOURCE_DIR}/test/startup/start.s)
 set(LINKER ${CMAKE_SOURCE_DIR}/test/startup/linker.ld)
 set(RISCV_LDFLAGS
 	-nostdlib
@@ -71,11 +76,12 @@ set(RISCV_LDFLAGS
 	-T ${LINKER}
 )
 
-set(BENCH_SOURCE_DIR ${CMAKE_SOURCE_DIR}/bench/src)
-set(BENCH_BINARY_DIR ${CMAKE_SOURCE_DIR}/bench/build)
+set(BENCH_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/../bench/src")
+set(BENCH_BINARY_DIR "${CMAKE_CURRENT_LIST_DIR}/../bench/build")
+file(MAKE_DIRECTORY "${BENCH_BINARY_DIR}")
 
-file(GLOB TEST_SOURCES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/test/*.c")
-file(GLOB BENCH_SOURCES CONFIGURE_DEPENDS "${BENCH_SOURCE_DIR}/*.c")
+file(GLOB TEST_SOURCES "${CMAKE_SOURCE_DIR}/test/*.c")
+file(GLOB BENCH_SOURCES "${BENCH_SOURCE_DIR}/*.c")
 
 foreach(TEST_SOURCE ${TEST_SOURCES})
 	get_filename_component(TEST_NAME ${TEST_SOURCE} NAME_WE)
@@ -85,9 +91,9 @@ foreach(TEST_SOURCE ${TEST_SOURCES})
 	
 	add_custom_command(
 		OUTPUT ${ELF_OUTPUT}
-		COMMAND ${RISCV_GCC} ${RISCV_CFLAGS} ${RISCV_LDFLAGS} ${TEST_SOURCE} -o ${ELF_OUTPUT}
+		COMMAND ${RISCV_GCC} ${RISCV_CFLAGS} ${RISCV_LDFLAGS} ${STARTUP} ${TEST_SOURCE} -o ${ELF_OUTPUT}
 		COMMAND ${RISCV_OBJDUMP} -d ${ELF_OUTPUT} > ${ASM_OUTPUT}
-		DEPENDS ${TEST_SOURCE} ${LINKER}
+		DEPENDS ${STARTUP} ${TEST_SOURCE} ${LINKER}
 		COMMENT "Building RISC-V test: ${TEST_NAME}"
 	)
 	
@@ -102,9 +108,9 @@ foreach(BENCH_SOURCE ${BENCH_SOURCES})
 	
 	add_custom_command(
 		OUTPUT ${ELF_OUTPUT}
-		COMMAND ${RISCV_GCC} ${RISCV_CFLAGS} ${RISCV_LDFLAGS} ${BENCH_SOURCE} -o ${ELF_OUTPUT}
+		COMMAND ${RISCV_GCC} ${RISCV_CFLAGS} ${RISCV_LDFLAGS} ${STARTUP} ${BENCH_SOURCE} -o ${ELF_OUTPUT}
 		COMMAND ${RISCV_OBJDUMP} -d ${ELF_OUTPUT} > ${ASM_OUTPUT}
-		DEPENDS ${BENCH_SOURCE} ${LINKER}
+		DEPENDS ${STARTUP} ${BENCH_SOURCE} ${LINKER}
 		COMMENT "Building RISC-V benchmark: ${BENCH_NAME}"
 	)
 	

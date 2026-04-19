@@ -13,5 +13,5 @@ public:
 	}
 
 private:
-	uint32_t exec(Op op, uint32_t operand1, uint32_t operand2) override { return 0; }
+	uint32_t exec(Op op, uint32_t operand1, uint32_t operand2, uint32_t operand3) override { return 0; }
 };

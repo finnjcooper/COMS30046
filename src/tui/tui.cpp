@@ -9,9 +9,9 @@ static int clamp_index(int index, int item_count) {
 
 static int stack_line_count(const CPU &cpu) {
 	const uint32_t sp = cpu.get_registers().read(2);
-	if (sp >= CPU::MEM_SIZE) return 0;
-	const uint32_t remaining = CPU::MEM_SIZE - sp;
-	return static_cast<int>((remaining + CPU::WORD_BYTES - 1) / CPU::WORD_BYTES);
+	if (sp >= MEM_SIZE) return 0;
+	const uint32_t remaining = MEM_SIZE - sp;
+	return static_cast<int>((remaining + WORD_BYTES - 1) / WORD_BYTES);
 }
 
 static bool scroll_on_hover(Event event, const Box &panel_box, int item_count, int &focus_index) {
@@ -88,7 +88,7 @@ void TUI::run() {
 		if (scroll_on_hover(event, left_panel_box, static_cast<int>(disasm.size()), disasm_focus)) return true;
 
 		const int right_item_count = (tab_selected == 0)
-			? static_cast<int>(CPU::NUM_REGISTERS)
+			? static_cast<int>(NUM_REGISTERS)
 			: stack_line_count(cpu);
 		int &right_focus = (tab_selected == 0) ? regs_focus : stack_focus;
 		if (scroll_on_hover(event, right_panel_box, right_item_count, right_focus)) return true;
@@ -180,9 +180,9 @@ Element TUI::render_instructions() {
 Element TUI::render_registers() {
 	Elements lines;
 	const auto &regs = cpu.get_registers();
-	regs_focus = clamp_index(regs_focus, static_cast<int>(CPU::NUM_REGISTERS));
+	regs_focus = clamp_index(regs_focus, static_cast<int>(NUM_REGISTERS));
 	
-	for (uint8_t i = 0; i < CPU::NUM_REGISTERS; i++) {
+	for (uint8_t i = 0; i < NUM_REGISTERS; i++) {
 		uint32_t val = regs.read(i);
 		string regname = regs.name(i);
 		
@@ -214,7 +214,7 @@ Element TUI::render_memory() {
 	stack_focus = clamp_index(stack_focus, stack_line_count(cpu));
 	int line_index = 0;
 	
-	for (uint32_t addr = sp; addr < CPU::MEM_SIZE; addr += CPU::WORD_BYTES) {
+	for (uint32_t addr = sp; addr < MEM_SIZE; addr += WORD_BYTES) {
 		uint32_t word = mem.loadw(addr);
 		bool isSP = (addr == sp);
 		

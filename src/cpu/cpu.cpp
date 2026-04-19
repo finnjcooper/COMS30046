@@ -1,7 +1,7 @@
 #include "cpu.hpp"
 
 CPU::CPU(const Program &prog, const Config &config) : 
-	pc(prog.entry_point), end(prog.entry_point + prog.instrs.size()),
+	pc(prog.entry_point), end(prog.instrs.size()),
 	mem(prog.instrs, MEM_SIZE), regs(NUM_REGISTERS, log), fregs(NUM_FLOAT_REGISTERS, flog),
 	width(config.pipe_width), rob(NUM_REGISTERS * 2), rat(NUM_REGISTERS), frat(NUM_FLOAT_REGISTERS),
 	branch_pred([config]() -> unique_ptr<BranchPredictor> {
@@ -45,21 +45,17 @@ void CPU::step() {
 	stalled = false;
 
 	commit();
-
 	writeback();
 
-	if (jumped || halted) {
-		if (on_step_callback) on_step_callback(jumped, stalled, log, readout());
-		return;
+	if (!(jumped || halted)) {
+		execute();
+		issue();
+		dispatch();
+		if (!stalled) {
+			decode();
+			fetch();
+		}
 	}
-
-	issue();
-	execute();
-
-	decode();
-	dispatch();
-
-	fetch();
 
 	if (on_step_callback) on_step_callback(jumped, stalled, log, readout());
 }
@@ -77,30 +73,31 @@ ExecPath& CPU::get_path(Op op) {
 	throw invalid_argument("Invalid operation");
 }
 
-RegisterFile& CPU::get_regfile(Op op) {
-	switch(reg_type(op)) {
+RegisterFile& CPU::regfile(RegType type) {
+	switch (type) {
 		case RegType::INT: return regs;
 		case RegType::FLOAT: return fregs;
+		default: throw invalid_argument("Invalid register file");
 	}
-
-	throw invalid_argument("Invalid register file");
 }
 
-RegisterAliasTable& CPU::get_rat(Op op) {
-	switch(reg_type(op)) {
+RegisterAliasTable& CPU::alias_table(RegType type) {
+	switch(type) {
 		case RegType::INT: return rat;
 		case RegType::FLOAT: return frat;
+		default: throw invalid_argument("Invalid alias table");
 	}
-
-	throw invalid_argument("Invalid register file");
 }
 
-void CPU::read_operand(uint8_t rs, uint32_t &V, uint32_t &Q, RegisterFile &regs, RegisterAliasTable &rat) {
-	if (rs == 0) {
+void CPU::read_operand(uint8_t rs, RegType type, uint32_t &V, uint32_t &Q) {
+	if (type == RegType::NONE || (type == RegType::INT && rs == 0)) {
 		V = 0;
 		Q = -1U;
 		return;
 	}
+
+	RegisterAliasTable &rat = alias_table(type);
+	RegisterFile &regs = regfile(type);
 
 	uint32_t src_tag = rat.get(rs);
 	if (src_tag == -1U) {
@@ -125,8 +122,8 @@ void CPU::flush(uint32_t tag) {
 	for (const auto &path : exec_paths)
 		path->flush(tag);
 	rob.flush(tag);
-	rat.rebuild(rob);
-	frat.rebuild(rob);
+	rat.rebuild(rob, RegType::INT);
+	frat.rebuild(rob, RegType::FLOAT);
 }
 
 string CPU::readout() {
@@ -150,17 +147,17 @@ void CPU::fetch() {
 }
 
 void CPU::decode() {
-	size_t decoded = 0;
-	while (decoded++ < width && !fetch_q.empty()) {
+	while (!fetch_q.empty()) {
 		auto &fetch = fetch_q.front();
 		Instruction instr = Decoder::decode(fetch.instr);
 
 		bool pred_taken = false;
 		uint32_t pred_target = fetch.pc + WORD_BYTES;
 
-		if (is_branch(instr.op) || is_jump(instr.op)) {
-			pred_taken = branch_pred->predict(fetch.pc, instr);
-			if (pred_taken) pred_target = fetch.pc + instr.imm;
+		if (is_control(instr.op)) {
+			auto prediction = branch_pred->predict(fetch.pc, instr);
+			pred_taken = prediction.taken;
+			pred_target = prediction.target;
 		}
 
 		decode_q.push_back({fetch.pc, instr, pred_taken, pred_target});
@@ -175,12 +172,11 @@ void CPU::decode() {
 }
 
 void CPU::dispatch() {
-	size_t dispatched = 0;
-	while (dispatched++ < width && !decode_q.empty()) {
+	while (!decode_q.empty()) {
 		auto &decode = decode_q.front();
 
 		Op op = decode.instr.op;
-		uint8_t rd = decode.instr.rd, rs1 = decode.instr.rs1, rs2 = decode.instr.rs2, rs3 = decode.instr.rs3;
+		uint8_t rd = decode.instr.rd, rs1 = decode.instr.rs1, rs2 = decode.instr.rs2, rs3 = decode.instr.rs3, rm = decode.instr.rm;
 		uint32_t pc = decode.pc;
 		int32_t imm = decode.instr.imm;
 
@@ -207,14 +203,15 @@ void CPU::dispatch() {
 		}
 
 		uint32_t Qj = -1U, Qk = -1U, Ql = -1U, Vj = 0, Vk = 0, Vl = 0;
-		read_operand(rs1, Vj, Qj, get_regfile(op), get_rat(op));
-		read_operand(rs2, Vk, Qk, get_regfile(op), get_rat(op));
-		read_operand(rs3, Vl, Ql, get_regfile(op), get_rat(op));
+		read_operand(rs1, src_type(op, 0), Vj, Qj);
+		read_operand(rs2, src_type(op, 1), Vk, Qk);
+		read_operand(rs3, src_type(op, 2), Vl, Ql);
 
-		path.dispatch({true, op, Vj, Vk, Vl, Qj, Qk, Ql, pc, imm, tag});
+		path.dispatch({true, op, Vj, Vk, Vl, Qj, Qk, Ql, pc, imm, rm, tag});
 
-		if (writes_register(op) && rd != 0)
-			get_rat(op).set(rd, tag);
+		RegType dst = dst_type(op);
+		if (dst != RegType::NONE && !(dst == RegType::INT && rd == 0))
+			alias_table(dst).set(rd, tag);
 
 		decode_q.pop_front();
 	}
@@ -245,8 +242,8 @@ void CPU::writeback() {
 				uint32_t target =
 					taken ? exec.target : entry.pc + WORD_BYTES;
 
-				if (is_branch(exec.op))
-					branch_pred->update(entry.pc, taken);
+				branch_count++;
+				branch_pred->update(entry.pc, entry.op, taken, target);
 
 				bool mispred =
 					taken != entry.pred_taken ||
@@ -257,11 +254,9 @@ void CPU::writeback() {
 					jumped = true;
 					pc = target;
 					out << "Branch misprediction: flushing pipeline. ";
-					branch_mispreds++;
+					mispred_count++;
 					return;
 				}
-
-				branch_preds++;
 			}
 		}
 	}
@@ -275,10 +270,11 @@ void CPU::commit() {
 		if (is_load(entry.op) || is_store(entry.op))
 			if (!lsus.commit(entry.tag, log)) return;
 
-		if (writes_register(entry.op) && entry.rd != 0) {
-			get_regfile(entry.op).write(entry.rd, entry.value);
-			if (get_rat(entry.op).get(entry.rd) == entry.tag)
-				get_rat(entry.op).set(entry.rd, -1U);
+		RegType dst = dst_type(entry.op);
+		if (dst != RegType::NONE && !(dst == RegType::INT && entry.rd == 0)) {
+			regfile(dst).write(entry.rd, entry.value);
+			if (alias_table(dst).get(entry.rd) == entry.tag)
+				alias_table(dst).set(entry.rd, -1U);
 		}
 
 		rob.pop();
@@ -286,7 +282,8 @@ void CPU::commit() {
 
 		if (entry.should_halt) {
 			halted = true; 
-			out << "Returned outside the program range (0x" << hex << end << dec << "). Halting CPU. ";
+			out << "ECALL encountered. Halting CPU. ";
+			// out << "Returned outside the program range (0x" << hex << end << dec << "). Halting CPU. ";
 			return;
 		}
 	}

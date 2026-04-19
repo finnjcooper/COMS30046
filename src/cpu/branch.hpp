@@ -1,23 +1,66 @@
 #pragma once
-#include "isa.hpp"
+#include <vector>
+#include "helpers.hpp"
+
+struct Prediction {
+	bool taken = false;
+	uint32_t target = 0;
+};
 
 class BranchPredictor {
 public:
-	virtual bool predict(uint32_t pc, Instruction instr) = 0;
-	virtual void update(uint32_t pc, bool taken) = 0;
+	BranchPredictor(size_t btb_size = 256) : btb(btb_size) {}
+	virtual ~BranchPredictor() = default;
+
+	Prediction predict(uint32_t pc, Instruction instr) {
+		uint32_t fallthrough = pc + WORD_BYTES;
+
+		if (instr.op == JAL) return {true, static_cast<uint32_t>(pc + instr.imm)};
+
+		if (is_branch(instr.op) && !predict_direction(pc))
+			return {false, fallthrough};
+
+		const auto &entry = btb[btb_index(pc)];
+		if (entry.pc == pc) return {true, entry.target};
+		if (is_branch(instr.op)) return {true, static_cast<uint32_t>(pc + instr.imm)};
+		return {false, fallthrough};
+	}
+
+	void update(uint32_t pc, Op op, bool taken, uint32_t target) {
+		if (is_branch(op)) update_direction(pc, taken);
+
+		if (taken) {
+			auto &entry = btb[btb_index(pc)];
+			entry = {pc, target};
+		}
+	}
+
+protected:
+	virtual bool predict_direction(uint32_t) = 0;
+	virtual void update_direction(uint32_t, bool) = 0;
+
+private:
+	struct BTBEntry {
+		uint32_t pc = -1U;
+		uint32_t target = 0;
+	};
+
+	vector<BTBEntry> btb;
+
+	size_t btb_index(uint32_t pc) const {
+		return (pc >> 2) % btb.size();
+	}
 };
 
 class StaticBranchPredictor : public BranchPredictor {
 public:
 	StaticBranchPredictor(bool should_take = true) : should_take(should_take) {}
 
-	bool predict(uint32_t pc, Instruction instr) override {
-		if (instr.op == JAL) return true;
-		if (!is_branch(instr.op)) return false;
+	bool predict_direction(uint32_t) override {
 		return should_take;
 	}
 
-	void update(uint32_t pc, bool taken) override {}
+	void update_direction(uint32_t, bool) override {}
 
 private:
 	bool should_take;
@@ -27,19 +70,17 @@ class OneBitPredictor : public BranchPredictor {
 public:
 	OneBitPredictor(size_t size = 256, bool init_taken = false) : history(size, init_taken) {}
 
-	bool predict(uint32_t pc, Instruction instr) override {
-		if (instr.op == JAL) return true;
-		if (!is_branch(instr.op)) return false;
-		return history[normalise(pc)];
+	bool predict_direction(uint32_t pc) override {
+		return history[index(pc)];
 	}
 
-	void update(uint32_t pc, bool taken) override {
-		history[normalise(pc)] = taken;
+	void update_direction(uint32_t pc, bool taken) override {
+		history[index(pc)] = taken;
 	}
 
 private:
 	vector<bool> history;
-	size_t normalise(uint32_t pc) {
+	size_t index(uint32_t pc) {
 		return (pc >> 2) % history.size();
 	}
 };
@@ -48,24 +89,22 @@ class TwoBitPredictor : public BranchPredictor {
 public:
 	TwoBitPredictor(size_t size = 256, uint8_t init_state = 1U) : history(size, init_state) {}
 
-	bool predict(uint32_t pc, Instruction instr) override {
-		if (instr.op == JAL) return true;
-		if (!is_branch(instr.op)) return false;
-		return history[normalise(pc)] >= 2;
+	bool predict_direction(uint32_t pc) override {
+		return history[index(pc)] >= 2;
 	}
 
-	void update(uint32_t pc, bool taken) override {
-		uint8_t &state = history[normalise(pc)];
+	void update_direction(uint32_t pc, bool taken) override {
+		uint8_t &state = history[index(pc)];
 		if (taken) {
 			if (state < 3) state++;
-		} else {
-			if (state > 0) state--;
+		} else if (state > 0) {
+			state--;
 		}
 	}
 
 private:
 	vector<uint8_t> history;
-	size_t normalise(uint32_t pc) {
+	size_t index(uint32_t pc) {
 		return (pc >> 2) % history.size();
 	}
 };

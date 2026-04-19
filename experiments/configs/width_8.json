@@ -1,0 +1,12 @@
+{
+  "pipe-width": 8,
+  "rs-size": 32,
+  "lsq-size": 32,
+  "alu-count": 8,
+  "mul-count": 8,
+  "ctrl-count": 8,
+  "fpu-count": 8,
+  "vec-count": 8,
+  "lsu-count": 8,
+  "branch": "two_bit"
+}

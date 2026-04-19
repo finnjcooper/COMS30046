@@ -8,19 +8,19 @@ public:
 		if (--cycles_remaining != 0) return nullopt;
 
 		Op op = current.op;
-		uint32_t r1 = current.Vj, r2 = current.Vk;
+		uint32_t r1 = current.Vj, r2 = current.Vk, r3 = current.Vl;
 
 		if (is_ui(op) || is_alui(op)) r2 = current.imm;
 		if (op == LUI)                r1 = 0U;
 		if (op == AUIPC)              r1 = current.pc;
 
-		uint32_t alu_out = exec(op, r1, r2);
+		uint32_t alu_out = exec(op, r1, r2, r3);
 		busy_ = false;
 		return ExecEntry {current.op, alu_out, 0, 0, false, false, current.tag};
 	}
 
 private:
-	uint32_t exec(Op op, uint32_t operand1, uint32_t operand2) override {
+	uint32_t exec(Op op, uint32_t operand1, uint32_t operand2, uint32_t operand3) override {
 		switch (op) {
 			case ADD: case ADDI: case LUI: case AUIPC:
 				return operand1 + operand2;

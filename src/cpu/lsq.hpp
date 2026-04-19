@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <deque>
 #include <optional>
+#include "exec.hpp"
 #include "helpers.hpp"
 #include "memory.hpp"
 #include "trace.hpp"
@@ -52,7 +53,7 @@ public:
 		auto &entry = entries[idx];
 
 		if (is_load(entry.op)) {
-			uint32_t raw = load(entry, mem);
+			uint32_t raw = load_forwarded(entry, idx, mem);
 			entry.Vk = format_load(entry.op, raw);
 		}
 
@@ -135,6 +136,31 @@ private:
 		}
 	}
 
+	uint32_t load_forwarded(const LSQEntry &load_entry, size_t load_idx, const Memory &mem) const {
+		uint32_t raw = load(load_entry, mem);
+		uint8_t load_size = access_size(load_entry.op);
+
+		for (size_t i = 0; i < load_idx; i++) {
+			const auto &store_entry = entries[i];
+			if (!is_store(store_entry.op) || !overlaps(store_entry, load_entry)) continue;
+
+			uint8_t store_size = access_size(store_entry.op);
+			for (uint8_t load_byte = 0; load_byte < load_size; load_byte++) {
+				uint64_t byte_addr = static_cast<uint64_t>(load_entry.addr) + load_byte;
+				uint64_t store_start = store_entry.addr;
+				uint64_t store_end = store_start + store_size;
+				if (byte_addr < store_start || byte_addr >= store_end) continue;
+
+				uint8_t store_byte = static_cast<uint8_t>(byte_addr - store_start);
+				uint32_t shift = load_byte * 8;
+				uint32_t forwarded = ((store_entry.Vk >> (store_byte * 8)) & 0xFF) << shift;
+				raw = (raw & ~(0xFFU << shift)) | forwarded;
+			}
+		}
+
+		return raw;
+	}
+
 
 	static void store(const LSQEntry &entry, Memory &mem, CommitLog &log) {
 		switch (entry.op) {
@@ -176,7 +202,7 @@ private:
 			const auto &entry = entries[i];
 			if (!is_store(entry.op)) continue;
 			if (entry.Qj != -1U) return false;
-			if (overlaps(entry, load_entry)) return false;
+			if (overlaps(entry, load_entry) && entry.Qk != -1U) return false;
 		}
 
 		return true;

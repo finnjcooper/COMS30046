@@ -13,10 +13,10 @@ public:
 		table[reg] = tag;
 	}
 
-	void rebuild(ReOrderBuffer &rob) {
+	void rebuild(ReOrderBuffer &rob, RegType type) {
 		for (auto &entry : table) entry = -1U;
 		for (auto &entry : rob.get_entries())
-			if (writes_register(entry.op) && entry.rd != 0)
+			if (dst_type(entry.op) == type && !(type == RegType::INT && entry.rd == 0))
 				table[entry.rd] = entry.tag;
 	}
 

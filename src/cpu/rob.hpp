@@ -28,7 +28,14 @@ public:
 	uint32_t allocate(DecodeEntry decode) {
 		if (entries.size() == max_size) return -1U;
 		uint32_t tag = next_tag++;
-		entries.push_back({false, false, false, decode.pred_taken, decode.pred_target, decode.instr.op, decode.instr.rd, 0, 0, decode.pc, tag});
+		ROBEntry entry;
+		entry.pred_taken = decode.pred_taken;
+		entry.pred_target = decode.pred_target;
+		entry.op = decode.instr.op;
+		entry.rd = decode.instr.rd;
+		entry.pc = decode.pc;
+		entry.tag = tag;
+		entries.push_back(entry);
 		return tag;
 	}
 
