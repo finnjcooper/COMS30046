@@ -50,14 +50,21 @@ struct VectorState {
 	}
 
 	uint8_t vlmax() const {
-		return static_cast<uint8_t>(vector_bits / vsew_bits);
+		return vlmax(vsew_bits);
 	}
 
-	uint8_t set_vl(uint32_t avl, uint8_t sew_bits) {
+	uint8_t vlmax(uint8_t sew_bits) const {
+		return static_cast<uint8_t>(vector_bits / sew_bits);
+	}
+
+	uint8_t vl_for(uint32_t avl, uint8_t sew_bits) const {
+		uint8_t max_vl = vlmax(sew_bits);
+		return static_cast<uint8_t>(avl < max_vl ? avl : max_vl);
+	}
+
+	void apply(uint8_t next_vl, uint8_t sew_bits) {
 		vsew_bits = sew_bits;
-		uint8_t max_vl = vlmax();
-		vl = static_cast<uint8_t>(avl < max_vl ? avl : max_vl);
-		return vl;
+		vl = next_vl;
 	}
 };
 

@@ -16,6 +16,7 @@ struct ROBEntry {
 	Value value = 0;
 	uint32_t addr = 0;
 	uint32_t pc = 0;
+	uint8_t vl = 0, sew = 0;
 
 	uint32_t tag = -1U;
 };
@@ -49,6 +50,8 @@ public:
 				entry.addr = exec.addr;
 				entry.jumped = exec.jumped;
 				entry.should_halt = exec.should_halt;
+				entry.vl = exec.vl;
+				entry.sew = exec.sew;
 				entry.ready = true;
 				break;
 			}

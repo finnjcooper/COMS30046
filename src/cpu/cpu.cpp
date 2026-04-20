@@ -34,7 +34,7 @@ CPU::CPU(const Program &prog, const Config &config) :
 	vecs(config.vec_count, config.rs_size, [this] {
 		return make_unique<VectorUnit>(vec_state);
 	}),
-	lsus(config.lsu_count, config.lsq_size, mem, vec_state),
+	lsus(config.lsu_count, config.lsq_size, mem),
 	exec_paths {&alus, &muls, &ctrls, &lsus, &fpus, &vecs} {
 	if (config.vector_bits != 128 && config.vector_bits != 256 && config.vector_bits != 512)
 		throw invalid_argument("Invalid vector register width");
@@ -219,8 +219,15 @@ void CPU::dispatch() {
 		uint8_t vl = vec_state.vl;
 		uint8_t sew = vec_state.vsew_bits;
 		if (is_vset(op)) sew = decode.instr.sew;
-		if (is_vec(op) && !is_vset(op) && vec_state.tag != -1U)
-			Qv = vec_state.tag;
+		if (is_vec(op) && !is_vset(op) && vec_state.tag != -1U) {
+			auto &vset = rob.get(vec_state.tag);
+			if (vset.ready) {
+				vl = vset.vl;
+				sew = vset.sew;
+			} else {
+				Qv = vec_state.tag;
+			}
+		}
 
 		path.dispatch({true, op, Vj, Vk, Vl, Qj, Qk, Ql, Qv, pc, imm, rm, vl, sew, tag});
 
@@ -251,8 +258,6 @@ void CPU::writeback() {
 			if (writes_register(exec.op))
 				for (const auto &other : exec_paths)
 					other->wake(exec);
-			if (is_vset(exec.op) && vec_state.tag == exec.tag)
-				vec_state.tag = -1U;
 
 			if (is_ctrl(exec.op)) {
 				auto &entry = rob.get(exec.tag);
@@ -294,6 +299,12 @@ void CPU::commit() {
 			regfile(dst).write(entry.rd, entry.value);
 			if (alias_table(dst).get(entry.rd) == entry.tag)
 				alias_table(dst).set(entry.rd, -1U);
+		}
+
+		if (is_vset(entry.op)) {
+			vec_state.apply(entry.vl, entry.sew);
+			if (vec_state.tag == entry.tag)
+				vec_state.tag = -1U;
 		}
 
 		rob.pop();

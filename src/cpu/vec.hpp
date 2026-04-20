@@ -23,7 +23,7 @@ public:
 			uint32_t avl = current.op == VSETIVLI
 				? static_cast<uint32_t>(current.imm)
 				: (current.imm == -1 ? state.vector_bits / sew : current.Vj.as_scalar());
-			uint8_t vl = state.set_vl(avl, sew);
+			uint8_t vl = state.vl_for(avl, sew);
 			entry.value = Value::scalar(vl);
 			entry.vl = vl;
 			entry.sew = sew;
@@ -52,7 +52,7 @@ private:
 			case VMADD_VV: return vmadd();
 			case VMV_V_I: return vmv_v_i();
 			case VMV_S_X: return vmv_s_x();
-			case VMV_X_S: return Value::scalar(current.Vj.lane(0));
+			case VMV_X_S: return Value::scalar(vmv_x_s());
 			case VREDSUM_VS: return vredsum();
 			case VFMV_V_F: return vfmv_v_f();
 			case VFMACC_VV: return vfmac(/*accumulate=*/true);
@@ -118,6 +118,15 @@ private:
 		Value result = current.Vl.is_vector() ? current.Vl : Value::vector_zero();
 		result.set_lane(0, wrap(current.Vj.as_scalar()));
 		return result;
+	}
+
+	uint32_t vmv_x_s() {
+		uint32_t lane = current.Vj.lane(0);
+		switch (current.sew) {
+			case 8: return sign_extend(lane & 0xFF, 8);
+			case 16: return sign_extend(lane & 0xFFFF, 16);
+			default: return lane;
+		}
 	}
 
 	Value vredsum() {

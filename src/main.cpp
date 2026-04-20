@@ -38,14 +38,15 @@ int main(int argc, char* argv[]) {
 	auto mispred_rate = branch_count ? 100.0 * mispred_count / branch_count : 0.0;
 
 	auto filename = "experiments/results.csv";
-	const bool results_exists = static_cast<bool>(ifstream(filename));
+	ifstream existing_results(filename, ios::ate);
+	const bool write_header = !existing_results || existing_results.tellg() == 0;
 	ofstream results(filename, ios::app);
 	if (!results) {
 		cerr << "Unable to open " << filename << endl;
 		return 1;
 	}
 
-	if (!results_exists) results << "Config,Benchmark,Instructions,IPC,Prediction Rate (%)\n";
+	if (write_header) results << "Config,Benchmark,Instructions,IPC,Prediction Rate (%)\n";
 
 	auto bench_start = elfPath.find_last_of("/\\");
 	string bench = elfPath.substr(bench_start == string::npos ? 0 : bench_start + 1);

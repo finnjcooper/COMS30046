@@ -34,15 +34,15 @@ private:
 
 class LoadStorePath : public ExecPath {
 public:
-	LoadStorePath(size_t unit_count, size_t queue_size, Memory &mem, VectorState &vec_state) :
-		lsus(unit_count), lsq(queue_size, vec_state), mem(mem) {}
+	LoadStorePath(size_t unit_count, size_t queue_size, Memory &mem) :
+		lsus(unit_count), lsq(queue_size), mem(mem) {}
 
 	bool can_allocate() const override {
 		return lsq.can_allocate();
 	}
 
 	void dispatch(const RSEntry &entry) override {
-		lsq.allocate(entry.op, entry.tag, entry.Vj, entry.Vk, entry.Qj, entry.Qk, entry.Qv, entry.imm);
+		lsq.allocate(entry.op, entry.tag, entry.Vj, entry.Vk, entry.Qj, entry.Qk, entry.Qv, entry.imm, entry.vl);
 	}
 
 	void issue() override {

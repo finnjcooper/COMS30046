@@ -25,17 +25,17 @@ struct LSQEntry {
 
 class LoadStoreQueue {
 public:
-	LoadStoreQueue(size_t size, VectorState &vec_state) : max_size(size), vec_state(vec_state) {}
+	LoadStoreQueue(size_t size) : max_size(size) {}
 
 	bool can_allocate() const {
 		return entries.size() < max_size;
 	}
 
-	void allocate(Op op, uint32_t tag, Value Vj, Value Vk, uint32_t Qj, uint32_t Qk, uint32_t Qv, int32_t imm) {
+	void allocate(Op op, uint32_t tag, Value Vj, Value Vk, uint32_t Qj, uint32_t Qk, uint32_t Qv, int32_t imm, uint8_t entry_vl) {
 		uint32_t addr = 0;
 		if (Qj == -1U) addr = Vj.as_scalar() + imm;
 
-		uint8_t vl = is_vload(op) || is_vstore(op) ? vec_state.vl : 0;
+		uint8_t vl = is_vload(op) || is_vstore(op) ? entry_vl : 0;
 		uint8_t sew = is_vload(op) || is_vstore(op) ? op_sew(op) : 0;
 		entries.push_back(LSQEntry {op, tag, Vj, Vk, Qj, Qk, Qv, imm, addr, vl, sew, false, false});
 	}
@@ -111,7 +111,6 @@ public:
 
 private:
 	size_t max_size;
-	VectorState &vec_state;
 	deque<LSQEntry> entries;
 
 	uint32_t access_size(const LSQEntry &entry) const {
