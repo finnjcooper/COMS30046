@@ -67,6 +67,18 @@ set(RISCV_CFLAGS
 	-fno-stack-protector
 )
 
+set(RISCV_VECTOR_CFLAGS
+	-march=rv32imfv
+	-mabi=ilp32f
+	-mno-relax
+	-O3
+	-ffreestanding
+	-fno-pic
+	-fno-pie
+	-fno-builtin
+	-fno-stack-protector
+)
+
 set(STARTUP ${CMAKE_SOURCE_DIR}/test/startup/start.s)
 set(LINKER ${CMAKE_SOURCE_DIR}/test/startup/linker.ld)
 set(RISCV_LDFLAGS
@@ -85,13 +97,17 @@ file(GLOB BENCH_SOURCES "${BENCH_SOURCE_DIR}/*.c")
 
 foreach(TEST_SOURCE ${TEST_SOURCES})
 	get_filename_component(TEST_NAME ${TEST_SOURCE} NAME_WE)
+	set(TEST_CFLAGS ${RISCV_CFLAGS})
+	if(TEST_NAME MATCHES "_vec$")
+		set(TEST_CFLAGS ${RISCV_VECTOR_CFLAGS})
+	endif()
 	
 	set(ELF_OUTPUT ${CMAKE_BINARY_DIR}/${TEST_NAME}.elf)
 	set(ASM_OUTPUT ${CMAKE_BINARY_DIR}/${TEST_NAME}.asm)
 	
 	add_custom_command(
 		OUTPUT ${ELF_OUTPUT}
-		COMMAND ${RISCV_GCC} ${RISCV_CFLAGS} ${RISCV_LDFLAGS} ${STARTUP} ${TEST_SOURCE} -o ${ELF_OUTPUT}
+		COMMAND ${RISCV_GCC} ${TEST_CFLAGS} ${RISCV_LDFLAGS} ${STARTUP} ${TEST_SOURCE} -o ${ELF_OUTPUT}
 		COMMAND ${RISCV_OBJDUMP} -d ${ELF_OUTPUT} > ${ASM_OUTPUT}
 		DEPENDS ${STARTUP} ${TEST_SOURCE} ${LINKER}
 		COMMENT "Building RISC-V test: ${TEST_NAME}"
@@ -102,13 +118,17 @@ endforeach()
 
 foreach(BENCH_SOURCE ${BENCH_SOURCES})
 	get_filename_component(BENCH_NAME ${BENCH_SOURCE} NAME_WE)
+	set(BENCH_CFLAGS ${RISCV_CFLAGS})
+	if(BENCH_NAME MATCHES "_vec$")
+		set(BENCH_CFLAGS ${RISCV_VECTOR_CFLAGS})
+	endif()
 	
 	set(ELF_OUTPUT ${BENCH_BINARY_DIR}/${BENCH_NAME}.elf)
 	set(ASM_OUTPUT ${BENCH_BINARY_DIR}/${BENCH_NAME}.asm)
 	
 	add_custom_command(
 		OUTPUT ${ELF_OUTPUT}
-		COMMAND ${RISCV_GCC} ${RISCV_CFLAGS} ${RISCV_LDFLAGS} ${STARTUP} ${BENCH_SOURCE} -o ${ELF_OUTPUT}
+		COMMAND ${RISCV_GCC} ${BENCH_CFLAGS} ${RISCV_LDFLAGS} ${STARTUP} ${BENCH_SOURCE} -o ${ELF_OUTPUT}
 		COMMAND ${RISCV_OBJDUMP} -d ${ELF_OUTPUT} > ${ASM_OUTPUT}
 		DEPENDS ${STARTUP} ${BENCH_SOURCE} ${LINKER}
 		COMMENT "Building RISC-V benchmark: ${BENCH_NAME}"

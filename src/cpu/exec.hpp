@@ -5,12 +5,15 @@
 struct ExecEntry {
 	Op op = INVALID;
 
-	uint32_t value = 0, addr = 0;
+	Value value = 0;
+	uint32_t addr = 0;
 
 	uint32_t target = 0;
 	bool jumped = false, should_halt = false;
 
 	uint32_t tag = -1U;
+	uint8_t vl = 0;
+	uint8_t sew = 0;
 };
 
 struct RSEntry {
@@ -18,12 +21,14 @@ struct RSEntry {
 
 	Op op = INVALID;
 
-	uint32_t Vj = 0, Vk = 0, Vl = 0;
-	uint32_t Qj = -1U, Qk = -1U, Ql = -1U;
+	Value Vj = 0, Vk = 0, Vl = 0;
+	uint32_t Qj = -1U, Qk = -1U, Ql = -1U, Qv = -1U;
 	
 	uint32_t pc = 0;
 	int32_t imm = 0;
 	uint8_t rm = 0;
+	uint8_t vl = 0;
+	uint8_t sew = 0;
 
 	uint32_t tag = -1U;
 };

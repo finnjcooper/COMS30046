@@ -1,4 +1,6 @@
 #pragma once
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <stdexcept>
 
@@ -6,6 +8,58 @@ using namespace std;
 
 static constexpr size_t MEM_SIZE = 64 * 1024ULL;
 static constexpr uint8_t WORD_BYTES = 4ULL, NUM_REGISTERS = 32ULL, NUM_FLOAT_REGISTERS = 32ULL;
+static constexpr uint8_t NUM_VECTOR_REGISTERS = 32ULL, MAX_VECTOR_LANES = 64ULL;
+
+struct Value {
+	bool vector_value = false;
+	array<uint32_t, MAX_VECTOR_LANES> lanes {};
+
+	Value(uint32_t scalar = 0) {
+		lanes[0] = scalar;
+	}
+
+	static Value scalar(uint32_t scalar) {
+		return Value(scalar);
+	}
+
+	static Value vector_zero() {
+		Value value;
+		value.vector_value = true;
+		return value;
+	}
+
+	bool is_vector() const { return vector_value; }
+	uint32_t as_scalar() const { return lanes[0]; }
+	uint32_t lane(size_t index) const { return lanes[index]; }
+	void set_lane(size_t index, uint32_t value) {
+		vector_value = true;
+		lanes[index] = value;
+	}
+
+	operator uint32_t() const { return as_scalar(); }
+};
+
+struct VectorState {
+	uint32_t tag = -1U;
+	uint32_t vector_bits = 128;
+	uint8_t vsew_bits = 32;
+	uint8_t vl = 4;
+
+	VectorState(uint32_t bits = 128) : vector_bits(bits) {
+		vl = vlmax();
+	}
+
+	uint8_t vlmax() const {
+		return static_cast<uint8_t>(vector_bits / vsew_bits);
+	}
+
+	uint8_t set_vl(uint32_t avl, uint8_t sew_bits) {
+		vsew_bits = sew_bits;
+		uint8_t max_vl = vlmax();
+		vl = static_cast<uint8_t>(avl < max_vl ? avl : max_vl);
+		return vl;
+	}
+};
 
 enum Op {
 	INVALID,
@@ -29,7 +83,15 @@ enum Op {
 	FCVT_W_S, FCVT_WU_S, FCVT_S_W, FCVT_S_WU,
 	FCLASS_S,
 	//rv32v
-	//TODO: add vector instructions
+	VSETVLI, VSETIVLI,
+	VLE8_V, VLE16_V, VLE32_V,
+	VSE8_V, VSE16_V, VSE32_V,
+	VADD_VV, VADD_VX, VADD_VI,
+	VMUL_VV, VMUL_VX,
+	VMACC_VV, VMADD_VV,
+	VMV_V_I, VMV_S_X, VMV_X_S,
+	VREDSUM_VS,
+	VFMV_V_F, VFMACC_VV, VFMADD_VV,
 };
 
 struct Instruction {
@@ -38,6 +100,7 @@ struct Instruction {
 	int32_t imm = 0;
 	uint8_t rs3 = 0;
 	uint8_t rm = 0;
+	uint8_t sew = 0;
 };
 
 
@@ -65,6 +128,8 @@ inline ExecType exec_type(Op op) {
 		case LB: case LH: case LW: case LBU: case LHU:
 		case SB: case SH: case SW:
 		case FLW: case FSW:
+		case VLE8_V: case VLE16_V: case VLE32_V:
+		case VSE8_V: case VSE16_V: case VSE32_V:
 			return ExecType::LOADSTORE;
 		case FMADD_S: case FMSUB_S: case FNMSUB_S: case FNMADD_S:
 		case FADD_S: case FSUB_S: case FMUL_S: case FDIV_S: case FSQRT_S:
@@ -74,6 +139,14 @@ inline ExecType exec_type(Op op) {
 		case FMV_X_W: case FMV_W_X:
 		case FCLASS_S:
 			return ExecType::FLOAT;
+		case VSETVLI: case VSETIVLI:
+		case VADD_VV: case VADD_VX: case VADD_VI:
+		case VMUL_VV: case VMUL_VX:
+		case VMACC_VV: case VMADD_VV:
+		case VMV_V_I: case VMV_S_X: case VMV_X_S:
+		case VREDSUM_VS:
+		case VFMV_V_F: case VFMACC_VV: case VFMADD_VV:
+			return ExecType::VECTOR;
 		default:
 			throw invalid_argument("Invalid operation");
 	}
@@ -100,6 +173,10 @@ inline RegType src_type(Op op, uint8_t operand) {
 				case FLW: case FSW:
 				case FCVT_S_W: case FCVT_S_WU:
 				case FMV_W_X:
+				case VSETVLI:
+				case VLE8_V: case VLE16_V: case VLE32_V:
+				case VSE8_V: case VSE16_V: case VSE32_V:
+				case VMV_S_X:
 					return RegType::INT;
 				case FADD_S: case FSUB_S: case FMUL_S: case FDIV_S: case FSQRT_S:
 				case FMADD_S: case FMSUB_S: case FNMSUB_S: case FNMADD_S:
@@ -108,7 +185,15 @@ inline RegType src_type(Op op, uint8_t operand) {
 				case FCVT_W_S: case FCVT_WU_S:
 				case FMV_X_W:
 				case FCLASS_S:
+				case VFMV_V_F:
 					return RegType::FLOAT;
+				case VADD_VV: case VADD_VX: case VADD_VI:
+				case VMUL_VV: case VMUL_VX:
+				case VMACC_VV: case VMADD_VV:
+				case VMV_X_S:
+				case VREDSUM_VS:
+				case VFMACC_VV: case VFMADD_VV:
+					return RegType::VECTOR;
 				default:
 					return RegType::NONE;
 			}
@@ -125,6 +210,16 @@ inline RegType src_type(Op op, uint8_t operand) {
 				case FMIN_S: case FMAX_S: case FEQ_S: case FLT_S: case FLE_S:
 				case FSW:
 					return RegType::FLOAT;
+				case VADD_VV:
+				case VMUL_VV:
+				case VMACC_VV: case VMADD_VV:
+				case VREDSUM_VS:
+				case VFMACC_VV: case VFMADD_VV:
+				case VSE8_V: case VSE16_V: case VSE32_V:
+					return RegType::VECTOR;
+				case VADD_VX:
+				case VMUL_VX:
+					return RegType::INT;
 				default:
 					return RegType::NONE;
 			}
@@ -132,6 +227,14 @@ inline RegType src_type(Op op, uint8_t operand) {
 			switch (op) {
 				case FMADD_S: case FMSUB_S: case FNMSUB_S: case FNMADD_S:
 					return RegType::FLOAT;
+				case VADD_VV: case VADD_VX: case VADD_VI:
+				case VMUL_VV: case VMUL_VX:
+				case VMACC_VV: case VMADD_VV:
+				case VMV_V_I: case VMV_S_X:
+				case VREDSUM_VS:
+				case VFMV_V_F:
+				case VFMACC_VV: case VFMADD_VV:
+					return RegType::VECTOR;
 				default:
 					return RegType::NONE;
 			}
@@ -152,6 +255,8 @@ inline RegType dst_type(Op op) {
 		case FCVT_W_S: case FCVT_WU_S:
 		case FMV_X_W:
 		case FCLASS_S:
+		case VSETVLI: case VSETIVLI:
+		case VMV_X_S:
 			return RegType::INT;
 		case FADD_S: case FSUB_S: case FMUL_S: case FDIV_S: case FSQRT_S:
 		case FMADD_S: case FMSUB_S: case FNMSUB_S: case FNMADD_S:
@@ -161,6 +266,14 @@ inline RegType dst_type(Op op) {
 		case FCVT_S_W: case FCVT_S_WU:
 		case FMV_W_X:
 			return RegType::FLOAT;
+		case VLE8_V: case VLE16_V: case VLE32_V:
+		case VADD_VV: case VADD_VX: case VADD_VI:
+		case VMUL_VV: case VMUL_VX:
+		case VMACC_VV: case VMADD_VV:
+		case VMV_V_I: case VMV_S_X:
+		case VREDSUM_VS:
+		case VFMV_V_F: case VFMACC_VV: case VFMADD_VV:
+			return RegType::VECTOR;
 		default:
 			return RegType::NONE;
 	}

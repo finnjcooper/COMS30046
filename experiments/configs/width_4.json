@@ -1,12 +1,12 @@
 {
-  "pipe-width": 4,
-  "rs-size": 16,
-  "lsq-size": 16,
-  "alu-count": 4,
-  "mul-count": 4,
-  "ctrl-count": 4,
-  "fpu-count": 4,
-  "vec-count": 4,
-  "lsu-count": 4,
-  "branch": "two_bit"
+  "pipe_width": 4,
+  "rs_size": 16,
+  "lsq_size": 16,
+  "alu_count": 4,
+  "mul_count": 4,
+  "ctrl_count": 4,
+  "fpu_count": 4,
+  "vec_count": 4,
+  "lsu_count": 4,
+  "branch_pred": "two_bit"
 }

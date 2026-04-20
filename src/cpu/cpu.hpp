@@ -59,11 +59,14 @@ private:
 
 	CommitLog log;
 	CommitLog flog;
+	CommitLog vlog;
 	Memory mem;
 	IntegerRegisterFile regs;
 	FloatRegisterFile fregs;
+	VectorRegisterFile vregs;
 	ReOrderBuffer rob;
-	RegisterAliasTable rat, frat;
+	RegisterAliasTable rat, frat, vrat;
+	VectorState vec_state;
 	ExecPath alus, muls, ctrls, fpus, vecs;
 	LoadStorePath lsus;
 	array<ExecPath*, 6ULL> exec_paths;
@@ -75,7 +78,7 @@ private:
 	ostringstream out;
 	function<void(bool, bool, const CommitLog &, const string &)> on_step_callback;
 
-	void read_operand(uint8_t rs, RegType type, uint32_t &V, uint32_t &Q);
+	void read_operand(uint8_t rs, RegType type, Value &V, uint32_t &Q);
 	ExecPath& get_path(Op op);
 	RegisterFile& regfile(RegType type);
 	RegisterAliasTable& alias_table(RegType type);

@@ -13,7 +13,8 @@ struct ROBEntry {
 	Op op = INVALID;
 
 	uint8_t rd = 0;
-	uint32_t value = 0, addr = 0;
+	Value value = 0;
+	uint32_t addr = 0;
 	uint32_t pc = 0;
 
 	uint32_t tag = -1U;

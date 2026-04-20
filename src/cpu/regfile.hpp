@@ -1,35 +1,36 @@
 #pragma once
-#include "trace.hpp"
 #include "isa.hpp"
+#include "trace.hpp"
 
 class RegisterFile {
 public:
-	RegisterFile(uint8_t num_regs, CommitLog &log) : num_regs(num_regs), log(log), regs(num_regs, 0U) {}
-	virtual uint32_t read(uint8_t index) const = 0;
-	virtual void write(uint8_t index, uint32_t value) = 0;
+	RegisterFile(uint8_t num_regs, CommitLog &log) : num_regs(num_regs), log(log), regs(num_regs, Value::scalar(0U)) {}
+	virtual Value read(uint8_t index) const = 0;
+	virtual void write(uint8_t index, Value value) = 0;
 	virtual const char* name(uint8_t index) const = 0;
 protected:
 	uint8_t num_regs;
 	CommitLog &log;
-	vector<uint32_t> regs;
+	vector<Value> regs;
 };
 
 class IntegerRegisterFile : public RegisterFile {
 public:
 	IntegerRegisterFile(uint8_t num_regs, CommitLog &log) : RegisterFile(num_regs, log) {}
 
-	uint32_t read(uint8_t index) const {
+	Value read(uint8_t index) const {
 		if (index >= num_regs) throw out_of_range("Register index out of range");
 		return regs[index];
 	}
 
-	void write(uint8_t index, uint32_t value) {
+	void write(uint8_t index, Value value) {
 		if (index >= num_regs) throw out_of_range("Register index out of range");
 		else if (index == 0) return; // discard writes to x0
 
-		uint32_t old = regs[index];
-		log.record_reg_write(index, old, value);
-		regs[index] = value;
+		uint32_t old = regs[index].as_scalar();
+		uint32_t next = value.as_scalar();
+		log.record_reg_write(index, old, next);
+		regs[index] = Value::scalar(next);
 	}
 
 	const char* name(uint8_t index) const {
@@ -52,21 +53,47 @@ class FloatRegisterFile : public RegisterFile {
 public:
 	FloatRegisterFile(uint8_t num_regs, CommitLog &log) : RegisterFile(num_regs, log) {}
 
-	uint32_t read(uint8_t index) const {
+	Value read(uint8_t index) const {
 		if (index >= num_regs) throw out_of_range("Float register index out of range");
 		return regs[index];
 	}
 
-	void write(uint8_t index, uint32_t value) {
+	void write(uint8_t index, Value value) {
 		if (index >= num_regs) throw out_of_range("Float register index out of range");
 
-		uint32_t old = regs[index];
-		log.record_reg_write(index, old, value);
-		regs[index] = value;
+		uint32_t old = regs[index].as_scalar();
+		uint32_t next = value.as_scalar();
+		log.record_reg_write(index, old, next);
+		regs[index] = Value::scalar(next);
 	}
 
 	const char* name(uint8_t index) const {
 		if (index >= num_regs) throw out_of_range("Float register index out of range");
 		return ("f" + to_string(index)).c_str();
+	}
+};
+
+class VectorRegisterFile : public RegisterFile {
+public:
+	VectorRegisterFile(uint8_t num_regs, CommitLog &log) : RegisterFile(num_regs, log) {
+		for (auto &reg : regs) reg = Value::vector_zero();
+	}
+
+	Value read(uint8_t index) const {
+		if (index >= num_regs) throw out_of_range("Vector register index out of range");
+		return regs[index];
+	}
+
+	void write(uint8_t index, Value value) {
+		if (index >= num_regs) throw out_of_range("Vector register index out of range");
+
+		log.record_reg_write(index, regs[index].as_scalar(), value.as_scalar());
+		value.vector_value = true;
+		regs[index] = value;
+	}
+
+	const char* name(uint8_t index) const {
+		if (index >= num_regs) throw out_of_range("Vector register index out of range");
+		return ("v" + to_string(index)).c_str();
 	}
 };

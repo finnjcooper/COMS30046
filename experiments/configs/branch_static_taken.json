@@ -1,12 +1,12 @@
 {
-  "pipe-width": 2,
-  "rs-size": 8,
-  "lsq-size": 8,
-  "alu-count": 4,
-  "mul-count": 1,
-  "ctrl-count": 1,
-  "fpu-count": 1,
-  "vec-count": 1,
-  "lsu-count": 4,
-  "branch": "static_taken"
+  "pipe_width": 2,
+  "rs_size": 8,
+  "lsq_size": 8,
+  "alu_count": 4,
+  "mul_count": 1,
+  "ctrl_count": 1,
+  "fpu_count": 1,
+  "vec_count": 1,
+  "lsu_count": 4,
+  "branch_pred": "static_taken"
 }

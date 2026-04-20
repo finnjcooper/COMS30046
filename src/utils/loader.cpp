@@ -76,16 +76,17 @@ Config Loader::config(const string &filename) {
 
 	try {
 		auto json = nlohmann::json::parse(file);
-		config.pipe_width = json.value("pipe-width", config.pipe_width);
-		config.rs_size = json.value("rs-size", config.rs_size);
-		config.lsq_size = json.value("lsq-size", config.lsq_size);
-		config.alu_count = json.value("alu-count", config.alu_count);
-		config.mul_count = json.value("mul-count", config.mul_count);
-		config.ctrl_count = json.value("ctrl-count", config.ctrl_count);
-		config.fpu_count = json.value("fpu-count", config.fpu_count);
-		config.vec_count = json.value("vec-count", config.vec_count);
-		config.lsu_count = json.value("lsu-count", config.lsu_count);
-		config.branch_pred = json.value("branch", config.branch_pred);
+		config.pipe_width = json.value("pipe_width", config.pipe_width);
+		config.rs_size = json.value("rs_size", config.rs_size);
+		config.lsq_size = json.value("lsq_size", config.lsq_size);
+		config.alu_count = json.value("alu_count", config.alu_count);
+		config.mul_count = json.value("mul_count", config.mul_count);
+		config.ctrl_count = json.value("ctrl_count", config.ctrl_count);
+		config.fpu_count = json.value("fpu_count", config.fpu_count);
+		config.vec_count = json.value("vec_count", config.vec_count);
+		config.lsu_count = json.value("lsu_count", config.lsu_count);
+		config.vector_bits = json.value("vector_bits", config.vector_bits);
+		config.branch_pred = json.value("branch_pred", config.branch_pred);
 	} catch (const nlohmann::json::exception &e) {
 		cerr << "Could not parse config file: " << filename << " (" << e.what() << "). Using default config." << endl;
 	}

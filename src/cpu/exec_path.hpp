@@ -37,7 +37,7 @@ public:
 
 	virtual void issue() {
 		for (auto &rs : stations)
-			if (rs.busy && rs.Qj == -1U && rs.Qk == -1U && rs.Ql == -1U)
+			if (rs.busy && rs.Qj == -1U && rs.Qk == -1U && rs.Ql == -1U && rs.Qv == -1U)
 				for (auto &unit : units) {
 					if (unit->busy()) continue;
 					unit->start(rs);
@@ -61,12 +61,17 @@ public:
 		return ready;
 	}
 
-	virtual void wake(uint32_t tag, uint32_t value) {
+	virtual void wake(const ExecEntry &exec) {
 		for (auto &rs : stations) {
 			if (!rs.busy) continue;
-			if (rs.Qj == tag) { rs.Vj = value; rs.Qj = -1U; }
-			if (rs.Qk == tag) { rs.Vk = value; rs.Qk = -1U; }
-			if (rs.Ql == tag) { rs.Vl = value; rs.Ql = -1U; }
+			if (rs.Qj == exec.tag) { rs.Vj = exec.value; rs.Qj = -1U; }
+			if (rs.Qk == exec.tag) { rs.Vk = exec.value; rs.Qk = -1U; }
+			if (rs.Ql == exec.tag) { rs.Vl = exec.value; rs.Ql = -1U; }
+			if (rs.Qv == exec.tag) {
+				rs.vl = exec.vl;
+				rs.sew = exec.sew;
+				rs.Qv = -1U;
+			}
 		}
 	}
 

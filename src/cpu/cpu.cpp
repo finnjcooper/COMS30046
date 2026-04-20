@@ -3,7 +3,9 @@
 CPU::CPU(const Program &prog, const Config &config) : 
 	pc(prog.entry_point), end(prog.instrs.size()),
 	mem(prog.instrs, MEM_SIZE), regs(NUM_REGISTERS, log), fregs(NUM_FLOAT_REGISTERS, flog),
+	vregs(NUM_VECTOR_REGISTERS, vlog),
 	width(config.pipe_width), rob(NUM_REGISTERS * 2), rat(NUM_REGISTERS), frat(NUM_FLOAT_REGISTERS),
+	vrat(NUM_VECTOR_REGISTERS), vec_state(config.vector_bits),
 	branch_pred([config]() -> unique_ptr<BranchPredictor> {
 		if (config.branch_pred == "static_taken") {
 			return make_unique<StaticBranchPredictor>(true);
@@ -29,13 +31,15 @@ CPU::CPU(const Program &prog, const Config &config) :
 	fpus(config.fpu_count, config.rs_size, [] {
 		return make_unique<FloatingPointUnit>();
 	}),
-	vecs(config.vec_count, config.rs_size, [] {
-		return make_unique<VectorUnit>();
+	vecs(config.vec_count, config.rs_size, [this] {
+		return make_unique<VectorUnit>(vec_state);
 	}),
-	lsus(config.lsu_count, config.lsq_size, mem),
+	lsus(config.lsu_count, config.lsq_size, mem, vec_state),
 	exec_paths {&alus, &muls, &ctrls, &lsus, &fpus, &vecs} {
-	regs.write(2, MEM_SIZE - WORD_BYTES); // stack pointer
-	regs.write(1, end); // return address
+	if (config.vector_bits != 128 && config.vector_bits != 256 && config.vector_bits != 512)
+		throw invalid_argument("Invalid vector register width");
+	regs.write(2, Value::scalar(MEM_SIZE - WORD_BYTES)); // stack pointer
+	regs.write(1, Value::scalar(end)); // return address
 }
 
 void CPU::step() {
@@ -77,6 +81,7 @@ RegisterFile& CPU::regfile(RegType type) {
 	switch (type) {
 		case RegType::INT: return regs;
 		case RegType::FLOAT: return fregs;
+		case RegType::VECTOR: return vregs;
 		default: throw invalid_argument("Invalid register file");
 	}
 }
@@ -85,13 +90,14 @@ RegisterAliasTable& CPU::alias_table(RegType type) {
 	switch(type) {
 		case RegType::INT: return rat;
 		case RegType::FLOAT: return frat;
+		case RegType::VECTOR: return vrat;
 		default: throw invalid_argument("Invalid alias table");
 	}
 }
 
-void CPU::read_operand(uint8_t rs, RegType type, uint32_t &V, uint32_t &Q) {
+void CPU::read_operand(uint8_t rs, RegType type, Value &V, uint32_t &Q) {
 	if (type == RegType::NONE || (type == RegType::INT && rs == 0)) {
-		V = 0;
+		V = Value::scalar(0);
 		Q = -1U;
 		return;
 	}
@@ -111,7 +117,7 @@ void CPU::read_operand(uint8_t rs, RegType type, uint32_t &V, uint32_t &Q) {
 		V = src.value;
 		Q = -1U;
 	} else {
-		V = 0;
+		V = Value::scalar(0);
 		Q = src_tag;
 	}
 }
@@ -124,6 +130,8 @@ void CPU::flush(uint32_t tag) {
 	rob.flush(tag);
 	rat.rebuild(rob, RegType::INT);
 	frat.rebuild(rob, RegType::FLOAT);
+	vrat.rebuild(rob, RegType::VECTOR);
+	if (vec_state.tag != -1U && vec_state.tag > tag) vec_state.tag = -1U;
 }
 
 string CPU::readout() {
@@ -154,7 +162,7 @@ void CPU::decode() {
 		bool pred_taken = false;
 		uint32_t pred_target = fetch.pc + WORD_BYTES;
 
-		if (is_control(instr.op)) {
+		if (is_ctrl(instr.op)) {
 			auto prediction = branch_pred->predict(fetch.pc, instr);
 			pred_taken = prediction.taken;
 			pred_target = prediction.target;
@@ -202,12 +210,21 @@ void CPU::dispatch() {
 			return;
 		}
 
-		uint32_t Qj = -1U, Qk = -1U, Ql = -1U, Vj = 0, Vk = 0, Vl = 0;
+		uint32_t Qj = -1U, Qk = -1U, Ql = -1U, Qv = -1U;
+		Value Vj = 0, Vk = 0, Vl = 0;
 		read_operand(rs1, src_type(op, 0), Vj, Qj);
 		read_operand(rs2, src_type(op, 1), Vk, Qk);
 		read_operand(rs3, src_type(op, 2), Vl, Ql);
 
-		path.dispatch({true, op, Vj, Vk, Vl, Qj, Qk, Ql, pc, imm, rm, tag});
+		uint8_t vl = vec_state.vl;
+		uint8_t sew = vec_state.vsew_bits;
+		if (is_vset(op)) sew = decode.instr.sew;
+		if (is_vec(op) && !is_vset(op) && vec_state.tag != -1U)
+			Qv = vec_state.tag;
+
+		path.dispatch({true, op, Vj, Vk, Vl, Qj, Qk, Ql, Qv, pc, imm, rm, vl, sew, tag});
+
+		if (is_vset(op)) vec_state.tag = tag;
 
 		RegType dst = dst_type(op);
 		if (dst != RegType::NONE && !(dst == RegType::INT && rd == 0))
@@ -233,9 +250,11 @@ void CPU::writeback() {
 			rob.update(exec);
 			if (writes_register(exec.op))
 				for (const auto &other : exec_paths)
-					other->wake(exec.tag, exec.value);
+					other->wake(exec);
+			if (is_vset(exec.op) && vec_state.tag == exec.tag)
+				vec_state.tag = -1U;
 
-			if (is_control(exec.op)) {
+			if (is_ctrl(exec.op)) {
 				auto &entry = rob.get(exec.tag);
 
 				bool taken = exec.jumped;
