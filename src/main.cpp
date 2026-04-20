@@ -3,9 +3,9 @@
 
 int main(int argc, char* argv[]) {
 	argparse::ArgumentParser program("RISC-V Simulator");
-	program.add_argument("--elf", "-e").help("path to the ELF binary to load and simulate").required();
+	program.add_argument("elf").help("path to the ELF binary to load and simulate");
+	program.add_argument("--config", "-c").help("path to the configuration file").default_value("");
 	program.add_argument("--headless", "-h").help("run without the TUI").default_value(false).implicit_value(true);
-	program.add_argument("--config", "-c").help("path to the configuration file").default_value("./config.json");
 
 	try {
 		program.parse_args(argc, argv);
@@ -16,15 +16,15 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	string elfPath = program.get<string>("--elf");
-	string asmPath = elfPath.substr(0, elfPath.size() - 4) + ".asm";
+	string elfPath = program.get<string>("elf");
+	// string asmPath = elfPath.substr(0, elfPath.size() - 4) + ".asm";
 
 	auto prog = Loader::ELF(elfPath);
-	auto disasm = Loader::ASM(asmPath);
+	// auto disasm = Loader::ASM(asmPath);
 	auto config = Loader::config(program.get<string>("--config"));
 
 	CPU cpu(prog, config);
-	TUI tui(cpu, disasm);
+	TUI tui(cpu, map<uint32_t, string>());
 
 	if (program.get<bool>("--headless"))
 		while (cpu.running()) cpu.step();
@@ -53,6 +53,7 @@ int main(int argc, char* argv[]) {
 	if (ext_start != string::npos) bench = bench.substr(0, ext_start);
 
 	results << config.name << "," << bench << "," << instr_count << "," << fixed << setprecision(3) << ipc << "," << 100.0 - mispred_rate << "\n";
+	results.close();
 
 	cout << "Instructions executed: " << instr_count << endl;
 	cout << "Cycles taken: " << cycle_count << endl;

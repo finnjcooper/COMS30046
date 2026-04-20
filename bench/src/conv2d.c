@@ -26,7 +26,7 @@ BENCHMARK_NOINLINE void conv2d(int input[IN_H][IN_W], int kernel[K][K], int outp
 }
 
 int main() {
-	int input[IN_H][IN_W] = {
+	static int input[IN_H][IN_W] = {
 		{1, 2, 3, 4, 5, 6},
 		{7, 8, 9, 10, 11, 12},
 		{13, 14, 15, 16, 17, 18},
@@ -35,13 +35,13 @@ int main() {
 		{31, 32, 33, 34, 35, 36}
 	};
 
-	int kernel[K][K] = {
+	static int kernel[K][K] = {
 		{1, 0, -1},
 		{1, 0, -1},
 		{1, 0, -1}
 	};
 
-	int output[OUT_H][OUT_W];
+	static int output[OUT_H][OUT_W];
 
 	conv2d(input, kernel, output);
 	BENCHMARK_KEEP_ALIVE(output);

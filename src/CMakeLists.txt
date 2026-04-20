@@ -30,20 +30,13 @@ FetchContent_Declare(elfio
 
 FetchContent_MakeAvailable(argparse elfio ftxui nlohmann_json)
 
-set(MAIN_SOURCES
-	main.cpp
-	cpu/cpu.cpp
-	tui/tui.cpp
-	utils/loader.cpp
-)
+file(GLOB_RECURSE MAIN_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 add_executable(main ${MAIN_SOURCES})
+set_target_properties(main PROPERTIES OUTPUT_NAME main SUFFIX ".exe")
 
-add_library(lib INTERFACE)
-target_include_directories(lib INTERFACE lib/)
 target_include_directories(main PRIVATE cpu utils tui)
 
 target_link_libraries(main PRIVATE
-	lib
 	ftxui::screen
 	ftxui::dom
 	ftxui::component
@@ -51,88 +44,3 @@ target_link_libraries(main PRIVATE
 	elfio::elfio
 	nlohmann_json::nlohmann_json
 )
-
-set(RISCV_GCC "riscv64-unknown-elf-gcc")
-set(RISCV_OBJDUMP "riscv64-unknown-elf-objdump")
-
-set(RISCV_CFLAGS
-	-march=rv32imf
-	-mabi=ilp32
-	-mno-relax
-	-O2
-	-ffreestanding
-	-fno-pic
-	-fno-pie
-	-fno-builtin
-	-fno-stack-protector
-)
-
-set(RISCV_VECTOR_CFLAGS
-	-march=rv32imfv
-	-mabi=ilp32f
-	-mno-relax
-	-O3
-	-ffreestanding
-	-fno-pic
-	-fno-pie
-	-fno-builtin
-	-fno-stack-protector
-)
-
-set(STARTUP ${CMAKE_SOURCE_DIR}/test/startup/start.s)
-set(LINKER ${CMAKE_SOURCE_DIR}/test/startup/linker.ld)
-set(RISCV_LDFLAGS
-	-nostdlib
-	-static
-	-no-pie
-	-T ${LINKER}
-)
-
-set(BENCH_SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/../bench/src")
-set(BENCH_BINARY_DIR "${CMAKE_CURRENT_LIST_DIR}/../bench/build")
-file(MAKE_DIRECTORY "${BENCH_BINARY_DIR}")
-
-file(GLOB TEST_SOURCES "${CMAKE_SOURCE_DIR}/test/*.c")
-file(GLOB BENCH_SOURCES "${BENCH_SOURCE_DIR}/*.c")
-
-foreach(TEST_SOURCE ${TEST_SOURCES})
-	get_filename_component(TEST_NAME ${TEST_SOURCE} NAME_WE)
-	set(TEST_CFLAGS ${RISCV_CFLAGS})
-	if(TEST_NAME MATCHES "_vec$")
-		set(TEST_CFLAGS ${RISCV_VECTOR_CFLAGS})
-	endif()
-	
-	set(ELF_OUTPUT ${CMAKE_BINARY_DIR}/${TEST_NAME}.elf)
-	set(ASM_OUTPUT ${CMAKE_BINARY_DIR}/${TEST_NAME}.asm)
-	
-	add_custom_command(
-		OUTPUT ${ELF_OUTPUT}
-		COMMAND ${RISCV_GCC} ${TEST_CFLAGS} ${RISCV_LDFLAGS} ${STARTUP} ${TEST_SOURCE} -o ${ELF_OUTPUT}
-		COMMAND ${RISCV_OBJDUMP} -d ${ELF_OUTPUT} > ${ASM_OUTPUT}
-		DEPENDS ${STARTUP} ${TEST_SOURCE} ${LINKER}
-		COMMENT "Building RISC-V test: ${TEST_NAME}"
-	)
-	
-	add_custom_target(${TEST_NAME}_elf ALL DEPENDS ${ELF_OUTPUT})
-endforeach()
-
-foreach(BENCH_SOURCE ${BENCH_SOURCES})
-	get_filename_component(BENCH_NAME ${BENCH_SOURCE} NAME_WE)
-	set(BENCH_CFLAGS ${RISCV_CFLAGS})
-	if(BENCH_NAME MATCHES "_vec$")
-		set(BENCH_CFLAGS ${RISCV_VECTOR_CFLAGS})
-	endif()
-	
-	set(ELF_OUTPUT ${BENCH_BINARY_DIR}/${BENCH_NAME}.elf)
-	set(ASM_OUTPUT ${BENCH_BINARY_DIR}/${BENCH_NAME}.asm)
-	
-	add_custom_command(
-		OUTPUT ${ELF_OUTPUT}
-		COMMAND ${RISCV_GCC} ${BENCH_CFLAGS} ${RISCV_LDFLAGS} ${STARTUP} ${BENCH_SOURCE} -o ${ELF_OUTPUT}
-		COMMAND ${RISCV_OBJDUMP} -d ${ELF_OUTPUT} > ${ASM_OUTPUT}
-		DEPENDS ${STARTUP} ${BENCH_SOURCE} ${LINKER}
-		COMMENT "Building RISC-V benchmark: ${BENCH_NAME}"
-	)
-	
-	add_custom_target(${BENCH_NAME}_bench_elf ALL DEPENDS ${ELF_OUTPUT})
-endforeach()

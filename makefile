@@ -1,8 +1,15 @@
-KERNEL ?= vectoradd
-CONFIG ?= config.json
-HEADLESS ?= 0
+BENCH ?= 
+CONFIG ?= 
 
-HEADLESS_FLAG := $(if $(filter 1,$(HEADLESS)),--headless,)
+BENCH_FILE := 
+ifneq ($(BENCH),)
+	BENCH_FILE := bench/build/$(BENCH).elf
+endif
+
+CONFIG_FLAG := 
+ifneq ($(CONFIG),)
+	CONFIG_FLAG := --config $(CONFIG)
+endif
 
 ifeq ($(OS),Windows_NT)
 	HAVE_NINJA := $(strip $(shell where.exe ninja 2>NUL))
@@ -10,44 +17,25 @@ else
 	HAVE_NINJA := $(strip $(shell command -v ninja 2>/dev/null))
 endif
 
-.PHONY: all cmake clean
+.DEFAULT_GOAL := all
+.PHONY: all bench run headless
 
-default: bench
-
-headless:
-	$(MAKE) HEADLESS=1
-
-
-bench: all
-ifeq ($(OS),Windows_NT)
-	.\build\main.exe --elf .\bench\build\$(KERNEL).elf --config $(CONFIG) $(HEADLESS_FLAG)
-else
-	./build/main --elf ./bench/build/$(KERNEL).elf --config $(CONFIG) $(HEADLESS_FLAG)
-endif
-
-test: all
-ifeq ($(OS),Windows_NT)
-	.\build\main.exe --elf .\build\$(KERNEL).elf --config $(CONFIG) $(HEADLESS_FLAG)
-else
-	./build/main --elf ./build/$(KERNEL).elf --config $(CONFIG) $(HEADLESS_FLAG)
-endif
-
-all: src/ bench/
+all: build/CMakeCache.txt
 	cmake --build build -j
 
+bench:
+	make -C bench
 
-cmake:
+run: all
+	build/main.exe $(BENCH_FILE) $(CONFIG_FLAG)
+
+headless: all
+	build/main.exe $(BENCH_FILE) $(CONFIG_FLAG) --headless
+
+
+build/CMakeCache.txt: src/CMakeLists.txt
 ifneq ($(HAVE_NINJA),)
-	@echo Using Ninja.
-	@cmake --preset ninja src
+	cmake --preset ninja src
 else
-	@echo Using Make.
-	@cmake --preset make src
-endif
-
-clean:
-ifeq ($(OS),Windows_NT)
-	rmdir /s /q build
-else
-	rm -rf build
+	cmake --preset make src
 endif
