@@ -1,4 +1,5 @@
 {
+  "name": "Branch Static Not Taken",
   "pipe_width": 2,
   "rs_size": 8,
   "lsq_size": 8,

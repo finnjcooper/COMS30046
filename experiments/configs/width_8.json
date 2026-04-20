@@ -1,4 +1,5 @@
 {
+  "name": "Width 8",
   "pipe_width": 8,
   "rs_size": 32,
   "lsq_size": 32,

@@ -16,10 +16,11 @@ struct Program {
 };
 
 struct Config {
-	size_t pipe_width = 1, rs_size = 8, lsq_size = 8;
-	size_t alu_count = 1, mul_count = 1, ctrl_count = 1, fpu_count = 1, vec_count = 1, lsu_count = 1;
+	string name = "Baseline";
+	size_t pipe_width = 2, rs_size = 8, lsq_size = 8;
+	size_t alu_count = 2, mul_count = 1, ctrl_count = 1, fpu_count = 1, vec_count = 1, lsu_count = 2;
 	uint32_t vector_bits = 128;
-	string branch_pred = "static_taken";
+	string branch_pred = "two_bit";
 
 	friend ostream& operator<<(ostream& os, const Config& config) {
 		os << "Config:\n";

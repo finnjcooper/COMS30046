@@ -1,4 +1,5 @@
 KERNEL ?= vectoradd
+CONFIG ?= config.json
 HEADLESS ?= 0
 
 HEADLESS_FLAG := $(if $(filter 1,$(HEADLESS)),--headless,)
@@ -19,16 +20,16 @@ headless:
 
 bench: all
 ifeq ($(OS),Windows_NT)
-	.\build\main.exe --elf .\bench\build\$(KERNEL).elf $(HEADLESS_FLAG)
+	.\build\main.exe --elf .\bench\build\$(KERNEL).elf --config $(CONFIG) $(HEADLESS_FLAG)
 else
-	./build/main --elf ./bench/build/$(KERNEL).elf $(HEADLESS_FLAG)
+	./build/main --elf ./bench/build/$(KERNEL).elf --config $(CONFIG) $(HEADLESS_FLAG)
 endif
 
 test: all
 ifeq ($(OS),Windows_NT)
-	.\build\main.exe --elf .\build\$(KERNEL).elf $(HEADLESS_FLAG)
+	.\build\main.exe --elf .\build\$(KERNEL).elf --config $(CONFIG) $(HEADLESS_FLAG)
 else
-	./build/main --elf ./build/$(KERNEL).elf $(HEADLESS_FLAG)
+	./build/main --elf ./build/$(KERNEL).elf --config $(CONFIG) $(HEADLESS_FLAG)
 endif
 
 all: src/ bench/

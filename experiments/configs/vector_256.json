@@ -1,0 +1,14 @@
+﻿{
+    "name":  "Vector 256",
+    "pipe_width":  2,
+    "rs_size":  8,
+    "lsq_size":  8,
+    "alu_count":  4,
+    "mul_count":  1,
+    "ctrl_count":  1,
+    "fpu_count":  1,
+    "vec_count":  1,
+    "lsu_count":  4,
+    "vector_bits":  256,
+    "branch_pred":  "two_bit"
+}

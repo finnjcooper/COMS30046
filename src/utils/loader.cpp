@@ -76,6 +76,7 @@ Config Loader::config(const string &filename) {
 
 	try {
 		auto json = nlohmann::json::parse(file);
+		config.name = json.value("name", config.name);
 		config.pipe_width = json.value("pipe_width", config.pipe_width);
 		config.rs_size = json.value("rs_size", config.rs_size);
 		config.lsq_size = json.value("lsq_size", config.lsq_size);

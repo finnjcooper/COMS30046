@@ -1,3 +1,7 @@
+#include <stddef.h>
+#include <stdint.h>
+#include <riscv_vector.h>
+
 #define N 64
 
 #if defined(__GNUC__)
@@ -8,7 +12,7 @@
 #define BENCHMARK_KEEP_ALIVE(value) do { (void)sizeof(value); } while (0)
 #endif
 
-static int a[N] = {
+static int32_t a[N] = {
 	1, 2, 3, 4, 5, 6, 7, 8,
 	9, 10, 11, 12, 13, 14, 15, 16,
 	17, 18, 19, 20, 21, 22, 23, 24,
@@ -18,7 +22,7 @@ static int a[N] = {
 	49, 50, 51, 52, 53, 54, 55, 56,
 	57, 58, 59, 60, 61, 62, 63, 64
 };
-static int b[N] = {
+static int32_t b[N] = {
 	64, 63, 62, 61, 60, 59, 58, 57,
 	56, 55, 54, 53, 52, 51, 50, 49,
 	48, 47, 46, 45, 44, 43, 42, 41,
@@ -28,40 +32,29 @@ static int b[N] = {
 	16, 15, 14, 13, 12, 11, 10, 9,
 	8, 7, 6, 5, 4, 3, 2, 1
 };
-static int result;
+static int32_t result;
 
-BENCHMARK_NOINLINE int dot_product_vec(int *x, int *y, int n) {
-	int *px = x;
-	int *py = y;
-	int remaining = n;
-	int sum = 0;
+BENCHMARK_NOINLINE int32_t dot_product(int32_t a[N], int32_t b[N], int n) {
+	int32_t sum = 0;
 
-	while (remaining > 0) {
-		int vl;
-		int partial;
-		__asm__ volatile(
-			"vsetvli %[vl], %[remaining], e32, m1, ta, ma\n"
-			"vle32.v v1, (%[px])\n"
-			"vle32.v v2, (%[py])\n"
-			"vmv.v.i v0, 0\n"
-			"vmv.v.i v3, 0\n"
-			"vmacc.vv v3, v1, v2\n"
-			"vredsum.vs v3, v3, v0\n"
-			"vmv.x.s %[partial], v3\n"
-			: [vl] "=&r"(vl), [partial] "=&r"(partial)
-			: [remaining] "r"(remaining), [px] "r"(px), [py] "r"(py)
-			: "memory");
-		sum += partial;
-		px += vl;
-		py += vl;
-		remaining -= vl;
+	while (n > 0) {
+		size_t vl = __riscv_vsetvl_e32m1(n);
+		vint32m1_t va = __riscv_vle32_v_i32m1(a, vl);
+		vint32m1_t vb = __riscv_vle32_v_i32m1(b, vl);
+		vint32m1_t product = __riscv_vmul_vv_i32m1(va, vb, vl);
+		vint32m1_t zero = __riscv_vmv_v_x_i32m1(0, vl);
+		vint32m1_t partial = __riscv_vredsum_vs_i32m1_i32m1(product, zero, vl);
+		sum += __riscv_vmv_x_s_i32m1_i32(partial);
+		a += vl;
+		b += vl;
+		n -= (int)vl;
 	}
 
 	return sum;
 }
 
 int main() {
-	result = dot_product_vec(a, b, N);
+	result = dot_product(a, b, N);
 	BENCHMARK_KEEP_ALIVE(result);
 
 	return 0;

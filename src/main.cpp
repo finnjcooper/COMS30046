@@ -1,4 +1,3 @@
-#include "loader.hpp"
 #include "tui.hpp"
 #include <argparse/argparse.hpp>
 
@@ -37,6 +36,23 @@ int main(int argc, char* argv[]) {
 	auto branch_count = cpu.get_branch_count();
 	auto mispred_count = cpu.get_mispred_count();
 	auto mispred_rate = branch_count ? 100.0 * mispred_count / branch_count : 0.0;
+
+	auto filename = "experiments/results.csv";
+	const bool results_exists = static_cast<bool>(ifstream(filename));
+	ofstream results(filename, ios::app);
+	if (!results) {
+		cerr << "Unable to open " << filename << endl;
+		return 1;
+	}
+
+	if (!results_exists) results << "Config,Benchmark,Instructions,IPC,Prediction Rate (%)\n";
+
+	auto bench_start = elfPath.find_last_of("/\\");
+	string bench = elfPath.substr(bench_start == string::npos ? 0 : bench_start + 1);
+	auto ext_start = bench.find_last_of('.');
+	if (ext_start != string::npos) bench = bench.substr(0, ext_start);
+
+	results << config.name << "," << bench << "," << instr_count << "," << fixed << setprecision(3) << ipc << "," << 100.0 - mispred_rate << "\n";
 
 	cout << "Instructions executed: " << instr_count << endl;
 	cout << "Cycles taken: " << cycle_count << endl;

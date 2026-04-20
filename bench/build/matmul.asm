@@ -1,5 +1,5 @@
 
-G:/Finn/Stuff/Bristol/COMS30046/src/../bench/build/matmul.elf:     file format elf32-littleriscv
+G:\Finn\Stuff\Bristol\COMS30046\bench\build\matmul.elf:     file format elf32-littleriscv
 
 
 Disassembly of section .text:
