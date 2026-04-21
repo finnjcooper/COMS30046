@@ -5,11 +5,11 @@
 #define N 64
 
 #if defined(__GNUC__)
-#define BENCHMARK_NOINLINE __attribute__((noinline, noclone))
-#define BENCHMARK_KEEP_ALIVE(value) __asm__ volatile("" : : "m"(value) : "memory")
+#define NOINLINE __attribute__((noinline, noclone))
+#define KEEP_ALIVE(value) __asm__ volatile("" : : "m"(value) : "memory")
 #else
-#define BENCHMARK_NOINLINE
-#define BENCHMARK_KEEP_ALIVE(value) do { (void)sizeof(value); } while (0)
+#define NOINLINE
+#define KEEP_ALIVE(value) do { (void)sizeof(value); } while (0)
 #endif
 
 static int32_t a[N] = {
@@ -34,7 +34,7 @@ static int32_t b[N] = {
 };
 static int32_t result;
 
-BENCHMARK_NOINLINE int32_t dot_product(int32_t a[N], int32_t b[N], int n) {
+NOINLINE int32_t dot_product(int32_t a[N], int32_t b[N], int n) {
 	int32_t sum = 0;
 
 	while (n > 0) {
@@ -55,7 +55,7 @@ BENCHMARK_NOINLINE int32_t dot_product(int32_t a[N], int32_t b[N], int n) {
 
 int main() {
 	result = dot_product(a, b, N);
-	BENCHMARK_KEEP_ALIVE(result);
+	KEEP_ALIVE(result);
 
 	return 0;
 }

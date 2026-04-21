@@ -267,30 +267,34 @@ void CPU::writeback() {
 				for (const auto &other : exec_paths)
 					other->wake(exec);
 
-			if (is_ctrl(exec.op)) {
-				auto &entry = rob.get(exec.tag);
-				if (is_branch(entry.op)) branch_count++;
+		}
+	}
 
-				bool taken = exec.jumped;
-				uint32_t target =
-					taken ? exec.target : entry.pc + WORD_BYTES;
+	for (auto &entry : rob.get_entries()) {
+		if (!is_ctrl(entry.op)) continue;
+		if (entry.ctrl_handled) continue;
+		if (!entry.ready) return;
 
-				branch_pred->update(entry.pc, entry.op, taken, target);
+		entry.ctrl_handled = true;
+		if (is_branch(entry.op)) branch_count++;
 
-				bool mispred =
-					taken != entry.pred_taken ||
-					target != entry.pred_target;
+		bool taken = entry.jumped;
+		uint32_t target = taken ? entry.target : entry.pc + WORD_BYTES;
 
-				if (mispred) {
-					flush(exec.tag);
-					jumped = true;
-					fetch_stopped = false;
-					pc = target;
-					out << "Branch misprediction: flushing pipeline. ";
-					if (is_branch(entry.op)) mispred_count++;
-					return;
-				}
-			}
+		branch_pred->update(entry.pc, entry.op, taken, target);
+
+		bool mispred =
+			taken != entry.pred_taken ||
+			target != entry.pred_target;
+
+		if (mispred) {
+			if (is_branch(entry.op)) mispred_count++;
+			flush(entry.tag);
+			jumped = true;
+			fetch_stopped = false;
+			pc = target;
+			out << "Branch misprediction: flushing pipeline. ";
+			return;
 		}
 	}
 }

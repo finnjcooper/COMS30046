@@ -6,6 +6,7 @@
 
 struct ROBEntry {
 	bool ready = false, jumped = false;
+	bool ctrl_handled = false;
 	
 	bool pred_taken = false;
 	uint32_t pred_target = 0;
@@ -15,6 +16,7 @@ struct ROBEntry {
 	uint8_t rd = 0;
 	Value value = 0;
 	uint32_t addr = 0;
+	uint32_t target = 0;
 	uint32_t pc = 0;
 	uint8_t vl = 0, sew = 0;
 
@@ -25,6 +27,7 @@ class ReOrderBuffer {
 public:
 	ReOrderBuffer(uint32_t size) : max_size(size) {}
 
+	deque<ROBEntry>& get_entries() { return entries; }
 	const deque<ROBEntry>& get_entries() const { return entries; }
 	bool empty() const { return entries.empty(); }
 
@@ -49,6 +52,7 @@ public:
 			if (entry.tag == exec.tag) {
 				entry.value = exec.value;
 				entry.addr = exec.addr;
+				entry.target = exec.target;
 				entry.jumped = exec.jumped;
 				entry.vl = exec.vl;
 				entry.sew = exec.sew;

@@ -3,14 +3,12 @@ RISCV_OBJDUMP := riscv64-unknown-elf-objdump
 
 SRC_DIR := src
 BUILD_DIR := build
-STARTUP := $(SRC_DIR)/entry/start.s
 LINKER := $(SRC_DIR)/entry/linker.ld
 
 SOURCES := $(wildcard $(SRC_DIR)/*.c)
 ELFS := $(patsubst ${SRC_DIR}/%.c,${BUILD_DIR}/%.elf,$(SOURCES))
 
-RISCV_CFLAGS := \
-	-march=rv32imfv \
+RISCV_BASE_CFLAGS := \
 	-mabi=ilp32f \
 	-mno-relax \
 	-O2 \
@@ -19,6 +17,14 @@ RISCV_CFLAGS := \
 	-fno-pie \
 	-fno-builtin \
 	-fno-stack-protector
+
+RISCV_SCALAR_CFLAGS := \
+	-march=rv32imf \
+	$(RISCV_BASE_CFLAGS)
+
+RISCV_VECTOR_CFLAGS := \
+	-march=rv32imfv \
+	$(RISCV_BASE_CFLAGS)
 
 RISCV_LDFLAGS := \
 	-nostdlib \
@@ -35,8 +41,11 @@ all: $(ELFS)
 $(BUILD_DIR):
 	cmake -E make_directory $@
 
-$(BUILD_DIR)/%.elf: $(SRC_DIR)/%.c $(STARTUP) $(LINKER) | $(BUILD_DIR)
-	$(RISCV_GCC) $(RISCV_CFLAGS) $(RISCV_LDFLAGS) $(STARTUP) $< -o $@
+$(BUILD_DIR)/%_vec.elf: $(SRC_DIR)/%_vec.c $(LINKER) | $(BUILD_DIR)
+	$(RISCV_GCC) $(RISCV_VECTOR_CFLAGS) $(RISCV_LDFLAGS) $< -o $@
+
+$(BUILD_DIR)/%.elf: $(SRC_DIR)/%.c $(LINKER) | $(BUILD_DIR)
+	$(RISCV_GCC) $(RISCV_SCALAR_CFLAGS) $(RISCV_LDFLAGS) $< -o $@
 
 clean:
 	cmake -E rm -f $(ELFS)

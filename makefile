@@ -18,13 +18,19 @@ else
 endif
 
 .DEFAULT_GOAL := all
-.PHONY: all bench run headless
+.PHONY: all clean bench benchclean run headless
 
 all: build/CMakeCache.txt
 	cmake --build build -j
 
+clean:
+	cmake -E remove_directory build
+
 bench:
 	make -C bench
+
+benchclean:
+	make -C bench clean
 
 run: all
 	build/main.exe $(BENCH_FILE) $(CONFIG_FLAG)
