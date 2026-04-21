@@ -1,6 +1,12 @@
 #include <stdint.h>
 
-#define N 64
+#define N 128
+#define VALUE(index) ((((index) * 37 + 23) & 127) + 1)
+#define VALUES16(base) \
+	VALUE((base) + 0), VALUE((base) + 1), VALUE((base) + 2), VALUE((base) + 3), \
+	VALUE((base) + 4), VALUE((base) + 5), VALUE((base) + 6), VALUE((base) + 7), \
+	VALUE((base) + 8), VALUE((base) + 9), VALUE((base) + 10), VALUE((base) + 11), \
+	VALUE((base) + 12), VALUE((base) + 13), VALUE((base) + 14), VALUE((base) + 15)
 
 #if defined(__GNUC__)
 #define NOINLINE __attribute__((noinline, noclone))
@@ -63,14 +69,14 @@ NOINLINE void quicksort(int32_t values[N], int low, int high) {
 }
 
 static int32_t values[N] = {
-	37, 12, 89, 4, 65, 28, 91, 7,
-	42, 73, 18, 56, 99, 31, 2, 84,
-	47, 23, 68, 15, 93, 6, 54, 40,
-	81, 26, 70, 10, 59, 34, 96, 1,
-	44, 78, 21, 63, 87, 30, 5, 52,
-	75, 17, 61, 39, 90, 24, 13, 67,
-	100, 33, 8, 49, 72, 19, 58, 86,
-	27, 94, 11, 45, 69, 3, 80, 36
+	VALUES16(0),
+	VALUES16(16),
+	VALUES16(32),
+	VALUES16(48),
+	VALUES16(64),
+	VALUES16(80),
+	VALUES16(96),
+	VALUES16(112)
 };
 
 int main() {

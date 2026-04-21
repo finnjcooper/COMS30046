@@ -9,17 +9,22 @@
 #include <stddef.h>
 #include <riscv_vector.h>
 
-#define N 64
+#define N 128
+#define FLOAT32(base) \
+	(float)((base) + 0), (float)((base) + 1), (float)((base) + 2), (float)((base) + 3), \
+	(float)((base) + 4), (float)((base) + 5), (float)((base) + 6), (float)((base) + 7), \
+	(float)((base) + 8), (float)((base) + 9), (float)((base) + 10), (float)((base) + 11), \
+	(float)((base) + 12), (float)((base) + 13), (float)((base) + 14), (float)((base) + 15), \
+	(float)((base) + 16), (float)((base) + 17), (float)((base) + 18), (float)((base) + 19), \
+	(float)((base) + 20), (float)((base) + 21), (float)((base) + 22), (float)((base) + 23), \
+	(float)((base) + 24), (float)((base) + 25), (float)((base) + 26), (float)((base) + 27), \
+	(float)((base) + 28), (float)((base) + 29), (float)((base) + 30), (float)((base) + 31)
 
 static float x[N] = {
-	0.0f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f,
-	8.0f, 9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f,
-	16.0f, 17.0f, 18.0f, 19.0f, 20.0f, 21.0f, 22.0f, 23.0f,
-	24.0f, 25.0f, 26.0f, 27.0f, 28.0f, 29.0f, 30.0f, 31.0f,
-	32.0f, 33.0f, 34.0f, 35.0f, 36.0f, 37.0f, 38.0f, 39.0f,
-	40.0f, 41.0f, 42.0f, 43.0f, 44.0f, 45.0f, 46.0f, 47.0f,
-	48.0f, 49.0f, 50.0f, 51.0f, 52.0f, 53.0f, 54.0f, 55.0f,
-	56.0f, 57.0f, 58.0f, 59.0f, 60.0f, 61.0f, 62.0f, 63.0f
+	FLOAT32(0),
+	FLOAT32(32),
+	FLOAT32(64),
+	FLOAT32(96)
 };
 static float y[N] = { [0 ... N - 1] = 1.0f };
 

@@ -2,7 +2,19 @@
 #include <stdint.h>
 #include <riscv_vector.h>
 
-#define N 8
+#define N 16
+#define ROW16(base) { \
+	(base) + 0, (base) + 1, (base) + 2, (base) + 3, \
+	(base) + 4, (base) + 5, (base) + 6, (base) + 7, \
+	(base) + 8, (base) + 9, (base) + 10, (base) + 11, \
+	(base) + 12, (base) + 13, (base) + 14, (base) + 15 \
+}
+#define BT_ROW(row) { \
+	256 - (row), 240 - (row), 224 - (row), 208 - (row), \
+	192 - (row), 176 - (row), 160 - (row), 144 - (row), \
+	128 - (row), 112 - (row), 96 - (row), 80 - (row), \
+	64 - (row), 48 - (row), 32 - (row), 16 - (row) \
+}
 
 #if defined(__GNUC__)
 #define NOINLINE __attribute__((noinline, noclone))
@@ -40,24 +52,16 @@ NOINLINE void mat_mul(int32_t a[N][N], int32_t bt[N][N], int32_t c[N][N]) {
 }
 
 static int32_t a[N][N] = {
-	{1, 2, 3, 4, 5, 6, 7, 8},
-	{9, 10, 11, 12, 13, 14, 15, 16},
-	{17, 18, 19, 20, 21, 22, 23, 24},
-	{25, 26, 27, 28, 29, 30, 31, 32},
-	{33, 34, 35, 36, 37, 38, 39, 40},
-	{41, 42, 43, 44, 45, 46, 47, 48},
-	{49, 50, 51, 52, 53, 54, 55, 56},
-	{57, 58, 59, 60, 61, 62, 63, 64}
+	ROW16(1), ROW16(17), ROW16(33), ROW16(49),
+	ROW16(65), ROW16(81), ROW16(97), ROW16(113),
+	ROW16(129), ROW16(145), ROW16(161), ROW16(177),
+	ROW16(193), ROW16(209), ROW16(225), ROW16(241)
 };
 static int32_t bt[N][N] = {
-	{64, 56, 48, 40, 32, 24, 16, 8},
-	{63, 55, 47, 39, 31, 23, 15, 7},
-	{62, 54, 46, 38, 30, 22, 14, 6},
-	{61, 53, 45, 37, 29, 21, 13, 5},
-	{60, 52, 44, 36, 28, 20, 12, 4},
-	{59, 51, 43, 35, 27, 19, 11, 3},
-	{58, 50, 42, 34, 26, 18, 10, 2},
-	{57, 49, 41, 33, 25, 17, 9, 1}
+	BT_ROW(0), BT_ROW(1), BT_ROW(2), BT_ROW(3),
+	BT_ROW(4), BT_ROW(5), BT_ROW(6), BT_ROW(7),
+	BT_ROW(8), BT_ROW(9), BT_ROW(10), BT_ROW(11),
+	BT_ROW(12), BT_ROW(13), BT_ROW(14), BT_ROW(15)
 };
 static int32_t c[N][N];
 

@@ -47,14 +47,14 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	if (write_header) results << "Config,Benchmark,Instructions,IPC,Prediction Rate (%)\n";
+	if (write_header) results << "Config,Benchmark,Instructions,Cycles,IPC,Branches,Prediction Rate (%)\n";
 
 	auto bench_start = elfPath.find_last_of("/\\");
 	string bench = elfPath.substr(bench_start == string::npos ? 0 : bench_start + 1);
 	auto ext_start = bench.find_last_of('.');
 	if (ext_start != string::npos) bench = bench.substr(0, ext_start);
 
-	results << config.name << "," << bench << "," << instr_count << "," << fixed << setprecision(3) << ipc << "," << 100.0 - mispred_rate << "\n";
+	results << config.name << "," << bench << "," << instr_count << "," << cycle_count << "," << fixed << setprecision(3) << ipc << "," << branch_count << "," << 100.0 - mispred_rate << "\n";
 	results.close();
 
 	cout << "Instructions executed: " << instr_count << endl;
