@@ -7,12 +7,14 @@
 #include <fstream>
 #include <elfio/elfio.hpp>
 #include <nlohmann/json.hpp>
+#include "isa.hpp"
 
 using namespace std;
 
 struct Program {
 	vector<uint8_t> instrs;
 	uint32_t entry_point;
+	uint32_t end_point;
 };
 
 struct Config {

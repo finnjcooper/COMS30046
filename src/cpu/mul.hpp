@@ -10,7 +10,7 @@ public:
 
 		uint32_t mul_out = exec(current.op, current.Vj, current.Vk, current.Vl);
 		busy_ = false;
-		return ExecEntry {current.op, mul_out, 0, 0, false, false, current.tag};
+		return ExecEntry {current.op, mul_out, 0, 0, false, current.tag};
 	}
 
 private:

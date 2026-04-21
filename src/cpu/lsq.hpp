@@ -65,7 +65,7 @@ public:
 
 		entry.issued = false;
 		entry.done = true;
-		return ExecEntry {entry.op, entry.Vk, entry.addr, 0, false, false, entry.tag};
+		return ExecEntry {entry.op, entry.Vk, entry.addr, 0, false, entry.tag};
 	}
 
 	bool commit(uint32_t tag, Memory &mem, CommitLog &log) {

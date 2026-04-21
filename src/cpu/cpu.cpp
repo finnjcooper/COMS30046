@@ -1,7 +1,7 @@
 #include "cpu.hpp"
 
 CPU::CPU(const Program &prog, const Config &config) : 
-	pc(prog.entry_point), end(prog.instrs.size()),
+	pc(prog.entry_point), end(prog.end_point),
 	mem(prog.instrs, MEM_SIZE), regs(NUM_REGISTERS, log), fregs(NUM_FLOAT_REGISTERS, flog),
 	vregs(NUM_VECTOR_REGISTERS, vlog),
 	width(config.pipe_width), rob(NUM_REGISTERS * 2), rat(NUM_REGISTERS), frat(NUM_FLOAT_REGISTERS),
@@ -25,8 +25,8 @@ CPU::CPU(const Program &prog, const Config &config) :
 	muls(config.mul_count, config.rs_size, [] {
 		return make_unique<MulDivUnit>();
 	}),
-	ctrls(config.ctrl_count, config.rs_size, [this] {
-		return make_unique<ControlUnit>(end, WORD_BYTES);
+	ctrls(config.ctrl_count, config.rs_size, [] {
+		return make_unique<ControlUnit>();
 	}),
 	fpus(config.fpu_count, config.rs_size, [] {
 		return make_unique<FloatingPointUnit>();
@@ -61,6 +61,7 @@ void CPU::step() {
 		}
 	}
 
+	check_halt();
 	if (on_step_callback) on_step_callback(jumped, stalled, log, readout());
 }
 
@@ -142,12 +143,18 @@ string CPU::readout() {
 }
 
 void CPU::fetch() {
-	while (fetch_q.size() < width) {
+	while (!fetch_stopped && fetch_q.size() < width) {
+		if (pc > (end - WORD_BYTES)) {
+			fetch_stopped = true;
+			out << "Reached end of program. Draining pipeline. ";
+			return;
+		}
+
 		try {
 			fetch_q.push_back({pc, mem.loadw(pc)});
 		} catch (const out_of_range &) {
-			halted = true;
-			out << "Instruction fetch out of range. Halting CPU. ";
+			fetch_stopped = true;
+			out << "Instruction fetch out of range. Draining pipeline. ";
 			return;
 		}
 		pc += WORD_BYTES;
@@ -189,7 +196,8 @@ void CPU::dispatch() {
 		int32_t imm = decode.instr.imm;
 
 		if (op == INVALID) {
-			decode_q.pop_front();
+			halted = true;
+			out << "Invalid instruction at 0x" << hex << pc << dec << ". Halting CPU. ";
 			return;
 		}
 
@@ -261,12 +269,12 @@ void CPU::writeback() {
 
 			if (is_ctrl(exec.op)) {
 				auto &entry = rob.get(exec.tag);
+				if (is_branch(entry.op)) branch_count++;
 
 				bool taken = exec.jumped;
 				uint32_t target =
 					taken ? exec.target : entry.pc + WORD_BYTES;
 
-				branch_count++;
 				branch_pred->update(entry.pc, entry.op, taken, target);
 
 				bool mispred =
@@ -276,13 +284,21 @@ void CPU::writeback() {
 				if (mispred) {
 					flush(exec.tag);
 					jumped = true;
+					fetch_stopped = false;
 					pc = target;
 					out << "Branch misprediction: flushing pipeline. ";
-					mispred_count++;
+					if (is_branch(entry.op)) mispred_count++;
 					return;
 				}
 			}
 		}
+	}
+}
+
+void CPU::check_halt() {
+	if (fetch_stopped && fetch_q.empty() && decode_q.empty() && rob.empty()) {
+		halted = true;
+		out << "Pipeline drained. Halting CPU. ";
 	}
 }
 
@@ -309,12 +325,5 @@ void CPU::commit() {
 
 		rob.pop();
 		instruction_count++;
-
-		if (entry.should_halt) {
-			halted = true; 
-			out << "ECALL encountered. Halting CPU. ";
-			// out << "Returned outside the program range (0x" << hex << end << dec << "). Halting CPU. ";
-			return;
-		}
 	}
 }

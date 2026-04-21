@@ -27,6 +27,7 @@ public:
 							case 0x00: return {SUB, rd, rs1, rs2, 0};
 							case 0x05: return {SRA, rd, rs1, rs2, 0};
 						}
+						return {};
 					case 0x00:
 						switch (f3) {
 							case 0x00: return {ADD, rd, rs1, rs2, 0};
@@ -38,6 +39,7 @@ public:
 							case 0x06: return {OR, rd, rs1, rs2, 0};
 							case 0x07: return {AND, rd, rs1, rs2, 0};
 						}
+						return {};
 					case 0x01:
 						switch (f3) {
 							case 0x00: return {MUL, rd, rs1, rs2, 0};
@@ -49,22 +51,26 @@ public:
 							case 0x06: return {REM, rd, rs1, rs2, 0};
 							case 0x07: return {REMU, rd, rs1, rs2, 0};
 						}
+						return {};
 				}
+				return {};
 			}
 			case 0x13: {
 				int32_t imm = sign_extend(immu, 12);
 				switch(f3) {
 					case 0x00: return {ADDI, rd, rs1, 0, imm};
-					case 0x01: return {SLLI, rd, rs1, 0, rs2};
+					case 0x01: return f7 == 0x00 ? Instruction {SLLI, rd, rs1, 0, rs2} : Instruction {};
 					case 0x02: return {SLTI, rd, rs1, 0, imm};
 					case 0x03: return {SLTIU, rd, rs1, 0, imm};
 					case 0x04: return {XORI, rd, rs1, 0, imm};
-					case 0x05: return (f7 == 0x20)
-						? Instruction {SRAI, rd, rs1, 0, rs2}
-						: Instruction {SRLI, rd, rs1, 0, rs2};
+					case 0x05:
+						if (f7 == 0x20) return {SRAI, rd, rs1, 0, rs2};
+						if (f7 == 0x00) return {SRLI, rd, rs1, 0, rs2};
+						return {};
 					case 0x06: return {ORI, rd, rs1, 0, imm};
 					case 0x07: return {ANDI, rd, rs1, 0, imm};
 				}
+				return {};
 			}
 			case 0x03: {
 				int32_t imm = sign_extend(immu, 12);
@@ -75,15 +81,16 @@ public:
 					case 0x04: return {LBU, rd, rs1, 0, imm};
 					case 0x05: return {LHU, rd, rs1, 0, imm};
 				}
+				return {};
 			}
 			case 0x07: {
 				int32_t imm = sign_extend(immu, 12);
-				switch (f3) {
-					case 0x02: return {FLW, rd, rs1, 0, imm};
-					case 0x00: return {VLE8_V, rd, rs1, 0, 0, 0, 0, 8};
-					case 0x05: return {VLE16_V, rd, rs1, 0, 0, 0, 0, 16};
-					case 0x06: return {VLE32_V, rd, rs1, 0, 0, 0, 0, 32};
-				}
+				if (f3 == 0x02) return {FLW, rd, rs1, 0, imm};
+				if (!is_unit_stride_vector_mem(instruction)) return {};
+				if (f3 == 0x00) return {VLE8_V, rd, rs1, 0, 0, 0, 0, 8};
+				if (f3 == 0x05) return {VLE16_V, rd, rs1, 0, 0, 0, 0, 16};
+				if (f3 == 0x06) return {VLE32_V, rd, rs1, 0, 0, 0, 0, 32};
+				return {};
 			}
 			case 0x23: {
 				int32_t imm = sign_extend((f7 << 5) | rd, 12);
@@ -92,67 +99,88 @@ public:
 					case 0x01: return {SH, 0, rs1, rs2, imm};
 					case 0x02: return {SW, 0, rs1, rs2, imm};
 				}
+				return {};
 			}
 			case 0x27: {
 				int32_t imm = sign_extend((f7 << 5) | rd, 12);
-				switch (f3) {
-					case 0x02: return {FSW, 0, rs1, rs2, imm};
-					case 0x00: return {VSE8_V, 0, rs1, rd, 0, 0, 0, 8};
-					case 0x05: return {VSE16_V, 0, rs1, rd, 0, 0, 0, 16};
-					case 0x06: return {VSE32_V, 0, rs1, rd, 0, 0, 0, 32};
-				}
+				if (f3 == 0x02) return {FSW, 0, rs1, rs2, imm};
+				if (!is_unit_stride_vector_mem(instruction)) return {};
+				if (f3 == 0x00) return {VSE8_V, 0, rs1, rd, 0, 0, 0, 8};
+				if (f3 == 0x05) return {VSE16_V, 0, rs1, rd, 0, 0, 0, 16};
+				if (f3 == 0x06) return {VSE32_V, 0, rs1, rd, 0, 0, 0, 32};
+				return {};
 			}
 			case 0x43: {
+				if (((instruction >> 25) & 0x03) != 0 || !valid_rm(f3)) return {};
 				uint8_t rs3 = (instruction >> 27) & 0x1F;
 				return {FMADD_S, rd, rs1, rs2, 0, rs3, f3};
 			}
 			case 0x47: {
+				if (((instruction >> 25) & 0x03) != 0 || !valid_rm(f3)) return {};
 				uint8_t rs3 = (instruction >> 27) & 0x1F;
 				return {FMSUB_S, rd, rs1, rs2, 0, rs3, f3};
 			}
 			case 0x4B: {
+				if (((instruction >> 25) & 0x03) != 0 || !valid_rm(f3)) return {};
 				uint8_t rs3 = (instruction >> 27) & 0x1F;
 				return {FNMSUB_S, rd, rs1, rs2, 0, rs3, f3};
 			}
 			case 0x4F: {
+				if (((instruction >> 25) & 0x03) != 0 || !valid_rm(f3)) return {};
 				uint8_t rs3 = (instruction >> 27) & 0x1F;
 				return {FNMADD_S, rd, rs1, rs2, 0, rs3, f3};
 			}
 			case 0x53: {
 				uint8_t fmt = f7 & 0x03;
 				uint8_t f5 = f7 >> 2;
+				if (fmt != 0) return {};
+
 				switch (f5) {
-					case 0x00: return {FADD_S, rd, rs1, rs2, 0, 0, f3};
-					case 0x01: return {FSUB_S, rd, rs1, rs2, 0, 0, f3};
-					case 0x02: return {FMUL_S, rd, rs1, rs2, 0, 0, f3};
-					case 0x03: return {FDIV_S, rd, rs1, rs2, 0, 0, f3};
+					case 0x00:
+						return valid_rm(f3) ? Instruction {FADD_S, rd, rs1, rs2, 0, 0, f3} : Instruction {};
+					case 0x01:
+						return valid_rm(f3) ? Instruction {FSUB_S, rd, rs1, rs2, 0, 0, f3} : Instruction {};
+					case 0x02:
+						return valid_rm(f3) ? Instruction {FMUL_S, rd, rs1, rs2, 0, 0, f3} : Instruction {};
+					case 0x03:
+						return valid_rm(f3) ? Instruction {FDIV_S, rd, rs1, rs2, 0, 0, f3} : Instruction {};
 					case 0x04:
 						if (f3 == 0x00) return {FSGNJ_S, rd, rs1, rs2, 0};
 						if (f3 == 0x01) return {FSGNJN_S, rd, rs1, rs2, 0};
 						if (f3 == 0x02) return {FSGNJX_S, rd, rs1, rs2, 0};
+						return {};
 					case 0x05:
 						if (f3 == 0x00) return {FMIN_S, rd, rs1, rs2, 0};
 						if (f3 == 0x01) return {FMAX_S, rd, rs1, rs2, 0};
+						return {};
 					case 0x0B:
-						if (rs2 != 0x00) return {};
+						if (rs2 != 0x00 || !valid_rm(f3)) return {};
 						return {FSQRT_S, rd, rs1, 0, 0, 0, f3};
 					case 0x14:
 						if (f3 == 0x00) return {FLE_S, rd, rs1, rs2, 0};
 						if (f3 == 0x01) return {FLT_S, rd, rs1, rs2, 0};
 						if (f3 == 0x02) return {FEQ_S, rd, rs1, rs2, 0};
+						return {};
 					case 0x18:
+						if (!valid_rm(f3)) return {};
 						if (rs2 == 0x00) return {FCVT_W_S, rd, rs1, 0, 0, 0, f3};
 						if (rs2 == 0x01) return {FCVT_WU_S, rd, rs1, 0, 0, 0, f3};
+						return {};
 					case 0x1A:
+						if (!valid_rm(f3)) return {};
 						if (rs2 == 0x00) return {FCVT_S_W, rd, rs1, 0, 0, 0, f3};
 						if (rs2 == 0x01) return {FCVT_S_WU, rd, rs1, 0, 0, 0, f3};
+						return {};
 					case 0x1C:
 						if (rs2 != 0x00) return {};
 						if (f3 == 0x00) return {FMV_X_W, rd, rs1, 0, 0};
 						if (f3 == 0x01) return {FCLASS_S, rd, rs1, 0, 0};
+						return {};
 					case 0x1E:
 						if (rs2 != 0x00 || f3 != 0x00) return {};
 						return {FMV_W_X, rd, rs1, 0, 0};
+					default:
+						return {};
 				}
 			}
 			case 0x57: {
@@ -175,6 +203,7 @@ public:
 							case 0x03: return {VADD_VI, rd, rs2, 0, sign_extend(rs1, 5), rd};
 							case 0x02: return {VREDSUM_VS, rd, rs2, rs1, 0, rd};
 						}
+						return {};
 					case 0x10:
 						switch(f3) {
 							case 0x06:
@@ -184,6 +213,7 @@ public:
 								if (rs1 != 0x00) return {};
 								return {VMV_X_S, rd, rs2, 0, 0};	
 						}
+						return {};
 					case 0x17:
 						switch(f3) {
 							case 0x03:
@@ -193,16 +223,19 @@ public:
 								if (rs2 != 0x00) return {};
 								return {VFMV_V_F, rd, rs1, 0, 0, rd};
 						}
+						return {};
 					case 0x25:
 						switch(f3) {
 							case 0x02: return {VMUL_VV, rd, rs2, rs1, 0, rd};
 							case 0x06: return {VMUL_VX, rd, rs2, rs1, 0, rd};
 						}
+						return {};
 					case 0x28: if (f3 == 0x01) return {VFMADD_VV, rd, rd, rs1, 0, rs2}; break;
 					case 0x29: if (f3 == 0x02) return {VMADD_VV, rd, rd, rs1, 0, rs2}; break;
 					case 0x2C: if (f3 == 0x01) return {VFMACC_VV, rd, rd, rs1, 0, rs2}; break;
 					case 0x2D: if (f3 == 0x02) return {VMACC_VV, rd, rd, rs1, 0, rs2}; break;
 				}
+				return {};
 			}
 			case 0x63: {
 				int32_t imm = sign_extend(
@@ -218,6 +251,7 @@ public:
 					case 0x06: return {BLTU, 0, rs1, rs2, imm};
 					case 0x07: return {BGEU, 0, rs1, rs2, imm};
 				}
+				return {};
 			}
 			case 0x6F: {
 				int32_t imm = sign_extend(
@@ -229,6 +263,7 @@ public:
 			}
 			case 0x67: {
 				int32_t imm = sign_extend(immu, 12);
+				if (f3 != 0x00) return {};
 				return {JALR, rd, rs1, 0, imm};
 			}
 			case 0x37:
@@ -236,15 +271,28 @@ public:
 			case 0x17:
 				return {AUIPC, rd, 0, 0, (int32_t)(instruction & 0xFFFFF000)};
 			case 0x73:
-				if (instruction >> 20 == 0x000) return {ECALL, 0, 0, 0, 0};
+				if (instruction == 0x00000073) return {ECALL, 0, 0, 0, 0};
 				// if (instruction >> 20 == 0x001) return {EBREAK, 0, 0, 0, 0};
-				break;
+				return {};
 		}
 
 		return {};
 	}
 
 private:
+	static bool valid_rm(uint8_t rm) {
+		return rm <= 4 || rm == 7;
+	}
+
+	static bool is_unit_stride_vector_mem(uint32_t instruction) {
+		uint8_t lumop = (instruction >> 20) & 0x1F;
+		uint8_t vm = (instruction >> 25) & 0x01;
+		uint8_t mop = (instruction >> 26) & 0x03;
+		uint8_t mew = (instruction >> 28) & 0x01;
+		uint8_t nf = (instruction >> 29) & 0x07;
+		return lumop == 0 && vm == 1 && mop == 0 && mew == 0 && nf == 0;
+	}
+
 	static uint8_t sew_from_vtype(uint32_t zimm) {
 		if ((zimm & 0x7) != 0) return 0; // LMUL must be m1.
 

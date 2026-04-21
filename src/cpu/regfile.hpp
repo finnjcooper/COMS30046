@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 #include "isa.hpp"
 #include "trace.hpp"
 
@@ -7,7 +8,7 @@ public:
 	RegisterFile(uint8_t num_regs, CommitLog &log) : num_regs(num_regs), log(log), regs(num_regs, Value::scalar(0U)) {}
 	virtual Value read(uint8_t index) const = 0;
 	virtual void write(uint8_t index, Value value) = 0;
-	virtual const char* name(uint8_t index) const = 0;
+	virtual string name(uint8_t index) const = 0;
 protected:
 	uint8_t num_regs;
 	CommitLog &log;
@@ -33,9 +34,9 @@ public:
 		regs[index] = Value::scalar(next);
 	}
 
-	const char* name(uint8_t index) const {
+	string name(uint8_t index) const {
 		if (index >= num_regs) throw out_of_range("Register index out of range");
-		if (index >= NUM_NAMES) return ("x" + to_string(index)).c_str();
+		if (index >= NUM_NAMES) return "x" + to_string(index);
 		return NAMES[index];
 	}
 
@@ -67,9 +68,9 @@ public:
 		regs[index] = Value::scalar(next);
 	}
 
-	const char* name(uint8_t index) const {
+	string name(uint8_t index) const {
 		if (index >= num_regs) throw out_of_range("Float register index out of range");
-		return ("f" + to_string(index)).c_str();
+		return "f" + to_string(index);
 	}
 };
 
@@ -92,8 +93,8 @@ public:
 		regs[index] = value;
 	}
 
-	const char* name(uint8_t index) const {
+	string name(uint8_t index) const {
 		if (index >= num_regs) throw out_of_range("Vector register index out of range");
-		return ("v" + to_string(index)).c_str();
+		return "v" + to_string(index);
 	}
 };

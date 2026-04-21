@@ -20,6 +20,7 @@ int main(int argc, char* argv[]) {
 	// string asmPath = elfPath.substr(0, elfPath.size() - 4) + ".asm";
 
 	auto prog = Loader::ELF(elfPath);
+	if (prog.instrs.empty()) return 1;
 	// auto disasm = Loader::ASM(asmPath);
 	auto config = Loader::config(program.get<string>("--config"));
 

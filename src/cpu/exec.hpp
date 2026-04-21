@@ -9,7 +9,7 @@ struct ExecEntry {
 	uint32_t addr = 0;
 
 	uint32_t target = 0;
-	bool jumped = false, should_halt = false;
+	bool jumped = false;
 
 	uint32_t tag = -1U;
 	uint8_t vl = 0;

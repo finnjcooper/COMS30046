@@ -3,8 +3,6 @@
 
 class ControlUnit : public ExecUnit {
 public:
-	ControlUnit(uint32_t end, uint8_t word_bytes) : end(end), WORD_BYTES(word_bytes) {}
-
 	optional<ExecEntry> step() override {
 		if (!busy_) return nullopt;
 		if (--cycles_remaining != 0) return nullopt;
@@ -25,17 +23,12 @@ public:
 		}
 
 		uint32_t next_pc = jumped ? target : current.pc + WORD_BYTES;
-		// bool should_halt = next_pc >= end;
-		bool should_halt = op == ECALL;
 
 		busy_ = false;
-		return ExecEntry {current.op, alu_out, 0, target, jumped, should_halt, current.tag};
+		return ExecEntry {current.op, alu_out, 0, target, jumped, current.tag};
 	}
 
 private:
-	uint32_t end;
-	uint8_t WORD_BYTES;
-
 	uint32_t exec(Op op, uint32_t val1, uint32_t val2, uint32_t val3) override {
 		switch (op) {
 			case BEQ: return val1 == val2;

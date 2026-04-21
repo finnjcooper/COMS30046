@@ -4,16 +4,34 @@ Program Loader::ELF(const string &filename) {
 	ELFIO::elfio elf;
 	if (!elf.load(filename)) {
 		cerr << "Could not open ELF file: " << filename << endl;
-		return { vector<uint8_t>(), 0 };
+		return { vector<uint8_t>(), 0, 0 };
 	}
 
 	uint32_t mem_size = 0;
 	for (const auto& seg : elf.segments) {
 		if (seg->get_type() == ELFIO::PT_LOAD) {
-			uint32_t seg_end = seg->get_virtual_address() + seg->get_memory_size();
-			mem_size = max(mem_size, seg_end);
+			uint32_t vaddr = seg->get_virtual_address();
+			uint32_t seg_size = seg->get_memory_size();
+			if (vaddr > MEM_SIZE || seg_size > MEM_SIZE - vaddr) {
+				cerr << "ELF segment does not fit in simulator memory: " << filename << endl;
+				return { vector<uint8_t>(), 0, 0 };
+			}
+			mem_size = max(mem_size, vaddr + seg_size);
 		}
 	}
+
+	uint32_t code_end = 0;
+	for (const auto& section : elf.sections) {
+		if ((section->get_flags() & ELFIO::SHF_EXECINSTR) == 0) continue;
+		uint32_t text_addr = section->get_address();
+		uint32_t text_size = section->get_size();
+		if (text_addr > MEM_SIZE || text_size > MEM_SIZE - text_addr) {
+			cerr << "ELF executable section does not fit in simulator memory: " << filename << endl;
+			return { vector<uint8_t>(), 0, 0 };
+		}
+		code_end = max(code_end, text_addr + text_size);
+	}
+	if (!code_end) code_end = mem_size;
 
 	auto memory = vector<uint8_t>(mem_size, 0);
 	for (const auto& seg : elf.segments) {
@@ -30,7 +48,7 @@ Program Loader::ELF(const string &filename) {
 		}
 	}
 
-	return { memory, static_cast<uint32_t>(elf.get_entry()) };
+	return { memory, static_cast<uint32_t>(elf.get_entry()), code_end };
 }
 
 map<uint32_t, string> Loader::ASM(const string &filename) {

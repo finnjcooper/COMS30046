@@ -5,7 +5,7 @@
 #include "exec.hpp"
 
 struct ROBEntry {
-	bool ready = false, jumped = false, should_halt = false;
+	bool ready = false, jumped = false;
 	
 	bool pred_taken = false;
 	uint32_t pred_target = 0;
@@ -26,6 +26,7 @@ public:
 	ReOrderBuffer(uint32_t size) : max_size(size) {}
 
 	const deque<ROBEntry>& get_entries() const { return entries; }
+	bool empty() const { return entries.empty(); }
 
 	uint32_t allocate(DecodeEntry decode) {
 		if (entries.size() == max_size) return -1U;
@@ -49,7 +50,6 @@ public:
 				entry.value = exec.value;
 				entry.addr = exec.addr;
 				entry.jumped = exec.jumped;
-				entry.should_halt = exec.should_halt;
 				entry.vl = exec.vl;
 				entry.sew = exec.sew;
 				entry.ready = true;

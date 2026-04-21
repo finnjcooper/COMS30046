@@ -16,7 +16,7 @@ public:
 
 		uint32_t float_out = exec(op, r1, r2, r3);
 		busy_ = false;
-		return ExecEntry {current.op, float_out, 0, 0, false, false, current.tag};
+		return ExecEntry {current.op, float_out, 0, 0, false, current.tag};
 	}
 
 private:
@@ -26,15 +26,15 @@ private:
 		float f3 = bits_to_float(operand3);
 
 		switch (op) {
-			case FADD_S: return float_to_bits(f1 + f2);
-			case FSUB_S: return float_to_bits(f1 - f2);
-			case FMUL_S: return float_to_bits(f1 * f2);
-			case FDIV_S: return float_to_bits(f1 / f2);
-			case FSQRT_S: return float_to_bits(sqrt(f1));
-			case FMADD_S: return float_to_bits(fma(f1, f2, f3));
-			case FMSUB_S: return float_to_bits(fma(f1, f2, -f3));
-			case FNMSUB_S: return float_to_bits(fma(-f1, f2, f3));
-			case FNMADD_S: return float_to_bits(fma(-f1, f2, -f3));
+			case FADD_S: return rounded_bits(static_cast<double>(f1) + f2, current.rm);
+			case FSUB_S: return rounded_bits(static_cast<double>(f1) - f2, current.rm);
+			case FMUL_S: return rounded_bits(static_cast<double>(f1) * f2, current.rm);
+			case FDIV_S: return rounded_bits(static_cast<double>(f1) / f2, current.rm);
+			case FSQRT_S: return rounded_bits(sqrt(static_cast<double>(f1)), current.rm);
+			case FMADD_S: return rounded_bits(fma(static_cast<double>(f1), static_cast<double>(f2), static_cast<double>(f3)), current.rm);
+			case FMSUB_S: return rounded_bits(fma(static_cast<double>(f1), static_cast<double>(f2), -static_cast<double>(f3)), current.rm);
+			case FNMSUB_S: return rounded_bits(fma(-static_cast<double>(f1), static_cast<double>(f2), static_cast<double>(f3)), current.rm);
+			case FNMADD_S: return rounded_bits(fma(-static_cast<double>(f1), static_cast<double>(f2), -static_cast<double>(f3)), current.rm);
 			case FSGNJ_S: return (operand1 & ~SIGN_MASK) | (operand2 & SIGN_MASK);
 			case FSGNJN_S: return (operand1 & ~SIGN_MASK) | (~operand2 & SIGN_MASK);
 			case FSGNJX_S: return (operand1 & ~SIGN_MASK) | ((operand1 ^ operand2) & SIGN_MASK);
@@ -77,6 +77,10 @@ private:
 		uint32_t bits;
 		memcpy(&bits, &value, sizeof(bits));
 		return is_nan(bits) ? CANONICAL_NAN : bits;
+	}
+
+	static uint32_t rounded_bits(double value, uint8_t rm) {
+		return float_to_bits(round_to_float(value, rm));
 	}
 
 	static int32_t bits_to_i32(uint32_t bits) {

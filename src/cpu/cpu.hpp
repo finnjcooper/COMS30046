@@ -49,6 +49,7 @@ private:
 	bool jumped = false;
 	bool stalled = false;
 	bool halted = false;
+	bool fetch_stopped = false;
 
 	int instruction_count = 0;
 	int cycle_count = 0;
@@ -83,6 +84,7 @@ private:
 	RegisterFile& regfile(RegType type);
 	RegisterAliasTable& alias_table(RegType type);
 	void flush(uint32_t tag);
+	void check_halt();
 
 	void fetch();
 	void decode();

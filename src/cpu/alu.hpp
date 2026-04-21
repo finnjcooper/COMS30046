@@ -16,7 +16,7 @@ public:
 
 		uint32_t alu_out = exec(op, r1, r2, r3);
 		busy_ = false;
-		return ExecEntry {current.op, alu_out, 0, 0, false, false, current.tag};
+		return ExecEntry {current.op, alu_out, 0, 0, false, current.tag};
 	}
 
 private:
