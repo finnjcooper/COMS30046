@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="720" viewBox="0 0 1180 720">
+<style>
+text { font-family: Arial, Helvetica, sans-serif; }
+.axis { stroke: #111827; stroke-width: 1.4; }
+.grid { stroke: #e5e7eb; stroke-width: 1; }
+.tick { stroke: #111827; stroke-width: 1; }
+.data-bar, .legend-swatch { stroke: #ffffff; stroke-width: 1; }
+</style>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="590.0" y="34" text-anchor="middle" font-size="24" font-weight="700" fill="#111827">Instruction Count vs Vector Length (Log Scale)</text>
+<line x1="100" y1="592.0" x2="930" y2="592.0" class="grid"/>
+<line x1="95" y1="592.0" x2="100" y2="592.0" class="tick"/>
+<text x="88" y="596.0" text-anchor="end" font-size="13" fill="#374151">100</text>
+<line x1="100" y1="418.7" x2="930" y2="418.7" class="grid"/>
+<line x1="95" y1="418.7" x2="100" y2="418.7" class="tick"/>
+<text x="88" y="422.7" text-anchor="end" font-size="13" fill="#374151">1,000</text>
+<line x1="100" y1="245.3" x2="930" y2="245.3" class="grid"/>
+<line x1="95" y1="245.3" x2="100" y2="245.3" class="tick"/>
+<text x="88" y="249.3" text-anchor="end" font-size="13" fill="#374151">10,000</text>
+<line x1="100" y1="72.0" x2="930" y2="72.0" class="grid"/>
+<line x1="95" y1="72.0" x2="100" y2="72.0" class="tick"/>
+<text x="88" y="76.0" text-anchor="end" font-size="13" fill="#374151">100,000</text>
+<line x1="100" y1="72" x2="100" y2="592" class="axis"/>
+<line x1="100" y1="592" x2="930" y2="592" class="axis"/>
+<line x1="203.8" y1="592" x2="203.8" y2="597" class="tick"/>
+<text x="203.8" y="616.0" text-anchor="middle" font-size="13" fill="#374151"><tspan x="203.8" dy="0">Width 2</tspan></text>
+<line x1="411.2" y1="592" x2="411.2" y2="597" class="tick"/>
+<text x="411.2" y="616.0" text-anchor="middle" font-size="13" fill="#374151"><tspan x="411.2" dy="0">128</tspan></text>
+<line x1="618.8" y1="592" x2="618.8" y2="597" class="tick"/>
+<text x="618.8" y="616.0" text-anchor="middle" font-size="13" fill="#374151"><tspan x="618.8" dy="0">256</tspan></text>
+<line x1="826.2" y1="592" x2="826.2" y2="597" class="tick"/>
+<text x="826.2" y="616.0" text-anchor="middle" font-size="13" fill="#374151"><tspan x="826.2" dy="0">512</tspan></text>
+<rect class="data-bar" x="122.8" y="425.3" width="39.0" height="166.7" fill="#1f77b4"><title>dot_vec: 916</title></rect>
+<rect class="data-bar" x="330.3" y="481.5" width="39.0" height="110.5" fill="#1f77b4"><title>dot_vec: 434</title></rect>
+<rect class="data-bar" x="537.8" y="530.6" width="39.0" height="61.4" fill="#1f77b4"><title>dot_vec: 226</title></rect>
+<rect class="data-bar" x="745.3" y="577.0" width="39.0" height="15.0" fill="#1f77b4"><title>dot_vec: 122</title></rect>
+<rect class="data-bar" x="163.8" y="188.1" width="39.0" height="403.9" fill="#d62728"><title>gaussian_vec: 21,383</title></rect>
+<rect class="data-bar" x="371.3" y="280.7" width="39.0" height="311.3" fill="#d62728"><title>gaussian_vec: 6,252</title></rect>
+<rect class="data-bar" x="578.8" y="331.6" width="39.0" height="260.4" fill="#d62728"><title>gaussian_vec: 3,180</title></rect>
+<rect class="data-bar" x="786.3" y="381.2" width="39.0" height="210.8" fill="#d62728"><title>gaussian_vec: 1,644</title></rect>
+<rect class="data-bar" x="204.8" y="151.7" width="39.0" height="440.3" fill="#2ca02c"><title>matmul_vec: 34,675</title></rect>
+<rect class="data-bar" x="412.2" y="206.5" width="39.0" height="385.5" fill="#2ca02c"><title>matmul_vec: 16,759</title></rect>
+<rect class="data-bar" x="619.8" y="244.6" width="39.0" height="347.4" fill="#2ca02c"><title>matmul_vec: 10,103</title></rect>
+<rect class="data-bar" x="827.2" y="274.6" width="39.0" height="317.4" fill="#2ca02c"><title>matmul_vec: 6,775</title></rect>
+<rect class="data-bar" x="245.7" y="425.3" width="39.0" height="166.7" fill="#9467bd"><title>saxpy_vec: 916</title></rect>
+<rect class="data-bar" x="453.2" y="493.5" width="39.0" height="98.5" fill="#9467bd"><title>saxpy_vec: 370</title></rect>
+<rect class="data-bar" x="660.7" y="542.1" width="39.0" height="49.9" fill="#9467bd"><title>saxpy_vec: 194</title></rect>
+<rect class="data-bar" x="868.2" y="587.6" width="39.0" height="4.4" fill="#9467bd"><title>saxpy_vec: 106</title></rect>
+<text x="515.0" y="694" text-anchor="middle" font-size="15" font-weight="700" fill="#111827">Vector Length / Scalar Baseline</text>
+<text transform="translate(25 332.0) rotate(-90)" text-anchor="middle" font-size="15" font-weight="700" fill="#111827">Instruction Count (log scale)</text>
+<text x="965" y="84" font-size="14" font-weight="700" fill="#111827">Benchmark</text>
+<rect class="legend-swatch" x="965" y="101.0" width="18" height="18" fill="#1f77b4"/>
+<text x="993" y="115.0" font-size="13" fill="#374151">dot_vec</text>
+<rect class="legend-swatch" x="965" y="129.0" width="18" height="18" fill="#d62728"/>
+<text x="993" y="143.0" font-size="13" fill="#374151">gaussian_vec</text>
+<rect class="legend-swatch" x="965" y="157.0" width="18" height="18" fill="#2ca02c"/>
+<text x="993" y="171.0" font-size="13" fill="#374151">matmul_vec</text>
+<rect class="legend-swatch" x="965" y="185.0" width="18" height="18" fill="#9467bd"/>
+<text x="993" y="199.0" font-size="13" fill="#374151">saxpy_vec</text>
+</svg>

@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="720" viewBox="0 0 1180 720">
+<style>
+text { font-family: Arial, Helvetica, sans-serif; }
+.axis { stroke: #111827; stroke-width: 1.4; }
+.grid { stroke: #e5e7eb; stroke-width: 1; }
+.tick { stroke: #111827; stroke-width: 1; }
+.data-bar, .legend-swatch { stroke: #ffffff; stroke-width: 1; }
+</style>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="590.0" y="34" text-anchor="middle" font-size="24" font-weight="700" fill="#111827">IPC vs Superscalar Width</text>
+<line x1="100" y1="592.0" x2="930" y2="592.0" class="grid"/>
+<line x1="95" y1="592.0" x2="100" y2="592.0" class="tick"/>
+<text x="88" y="596.0" text-anchor="end" font-size="13" fill="#374151">0</text>
+<line x1="100" y1="462.0" x2="930" y2="462.0" class="grid"/>
+<line x1="95" y1="462.0" x2="100" y2="462.0" class="tick"/>
+<text x="88" y="466.0" text-anchor="end" font-size="13" fill="#374151">1</text>
+<line x1="100" y1="332.0" x2="930" y2="332.0" class="grid"/>
+<line x1="95" y1="332.0" x2="100" y2="332.0" class="tick"/>
+<text x="88" y="336.0" text-anchor="end" font-size="13" fill="#374151">2</text>
+<line x1="100" y1="202.0" x2="930" y2="202.0" class="grid"/>
+<line x1="95" y1="202.0" x2="100" y2="202.0" class="tick"/>
+<text x="88" y="206.0" text-anchor="end" font-size="13" fill="#374151">3</text>
+<line x1="100" y1="72.0" x2="930" y2="72.0" class="grid"/>
+<line x1="95" y1="72.0" x2="100" y2="72.0" class="tick"/>
+<text x="88" y="76.0" text-anchor="end" font-size="13" fill="#374151">4</text>
+<line x1="100" y1="72" x2="100" y2="592" class="axis"/>
+<line x1="100" y1="592" x2="930" y2="592" class="axis"/>
+<line x1="203.8" y1="592" x2="203.8" y2="597" class="tick"/>
+<text x="203.8" y="616.0" text-anchor="middle" font-size="13" fill="#374151"><tspan x="203.8" dy="0">1</tspan></text>
+<line x1="411.2" y1="592" x2="411.2" y2="597" class="tick"/>
+<text x="411.2" y="616.0" text-anchor="middle" font-size="13" fill="#374151"><tspan x="411.2" dy="0">2</tspan></text>
+<line x1="618.8" y1="592" x2="618.8" y2="597" class="tick"/>
+<text x="618.8" y="616.0" text-anchor="middle" font-size="13" fill="#374151"><tspan x="618.8" dy="0">4</tspan></text>
+<line x1="826.2" y1="592" x2="826.2" y2="597" class="tick"/>
+<text x="826.2" y="616.0" text-anchor="middle" font-size="13" fill="#374151"><tspan x="826.2" dy="0">8</tspan></text>
+<rect class="data-bar" x="122.8" y="466.2" width="21.4" height="125.8" fill="#1f77b4"><title>dot: 0.97</title></rect>
+<rect class="data-bar" x="330.3" y="376.7" width="21.4" height="215.3" fill="#1f77b4"><title>dot: 1.66</title></rect>
+<rect class="data-bar" x="537.8" y="191.1" width="21.4" height="400.9" fill="#1f77b4"><title>dot: 3.08</title></rect>
+<rect class="data-bar" x="745.3" y="189.6" width="21.4" height="402.4" fill="#1f77b4"><title>dot: 3.1</title></rect>
+<rect class="data-bar" x="146.2" y="486.3" width="21.4" height="105.7" fill="#d62728"><title>fibonacci: 0.81</title></rect>
+<rect class="data-bar" x="353.7" y="433.5" width="21.4" height="158.5" fill="#d62728"><title>fibonacci: 1.22</title></rect>
+<rect class="data-bar" x="561.2" y="370.5" width="21.4" height="221.5" fill="#d62728"><title>fibonacci: 1.7</title></rect>
+<rect class="data-bar" x="768.7" y="345.3" width="21.4" height="246.7" fill="#d62728"><title>fibonacci: 1.9</title></rect>
+<rect class="data-bar" x="169.6" y="487.6" width="21.4" height="104.4" fill="#2ca02c"><title>gaussian: 0.8</title></rect>
+<rect class="data-bar" x="377.1" y="440.7" width="21.4" height="151.3" fill="#2ca02c"><title>gaussian: 1.16</title></rect>
+<rect class="data-bar" x="584.6" y="393.6" width="21.4" height="198.4" fill="#2ca02c"><title>gaussian: 1.53</title></rect>
+<rect class="data-bar" x="792.1" y="389.9" width="21.4" height="202.1" fill="#2ca02c"><title>gaussian: 1.55</title></rect>
+<rect class="data-bar" x="193.0" y="466.3" width="21.4" height="125.7" fill="#9467bd"><title>insertionsort: 0.97</title></rect>
+<rect class="data-bar" x="400.5" y="408.6" width="21.4" height="183.4" fill="#9467bd"><title>insertionsort: 1.41</title></rect>
+<rect class="data-bar" x="608.0" y="408.4" width="21.4" height="183.6" fill="#9467bd"><title>insertionsort: 1.41</title></rect>
+<rect class="data-bar" x="815.5" y="408.4" width="21.4" height="183.6" fill="#9467bd"><title>insertionsort: 1.41</title></rect>
+<rect class="data-bar" x="216.5" y="467.1" width="21.4" height="124.9" fill="#ff7f0e"><title>matmul: 0.96</title></rect>
+<rect class="data-bar" x="424.0" y="393.8" width="21.4" height="198.2" fill="#ff7f0e"><title>matmul: 1.52</title></rect>
+<rect class="data-bar" x="631.5" y="215.9" width="21.4" height="376.1" fill="#ff7f0e"><title>matmul: 2.89</title></rect>
+<rect class="data-bar" x="839.0" y="171.6" width="21.4" height="420.4" fill="#ff7f0e"><title>matmul: 3.23</title></rect>
+<rect class="data-bar" x="239.9" y="493.7" width="21.4" height="98.3" fill="#17becf"><title>quicksort: 0.76</title></rect>
+<rect class="data-bar" x="447.4" y="449.3" width="21.4" height="142.7" fill="#17becf"><title>quicksort: 1.1</title></rect>
+<rect class="data-bar" x="654.9" y="416.8" width="21.4" height="175.2" fill="#17becf"><title>quicksort: 1.35</title></rect>
+<rect class="data-bar" x="862.4" y="407.9" width="21.4" height="184.1" fill="#17becf"><title>quicksort: 1.42</title></rect>
+<rect class="data-bar" x="263.3" y="465.9" width="21.4" height="126.1" fill="#8c564b"><title>saxpy: 0.97</title></rect>
+<rect class="data-bar" x="470.8" y="409.4" width="21.4" height="182.6" fill="#8c564b"><title>saxpy: 1.41</title></rect>
+<rect class="data-bar" x="678.3" y="216.3" width="21.4" height="375.7" fill="#8c564b"><title>saxpy: 2.89</title></rect>
+<rect class="data-bar" x="885.8" y="188.4" width="21.4" height="403.6" fill="#8c564b"><title>saxpy: 3.1</title></rect>
+<text x="515.0" y="694" text-anchor="middle" font-size="15" font-weight="700" fill="#111827">Superscalar Width</text>
+<text transform="translate(25 332.0) rotate(-90)" text-anchor="middle" font-size="15" font-weight="700" fill="#111827">IPC</text>
+<text x="965" y="84" font-size="14" font-weight="700" fill="#111827">Benchmark</text>
+<rect class="legend-swatch" x="965" y="101.0" width="18" height="18" fill="#1f77b4"/>
+<text x="993" y="115.0" font-size="13" fill="#374151">dot</text>
+<rect class="legend-swatch" x="965" y="129.0" width="18" height="18" fill="#d62728"/>
+<text x="993" y="143.0" font-size="13" fill="#374151">fibonacci</text>
+<rect class="legend-swatch" x="965" y="157.0" width="18" height="18" fill="#2ca02c"/>
+<text x="993" y="171.0" font-size="13" fill="#374151">gaussian</text>
+<rect class="legend-swatch" x="965" y="185.0" width="18" height="18" fill="#9467bd"/>
+<text x="993" y="199.0" font-size="13" fill="#374151">insertionsort</text>
+<rect class="legend-swatch" x="965" y="213.0" width="18" height="18" fill="#ff7f0e"/>
+<text x="993" y="227.0" font-size="13" fill="#374151">matmul</text>
+<rect class="legend-swatch" x="965" y="241.0" width="18" height="18" fill="#17becf"/>
+<text x="993" y="255.0" font-size="13" fill="#374151">quicksort</text>
+<rect class="legend-swatch" x="965" y="269.0" width="18" height="18" fill="#8c564b"/>
+<text x="993" y="283.0" font-size="13" fill="#374151">saxpy</text>
+</svg>
