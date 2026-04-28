@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "lib/optim.h"
 
 #define N 128
 #define VALUE(index) ((((index) * 37 + 23) & 127) + 1)
@@ -8,15 +9,18 @@
 	VALUE((base) + 8), VALUE((base) + 9), VALUE((base) + 10), VALUE((base) + 11), \
 	VALUE((base) + 12), VALUE((base) + 13), VALUE((base) + 14), VALUE((base) + 15)
 
-#if defined(__GNUC__)
-#define NOINLINE __attribute__((noinline, noclone))
-#define KEEP_ALIVE(value) __asm__ volatile("" : : "m"(value) : "memory")
-#else
-#define NOINLINE
-#define KEEP_ALIVE(value) do { (void)sizeof(value); } while (0)
-#endif
+static int32_t values[N] = {
+	VALUES16(0),
+	VALUES16(16),
+	VALUES16(32),
+	VALUES16(48),
+	VALUES16(64),
+	VALUES16(80),
+	VALUES16(96),
+	VALUES16(112)
+};
 
-static int partition(int32_t values[N], int low, int high) {
+NOINLINE static int partition(int32_t values[N], int low, int high) {
 	int32_t pivot = values[high];
 	int i = low - 1;
 	int32_t tmp;
@@ -37,51 +41,16 @@ static int partition(int32_t values[N], int low, int high) {
 }
 
 NOINLINE void quicksort(int32_t values[N], int low, int high) {
-	int stack_low[N];
-	int stack_high[N];
-	int top = 0;
-
-	stack_low[top] = low;
-	stack_high[top] = high;
-	top++;
-
-	while (top > 0) {
-		top--;
-		low = stack_low[top];
-		high = stack_high[top];
-
-		if (low < high) {
-			int pivot = partition(values, low, high);
-
-			if (pivot - 1 > low) {
-				stack_low[top] = low;
-				stack_high[top] = pivot - 1;
-				top++;
-			}
-
-			if (pivot + 1 < high) {
-				stack_low[top] = pivot + 1;
-				stack_high[top] = high;
-				top++;
-			}
-		}
+	if (low < high) {
+		int pivot = partition(values, low, high);
+		quicksort(values, low, pivot - 1);
+		quicksort(values, pivot + 1, high);
 	}
 }
 
-static int32_t values[N] = {
-	VALUES16(0),
-	VALUES16(16),
-	VALUES16(32),
-	VALUES16(48),
-	VALUES16(64),
-	VALUES16(80),
-	VALUES16(96),
-	VALUES16(112)
-};
-
 int main() {
 	quicksort(values, 0, N - 1);
-	KEEP_ALIVE(values);
 
+	KEEP_ALIVE(values[N - 1]);
 	return 0;
 }

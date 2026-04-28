@@ -64,11 +64,12 @@ public:
 
 	ExecEntry complete(uint32_t tag, const Memory &mem) {
 		auto &entry = get(tag);
+		size_t load_idx = index_of(tag);
 
 		if (is_vload(entry.op)) {
-			entry.V = load_vector(entry, mem);
+			entry.V = vload_forward(entry, load_idx, mem);
 		} else if (is_load(entry.op)) {
-			uint32_t raw = load_forwarded(entry, index_of(tag), mem);
+			uint32_t raw = load_forward(entry, load_idx, mem);
 			entry.V = format_load(entry.op, raw);
 		}
 
@@ -147,56 +148,7 @@ private:
 		}
 	}
 
-	static Value load_vector(const LSQEntry &entry, const Memory &mem) {
-		Value value = Value::vector_zero();
-		uint8_t bytes = entry.sew / 8;
-
-		for (uint8_t lane = 0; lane < entry.vl; lane++) {
-			uint32_t addr = entry.Va + lane * bytes;
-			switch (entry.op) {
-				case VLE8_V:
-					value.set_lane(lane, mem.loadb(addr));
-					break;
-				case VLE16_V:
-					value.set_lane(lane, mem.loadh(addr));
-					break;
-				case VLE32_V:
-					value.set_lane(lane, mem.loadw(addr));
-					break;
-				default:
-					break;
-			}
-		}
-
-		return value;
-	}
-
-	uint32_t load_forwarded(const LSQEntry &load_entry, size_t load_idx, const Memory &mem) const {
-		uint32_t raw = load(load_entry, mem);
-		uint8_t load_size = access_size(load_entry);
-
-		for (size_t i = 0; i < load_idx; i++) {
-			const auto &store_entry = entries[i];
-			if (!is_store(store_entry.op) || !overlaps(store_entry, load_entry)) continue;
-
-			uint8_t store_size = access_size(store_entry);
-			for (uint8_t load_byte = 0; load_byte < load_size; load_byte++) {
-				uint64_t byte_addr = static_cast<uint64_t>(load_entry.Va) + load_byte;
-				uint64_t store_start = store_entry.Va;
-				uint64_t store_end = store_start + store_size;
-				if (byte_addr < store_start || byte_addr >= store_end) continue;
-
-				uint8_t store_byte = static_cast<uint8_t>(byte_addr - store_start);
-				uint32_t shift = load_byte * 8;
-				uint32_t forwarded = ((store_entry.V.as_scalar() >> (store_byte * 8)) & 0xFF) << shift;
-				raw = (raw & ~(0xFFU << shift)) | forwarded;
-			}
-		}
-
-		return raw;
-	}
-
-	static void store(const LSQEntry &entry, Memory &mem, CommitLog &log) {
+		static void store(const LSQEntry &entry, Memory &mem, CommitLog &log) {
 		switch (entry.op) {
 			case SB: {
 				uint8_t old_val = mem.loadb(entry.Va), new_val = entry.V.as_scalar() & 0xFF;
@@ -255,6 +207,77 @@ private:
 		}
 	}
 
+	bool covers_byte(const LSQEntry &store_entry, uint64_t byte_addr) const {
+		uint64_t start = store_entry.Va;
+		uint64_t end = start + access_size(store_entry);
+		return byte_addr >= start && byte_addr < end;
+	}
+
+	uint8_t byte_from(const LSQEntry &store_entry, uint64_t byte_addr) const {
+		uint64_t offset = byte_addr - store_entry.Va;
+		if (is_vstore(store_entry.op)) {
+			uint8_t bytes = store_entry.sew / 8;
+			if (bytes == 0) return 0;
+			size_t lane = static_cast<size_t>(offset / bytes);
+			uint8_t lane_byte = static_cast<uint8_t>(offset % bytes);
+			uint32_t lane_value = store_entry.V.lane(lane);
+			return static_cast<uint8_t>((lane_value >> (lane_byte * 8)) & 0xFF);
+		}
+
+		uint8_t store_byte = static_cast<uint8_t>(offset);
+		uint32_t word = store_entry.V.as_scalar();
+		return static_cast<uint8_t>((word >> (store_byte * 8)) & 0xFF);
+	}
+
+	optional<uint8_t> byte_forward(size_t load_idx, uint64_t byte_addr) const {
+		optional<uint8_t> result;
+		for (size_t i = 0; i < load_idx; i++) {
+			const auto &store_entry = entries[i];
+			if (!is_store(store_entry.op)) continue;
+			if (!covers_byte(store_entry, byte_addr)) continue;
+			result = byte_from(store_entry, byte_addr);
+		}
+		return result;
+	}
+
+	Value vload_forward(const LSQEntry &load_entry, size_t load_idx, const Memory &mem) const {
+		Value value = Value::vector_zero();
+		uint8_t bytes = load_entry.sew / 8;
+		if (bytes == 0) return value;
+
+		for (uint8_t lane = 0; lane < load_entry.vl; lane++) {
+			uint32_t lane_value = 0;
+			uint32_t lane_offset = static_cast<uint32_t>(lane) * bytes;
+
+			for (uint8_t byte = 0; byte < bytes; byte++) {
+				uint64_t addr = static_cast<uint64_t>(load_entry.Va) + lane_offset + byte;
+				uint8_t lane_byte = mem.loadb(static_cast<uint32_t>(addr));
+				auto forwarded = byte_forward(load_idx, addr);
+				if (forwarded) lane_byte = *forwarded;
+				lane_value |= static_cast<uint32_t>(lane_byte) << (byte * 8);
+			}
+
+			value.set_lane(lane, lane_value);
+		}
+
+		return value;
+	}
+
+	uint32_t load_forward(const LSQEntry &load_entry, size_t load_idx, const Memory &mem) const {
+		uint32_t raw = load(load_entry, mem);
+		uint8_t load_size = access_size(load_entry);
+
+		for (uint8_t load_byte = 0; load_byte < load_size; load_byte++) {
+			uint64_t byte_addr = static_cast<uint64_t>(load_entry.Va) + load_byte;
+			auto forwarded = byte_forward(load_idx, byte_addr);
+			if (!forwarded) continue;
+			uint32_t shift = load_byte * 8;
+			raw = (raw & ~(0xFFU << shift)) | (static_cast<uint32_t>(*forwarded) << shift);
+		}
+
+		return raw;
+	}
+
 	bool can_issue(const LSQEntry &entry) const {
 		if (entry.issued || entry.done || entry.Qa != -1U) return false;
 		if (is_store(entry.op) && entry.Q != -1U) return false;
@@ -269,7 +292,6 @@ private:
 			const auto &entry = entries[i];
 			if (!is_store(entry.op)) continue;
 			if (entry.Qa != -1U) return false;
-			if (overlaps(entry, load_entry) && (is_vload(load_entry.op) || is_vstore(entry.op))) return false;
 			if (overlaps(entry, load_entry) && entry.Q != -1U) return false;
 		}
 

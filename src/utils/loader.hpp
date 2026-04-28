@@ -20,7 +20,7 @@ struct Program {
 struct Config {
 	string name = "Baseline";
 	size_t pipe_width = 2, rs_size = 8, lsq_size = 8;
-	size_t alu_count = 2, mul_count = 1, ctrl_count = 1, fpu_count = 1, vec_count = 1, lsu_count = 2;
+	size_t alu_count = 2, mul_count = 2, ctrl_count = 2, fpu_count = 2, vec_count = 2, lsu_count = 2;
 	uint32_t vector_bits = 128;
 	string branch_pred = "two_bit";
 

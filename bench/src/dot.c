@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "lib/optim.h"
 
 #define N 1024
 #define INT32_ASC(base) \
@@ -19,14 +20,6 @@
 	(base) - 20, (base) - 21, (base) - 22, (base) - 23, \
 	(base) - 24, (base) - 25, (base) - 26, (base) - 27, \
 	(base) - 28, (base) - 29, (base) - 30, (base) - 31
-
-#if defined(__GNUC__)
-#define NOINLINE __attribute__((noinline, noclone))
-#define KEEP_ALIVE(value) __asm__ volatile("" : : "m"(value) : "memory")
-#else
-#define NOINLINE
-#define KEEP_ALIVE(value) do { (void)sizeof(value); } while (0)
-#endif
 
 static int32_t a[N] = {
 	INT32_ASC(1),   INT32_ASC(33),  INT32_ASC(65),  INT32_ASC(97),
@@ -50,7 +43,7 @@ static int32_t b[N] = {
 	INT32_DESC(128),  INT32_DESC(96),  INT32_DESC(64),  INT32_DESC(32)
 };
 
-static int32_t result;
+static int32_t c;
 
 NOINLINE int32_t dot_product(int32_t a[N], int32_t b[N], int n) {
 	int32_t sum = 0;
@@ -63,8 +56,8 @@ NOINLINE int32_t dot_product(int32_t a[N], int32_t b[N], int n) {
 }
 
 int main() {
-	result = dot_product(a, b, N);
-	KEEP_ALIVE(result);
-
+	c = dot_product(a, b, N);
+	
+	KEEP_ALIVE(c);
 	return 0;
 }

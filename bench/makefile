@@ -3,7 +3,7 @@ RISCV_OBJDUMP := riscv64-unknown-elf-objdump
 
 SRC_DIR := src
 BUILD_DIR := build
-LINKER := $(SRC_DIR)/entry/linker.ld
+LINKER := $(SRC_DIR)/lib/linker.ld
 
 SOURCES := $(wildcard $(SRC_DIR)/*.c)
 ELFS := $(patsubst ${SRC_DIR}/%.c,${BUILD_DIR}/%.elf,$(SOURCES))
@@ -41,7 +41,7 @@ all: $(ELFS)
 $(BUILD_DIR):
 	cmake -E make_directory $@
 
-$(BUILD_DIR)/%_vec.elf: $(SRC_DIR)/%_vec.c $(LINKER) | $(BUILD_DIR)
+$(BUILD_DIR)/%v.elf: $(SRC_DIR)/%v.c $(LINKER) | $(BUILD_DIR)
 	$(RISCV_GCC) $(RISCV_VECTOR_CFLAGS) $(RISCV_LDFLAGS) $< -o $@
 
 $(BUILD_DIR)/%.elf: $(SRC_DIR)/%.c $(LINKER) | $(BUILD_DIR)
