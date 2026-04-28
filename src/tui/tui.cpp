@@ -8,7 +8,7 @@ static int clamp_index(int index, int item_count) {
 }
 
 static int stack_line_count(const CPU &cpu) {
-	const uint32_t sp = cpu.get_registers().read(2);
+	const uint32_t sp = cpu.get_registers().read(2).as_scalar();
 	if (sp >= MEM_SIZE) return 0;
 	const uint32_t remaining = MEM_SIZE - sp;
 	return static_cast<int>((remaining + WORD_BYTES - 1) / WORD_BYTES);
@@ -183,7 +183,7 @@ Element TUI::render_registers() {
 	regs_focus = clamp_index(regs_focus, static_cast<int>(NUM_REGISTERS));
 	
 	for (uint8_t i = 0; i < NUM_REGISTERS; i++) {
-		uint32_t val = regs.read(i);
+		uint32_t val = regs.read(i).as_scalar();
 		string regname = regs.name(i);
 		
 		stringstream addr_ss, name_ss, val_ss;
@@ -210,7 +210,7 @@ Element TUI::render_registers() {
 Element TUI::render_memory() {
 	Elements lines;
 	const auto &mem = cpu.get_memory();
-	uint32_t sp = cpu.get_registers().read(2);
+	uint32_t sp = cpu.get_registers().read(2).as_scalar();
 	stack_focus = clamp_index(stack_focus, stack_line_count(cpu));
 	int line_index = 0;
 	

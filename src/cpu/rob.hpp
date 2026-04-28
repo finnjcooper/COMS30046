@@ -15,7 +15,6 @@ struct ROBEntry {
 
 	uint8_t rd = 0;
 	Value value = 0;
-	uint32_t addr = 0;
 	uint32_t target = 0;
 	uint32_t pc = 0;
 	uint8_t vl = 0, sew = 0;
@@ -51,7 +50,6 @@ public:
 		for (auto& entry : entries) {
 			if (entry.tag == exec.tag) {
 				entry.value = exec.value;
-				entry.addr = exec.addr;
 				entry.target = exec.target;
 				entry.jumped = exec.jumped;
 				entry.vl = exec.vl;

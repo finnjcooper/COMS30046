@@ -11,11 +11,10 @@ struct LSQEntry {
 	Op op = INVALID;
 	uint32_t tag = -1U;
 
-	Value Vj = 0, Vk = 0;
-	uint32_t Qj = -1U, Qk = -1U, Qv = -1U;
-
-	int32_t imm = 0;
-	uint32_t addr = 0;
+	Value V = 0;
+	uint32_t Va = 0;
+	uint32_t Q = -1U;
+	uint32_t Qa = -1U;
 	uint8_t vl = 0;
 	uint8_t sew = 0;
 
@@ -31,41 +30,51 @@ public:
 		return entries.size() < max_size;
 	}
 
-	void allocate(Op op, uint32_t tag, Value Vj, Value Vk, uint32_t Qj, uint32_t Qk, uint32_t Qv, int32_t imm, uint8_t entry_vl) {
-		uint32_t addr = 0;
-		if (Qj == -1U) addr = Vj.as_scalar() + imm;
-
-		uint8_t vl = is_vload(op) || is_vstore(op) ? entry_vl : 0;
-		uint8_t sew = is_vload(op) || is_vstore(op) ? op_sew(op) : 0;
-		entries.push_back(LSQEntry {op, tag, Vj, Vk, Qj, Qk, Qv, imm, addr, vl, sew, false, false});
+	void allocate(const RSEntry &entry) {
+		LSQEntry lsq_entry;
+		lsq_entry.op = entry.op;
+		lsq_entry.tag = entry.tag;
+		lsq_entry.V = is_store(entry.op) ? entry.Vk : Value::scalar(0);
+		lsq_entry.Q = is_store(entry.op) ? entry.Qk : -1U;
+		lsq_entry.Qa = entry.tag;
+		lsq_entry.vl = is_vload(entry.op) || is_vstore(entry.op) ? entry.vl : 0;
+		lsq_entry.sew = is_vload(entry.op) || is_vstore(entry.op) ? op_sew(entry.op) : 0;
+		entries.push_back(lsq_entry);
 	}
 
 	const deque<LSQEntry>& get_entries() const { return entries; }
 
-	optional<uint32_t> issue() {
+	optional<LSQEntry> issue() {
 		for (auto &entry : entries) {
 			if (!can_issue(entry)) continue;
 			entry.issued = true;
-			return entry.tag;
+			return entry;
 		}
 
 		return nullopt;
 	}
 
+	void update(const ExecEntry &entry) {
+		auto &lsq_entry = get(entry.tag);
+		lsq_entry.Va = entry.value.as_scalar();
+		lsq_entry.Qa = -1U;
+		if (is_vload(lsq_entry.op) || is_vstore(lsq_entry.op))
+			lsq_entry.vl = entry.vl;
+	}
+
 	ExecEntry complete(uint32_t tag, const Memory &mem) {
-		size_t idx = index_of(tag);
-		auto &entry = entries[idx];
+		auto &entry = get(tag);
 
 		if (is_vload(entry.op)) {
-			entry.Vk = load_vector(entry, mem);
+			entry.V = load_vector(entry, mem);
 		} else if (is_load(entry.op)) {
-			uint32_t raw = load_forwarded(entry, idx, mem);
-			entry.Vk = format_load(entry.op, raw);
+			uint32_t raw = load_forwarded(entry, index_of(tag), mem);
+			entry.V = format_load(entry.op, raw);
 		}
 
 		entry.issued = false;
 		entry.done = true;
-		return ExecEntry {entry.op, entry.Vk, entry.addr, 0, false, entry.tag};
+		return ExecEntry {entry.op, entry.V, 0, false, entry.tag, entry.vl, entry.sew};
 	}
 
 	bool commit(uint32_t tag, Memory &mem, CommitLog &log) {
@@ -83,21 +92,9 @@ public:
 	void wake(const ExecEntry &exec) {
 		for (auto &entry : entries) {
 			if (entry.done) continue;
-
-			if (entry.Qj == exec.tag) {
-				entry.Qj = -1U;
-				entry.Vj = exec.value;
-				entry.addr = exec.value.as_scalar() + entry.imm;
-			}
-
-			if (is_store(entry.op) && entry.Qk == exec.tag) {
-				entry.Qk = -1U;
-				entry.Vk = exec.value;
-			}
-
-			if ((is_vload(entry.op) || is_vstore(entry.op)) && entry.Qv == exec.tag) {
-				entry.Qv = -1U;
-				entry.vl = exec.vl;
+			if (is_store(entry.op) && entry.Q == exec.tag) {
+				entry.Q = -1U;
+				entry.V = exec.value;
 			}
 		}
 	}
@@ -129,23 +126,23 @@ private:
 		}
 	}
 
-	static uint32_t format_load(Op op, uint32_t raw) {
+	static Value format_load(Op op, uint32_t raw) {
 		switch (op) {
-			case LB: return sign_extend(raw & 0xFF, 8);
-			case LH: return sign_extend(raw & 0xFFFF, 16);
+			case LB: return Value::scalar(sign_extend(raw & 0xFF, 8));
+			case LH: return Value::scalar(sign_extend(raw & 0xFFFF, 16));
 			case LW:
-			case FLW: return raw;
-			case LBU: return raw & 0xFF;
-			case LHU: return raw & 0xFFFF;
-			default: return 0;
+			case FLW: return Value::scalar(raw);
+			case LBU: return Value::scalar(raw & 0xFF);
+			case LHU: return Value::scalar(raw & 0xFFFF);
+			default: return Value::scalar(0);
 		}
 	}
 
 	static uint32_t load(const LSQEntry &entry, const Memory &mem) {
 		switch (entry.op) {
-			case LB: case LBU: return mem.loadb(entry.addr);
-			case LH: case LHU: return mem.loadh(entry.addr);
-			case LW: case FLW: return mem.loadw(entry.addr);
+			case LB: case LBU: return mem.loadb(entry.Va);
+			case LH: case LHU: return mem.loadh(entry.Va);
+			case LW: case FLW: return mem.loadw(entry.Va);
 			default: return 0;
 		}
 	}
@@ -155,7 +152,7 @@ private:
 		uint8_t bytes = entry.sew / 8;
 
 		for (uint8_t lane = 0; lane < entry.vl; lane++) {
-			uint32_t addr = entry.addr + lane * bytes;
+			uint32_t addr = entry.Va + lane * bytes;
 			switch (entry.op) {
 				case VLE8_V:
 					value.set_lane(lane, mem.loadb(addr));
@@ -184,14 +181,14 @@ private:
 
 			uint8_t store_size = access_size(store_entry);
 			for (uint8_t load_byte = 0; load_byte < load_size; load_byte++) {
-				uint64_t byte_addr = static_cast<uint64_t>(load_entry.addr) + load_byte;
-				uint64_t store_start = store_entry.addr;
+				uint64_t byte_addr = static_cast<uint64_t>(load_entry.Va) + load_byte;
+				uint64_t store_start = store_entry.Va;
 				uint64_t store_end = store_start + store_size;
 				if (byte_addr < store_start || byte_addr >= store_end) continue;
 
 				uint8_t store_byte = static_cast<uint8_t>(byte_addr - store_start);
 				uint32_t shift = load_byte * 8;
-				uint32_t forwarded = ((store_entry.Vk >> (store_byte * 8)) & 0xFF) << shift;
+				uint32_t forwarded = ((store_entry.V.as_scalar() >> (store_byte * 8)) & 0xFF) << shift;
 				raw = (raw & ~(0xFFU << shift)) | forwarded;
 			}
 		}
@@ -199,26 +196,25 @@ private:
 		return raw;
 	}
 
-
 	static void store(const LSQEntry &entry, Memory &mem, CommitLog &log) {
 		switch (entry.op) {
 			case SB: {
-				uint8_t old_val = mem.loadb(entry.addr), new_val = entry.Vk & 0xFF;
-				mem.storeb(entry.addr, new_val);
-				log.record_mem_write(entry.addr, old_val, new_val, 1);
+				uint8_t old_val = mem.loadb(entry.Va), new_val = entry.V.as_scalar() & 0xFF;
+				mem.storeb(entry.Va, new_val);
+				log.record_mem_write(entry.Va, old_val, new_val, 1);
 				break;
 			}
 			case SH: {
-				uint16_t old_val = mem.loadh(entry.addr), new_val = entry.Vk & 0xFFFF;
-				mem.storeh(entry.addr, new_val);
-				log.record_mem_write(entry.addr, old_val, new_val, 2);
+				uint16_t old_val = mem.loadh(entry.Va), new_val = entry.V.as_scalar() & 0xFFFF;
+				mem.storeh(entry.Va, new_val);
+				log.record_mem_write(entry.Va, old_val, new_val, 2);
 				break;
 			}
 			case SW:
 			case FSW: {
-				uint32_t old_val = mem.loadw(entry.addr);
-				mem.storew(entry.addr, entry.Vk);
-				log.record_mem_write(entry.addr, old_val, entry.Vk, 4);
+				uint32_t old_val = mem.loadw(entry.Va);
+				mem.storew(entry.Va, entry.V.as_scalar());
+				log.record_mem_write(entry.Va, old_val, entry.V.as_scalar(), 4);
 				break;
 			}
 			case VSE8_V:
@@ -226,8 +222,8 @@ private:
 			case VSE32_V: {
 				uint8_t bytes = entry.sew / 8;
 				for (uint8_t lane = 0; lane < entry.vl; lane++) {
-					uint32_t addr = entry.addr + lane * bytes;
-					uint32_t value = entry.Vk.lane(lane);
+					uint32_t addr = entry.Va + lane * bytes;
+					uint32_t value = entry.V.lane(lane);
 
 					switch (entry.op) {
 						case VSE8_V: {
@@ -260,8 +256,8 @@ private:
 	}
 
 	bool can_issue(const LSQEntry &entry) const {
-		if (entry.issued || entry.done || entry.Qj != -1U || entry.Qv != -1U) return false;
-		if (is_store(entry.op) && entry.Qk != -1U) return false;
+		if (entry.issued || entry.done || entry.Qa != -1U) return false;
+		if (is_store(entry.op) && entry.Q != -1U) return false;
 		if (is_load(entry.op) && !can_issue_load(entry)) return false;
 		return true;
 	}
@@ -272,21 +268,28 @@ private:
 		for (size_t i = 0; i < load_idx; i++) {
 			const auto &entry = entries[i];
 			if (!is_store(entry.op)) continue;
-			if (entry.Qj != -1U) return false;
+			if (entry.Qa != -1U) return false;
 			if (overlaps(entry, load_entry) && (is_vload(load_entry.op) || is_vstore(entry.op))) return false;
-			if (overlaps(entry, load_entry) && entry.Qk != -1U) return false;
+			if (overlaps(entry, load_entry) && entry.Q != -1U) return false;
 		}
 
 		return true;
 	}
 
 	bool overlaps(const LSQEntry &a, const LSQEntry &b) const {
-		uint64_t a_start = a.addr;
-		uint64_t b_start = b.addr;
+		uint64_t a_start = a.Va;
+		uint64_t b_start = b.Va;
 		uint64_t a_end = a_start + access_size(a);
 		uint64_t b_end = b_start + access_size(b);
 
 		return a_start < b_end && b_start < a_end;
+	}
+
+	LSQEntry& get(uint32_t tag) {
+		for (auto &entry : entries)
+			if (entry.tag == tag) return entry;
+
+		throw out_of_range("LSQ tag not found");
 	}
 
 	size_t index_of(uint32_t tag) const {

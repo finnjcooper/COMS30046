@@ -12,15 +12,17 @@ public:
 		if (--cycles_remaining != 0) return nullopt;
 
 		Op op = current.op;
-		uint32_t r1 = current.Vj, r2 = current.Vk, r3 = current.Vl;
-
-		uint32_t float_out = exec(op, r1, r2, r3);
+		Value float_out = exec(op, current.Vj, current.Vk, current.Vl);
 		busy_ = false;
-		return ExecEntry {current.op, float_out, 0, 0, false, current.tag};
+		return ExecEntry {current.op, float_out, 0, false, current.tag};
 	}
 
 private:
-	uint32_t exec(Op op, uint32_t operand1, uint32_t operand2, uint32_t operand3) override {
+	Value exec(Op op, Value v1, Value v2, Value v3) override {
+		return Value::scalar(compute(op, v1.as_scalar(), v2.as_scalar(), v3.as_scalar()));
+	}
+
+	uint32_t compute(Op op, uint32_t operand1, uint32_t operand2, uint32_t operand3) {
 		float f1 = bits_to_float(operand1);
 		float f2 = bits_to_float(operand2);
 		float f3 = bits_to_float(operand3);

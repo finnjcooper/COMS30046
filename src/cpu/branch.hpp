@@ -12,12 +12,12 @@ public:
 	BranchPredictor(size_t btb_size = 256) : btb(btb_size) {}
 	virtual ~BranchPredictor() = default;
 
-	Prediction predict(uint32_t pc, Instruction instr) {
+	Prediction predict(uint32_t pc, const Instruction &instr) {
 		uint32_t fallthrough = pc + WORD_BYTES;
 
 		if (instr.op == JAL) return {true, static_cast<uint32_t>(pc + instr.imm)};
 
-		if (is_branch(instr.op) && !predict_direction(pc))
+		if (is_branch(instr.op) && !predict_direction(pc, instr))
 			return {false, fallthrough};
 
 		const auto &entry = btb[btb_index(pc)];
@@ -36,7 +36,7 @@ public:
 	}
 
 protected:
-	virtual bool predict_direction(uint32_t) = 0;
+	virtual bool predict_direction(uint32_t, const Instruction &) = 0;
 	virtual void update_direction(uint32_t, bool) = 0;
 
 private:
@@ -56,7 +56,7 @@ class StaticBranchPredictor : public BranchPredictor {
 public:
 	StaticBranchPredictor(bool should_take = true) : should_take(should_take) {}
 
-	bool predict_direction(uint32_t) override {
+	bool predict_direction(uint32_t, const Instruction &) override {
 		return should_take;
 	}
 
@@ -66,11 +66,20 @@ private:
 	bool should_take;
 };
 
+class BTFNT : public BranchPredictor {
+public:
+	bool predict_direction(uint32_t, const Instruction &instr) override {
+		return instr.imm < 0;
+	}
+
+	void update_direction(uint32_t, bool) override {}
+};
+
 class OneBitPredictor : public BranchPredictor {
 public:
 	OneBitPredictor(size_t size = 256, bool init_taken = false) : history(size, init_taken) {}
 
-	bool predict_direction(uint32_t pc) override {
+	bool predict_direction(uint32_t pc, const Instruction &) override {
 		return history[index(pc)];
 	}
 
@@ -89,7 +98,7 @@ class TwoBitPredictor : public BranchPredictor {
 public:
 	TwoBitPredictor(size_t size = 256, uint8_t init_state = 1U) : history(size, init_state) {}
 
-	bool predict_direction(uint32_t pc) override {
+	bool predict_direction(uint32_t pc, const Instruction &) override {
 		return history[index(pc)] >= 2;
 	}
 

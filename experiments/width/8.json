@@ -1,8 +1,8 @@
 {
   "name": "Width 8",
   "pipe_width": 8,
-  "rs_size": 32,
-  "lsq_size": 32,
+  "rs_size": 16,
+  "lsq_size": 16,
   "alu_count": 8,
   "mul_count": 8,
   "ctrl_count": 8,

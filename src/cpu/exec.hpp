@@ -6,7 +6,6 @@ struct ExecEntry {
 	Op op = INVALID;
 
 	Value value = 0;
-	uint32_t addr = 0;
 
 	uint32_t target = 0;
 	bool jumped = false;
@@ -40,7 +39,7 @@ public:
 	
 	void start(const RSEntry &entry) {
 		current = entry;
-		cycles_remaining = cycles(current.op);
+		cycles_remaining = latency(current);
 		busy_ = true;
 	}
 	
@@ -52,5 +51,6 @@ protected:
 	size_t cycles_remaining;
 	bool busy_ = false;
 
-	virtual uint32_t exec(Op op, uint32_t operand1, uint32_t operand2, uint32_t operand3 = 0) = 0;
+	virtual Value exec(Op op, Value operand1, Value operand2, Value operand3 = Value::scalar(0)) = 0;
+	virtual size_t latency(const RSEntry &entry) const { return cycles(entry.op); }
 };

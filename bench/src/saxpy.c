@@ -1,4 +1,4 @@
-#define N 128
+#define N 1024
 #define FLOAT32(base) \
 	(float)((base) + 0), (float)((base) + 1), (float)((base) + 2), (float)((base) + 3), \
 	(float)((base) + 4), (float)((base) + 5), (float)((base) + 6), (float)((base) + 7), \
@@ -18,11 +18,16 @@
 #endif
 
 static float x[N] = {
-	FLOAT32(0),
-	FLOAT32(32),
-	FLOAT32(64),
-	FLOAT32(96)
+	FLOAT32(0),   FLOAT32(32),  FLOAT32(64),  FLOAT32(96),
+	FLOAT32(128), FLOAT32(160), FLOAT32(192), FLOAT32(224),
+	FLOAT32(256), FLOAT32(288), FLOAT32(320), FLOAT32(352),
+	FLOAT32(384), FLOAT32(416), FLOAT32(448), FLOAT32(480),
+	FLOAT32(512), FLOAT32(544), FLOAT32(576), FLOAT32(608),
+	FLOAT32(640), FLOAT32(672), FLOAT32(704), FLOAT32(736),
+	FLOAT32(768), FLOAT32(800), FLOAT32(832), FLOAT32(864),
+	FLOAT32(896), FLOAT32(928), FLOAT32(960), FLOAT32(992)
 };
+
 static float y[N] = { [0 ... N - 1] = 1.0f };
 
 NOINLINE void saxpy(float a, float x[N], float y[N], int n) {

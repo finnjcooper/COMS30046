@@ -30,10 +30,10 @@ struct Config {
 		os << "  Reservation station size: " << config.rs_size << "\n";
 		os << "  Load/store queue size: " << config.lsq_size << "\n";
 		os << "  ALU count: " << config.alu_count << "\n";
-		os << "  MULU count: " << config.mul_count << "\n";
-		os << "  CTRLU count: " << config.ctrl_count << "\n";
+		os << "  MUL count: " << config.mul_count << "\n";
+		os << "  CTRL count: " << config.ctrl_count << "\n";
 		os << "  FPU count: " << config.fpu_count << "\n";
-		os << "  VECU count: " << config.vec_count << "\n";
+		os << "  VEC count: " << config.vec_count << "\n";
 		os << "  LSU count: " << config.lsu_count << "\n";
 		os << "  Vector bits: " << config.vector_bits << "\n";
 		os << "  Branch prediction: " << config.branch_pred << "\n";

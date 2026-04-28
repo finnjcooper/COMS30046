@@ -8,13 +8,18 @@ public:
 		if (!busy_) return nullopt;
 		if (--cycles_remaining != 0) return nullopt;
 
-		uint32_t mul_out = exec(current.op, current.Vj, current.Vk, current.Vl);
+		Op op = current.op;
+		Value mul_out = exec(op, current.Vj, current.Vk, current.Vl);
 		busy_ = false;
-		return ExecEntry {current.op, mul_out, 0, 0, false, current.tag};
+		return ExecEntry {op, mul_out, 0, false, current.tag};
 	}
 
 private:
-	uint32_t exec(Op op, uint32_t operand1, uint32_t operand2, uint32_t operand3) override {
+	Value exec(Op op, Value v1, Value v2, Value v3) override {
+		return Value::scalar(compute(op, v1.as_scalar(), v2.as_scalar()));
+	}
+
+	uint32_t compute(Op op, uint32_t operand1, uint32_t operand2) {
 		switch (op) {
 			case MUL: case MULH: {
 				int64_t result = static_cast<int64_t>(static_cast<int32_t>(operand1)) * static_cast<int64_t>(static_cast<int32_t>(operand2));

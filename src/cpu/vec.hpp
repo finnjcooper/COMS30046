@@ -31,7 +31,7 @@ public:
 			return entry;
 		}
 
-		entry.value = exec_value(current.op);
+		entry.value = exec(current.op, current.Vj, current.Vk, current.Vl);
 		busy_ = false;
 		return entry;
 	}
@@ -39,9 +39,7 @@ public:
 private:
 	VectorState &state;
 
-	uint32_t exec(Op op, uint32_t operand1, uint32_t operand2, uint32_t operand3) override { return 0; }
-
-	Value exec_value(Op op) {
+	Value exec(Op op, Value v1, Value v2, Value v3) override {
 		switch (op) {
 			case VADD_VV: return binary_vv([](uint32_t a, uint32_t b) { return a + b; });
 			case VADD_VX: return binary_vx([](uint32_t a, uint32_t b) { return a + b; });
@@ -55,8 +53,8 @@ private:
 			case VMV_X_S: return Value::scalar(vmv_x_s());
 			case VREDSUM_VS: return vredsum();
 			case VFMV_V_F: return vfmv_v_f();
-			case VFMACC_VV: return vfmac(/*accumulate=*/true);
-			case VFMADD_VV: return vfmac(/*accumulate=*/false);
+			case VFMACC_VV: return vfmac(true);
+			case VFMADD_VV: return vfmac(false);
 			default: return Value::scalar(0);
 		}
 	}

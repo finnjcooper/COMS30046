@@ -11,6 +11,8 @@ CPU::CPU(const Program &prog, const Config &config) :
 			return make_unique<StaticBranchPredictor>(true);
 		} else if (config.branch_pred == "static_not_taken") {
 			return make_unique<StaticBranchPredictor>(false);
+		} else if (config.branch_pred == "btfnt") {
+			return make_unique<BTFNT>();
 		} else if (config.branch_pred == "one_bit") {
 			return make_unique<OneBitPredictor>();
 		} else if (config.branch_pred == "two_bit") {
@@ -34,7 +36,7 @@ CPU::CPU(const Program &prog, const Config &config) :
 	vecs(config.vec_count, config.rs_size, [this] {
 		return make_unique<VectorUnit>(vec_state);
 	}),
-	lsus(config.lsu_count, config.lsq_size, mem),
+	lsus(config.lsu_count, config.rs_size, config.lsq_size, mem),
 	exec_paths {&alus, &muls, &ctrls, &lsus, &fpus, &vecs} {
 	if (config.vector_bits != 128 && config.vector_bits != 256 && config.vector_bits != 512)
 		throw invalid_argument("Invalid vector register width");
@@ -203,9 +205,6 @@ void CPU::dispatch() {
 
 		ExecPath &path = get_path(op);
 		if (!path.can_allocate()) {
-			if (is_load(op) || is_store(op))
-				out << "Load/store queue full. Stalling pipeline. ";
-			else
 				out << "Reservation stations full. Stalling pipeline. ";
 			stalled = true;
 			return;

@@ -5,6 +5,7 @@ int main(int argc, char* argv[]) {
 	argparse::ArgumentParser program("RISC-V Simulator");
 	program.add_argument("elf").help("path to the ELF binary to load and simulate");
 	program.add_argument("--config", "-c").help("path to the configuration file").default_value("");
+	program.add_argument("--results", "-r").help("path to the results CSV file").default_value("experiments/results.csv");
 	program.add_argument("--headless", "-h").help("run without the TUI").default_value(false).implicit_value(true);
 
 	try {
@@ -38,7 +39,7 @@ int main(int argc, char* argv[]) {
 	auto mispred_count = cpu.get_mispred_count();
 	auto mispred_rate = branch_count ? 100.0 * mispred_count / branch_count : 0.0;
 
-	auto filename = "experiments/results.csv";
+	auto filename = program.get<string>("--results");
 	ifstream existing_results(filename, ios::ate);
 	const bool write_header = !existing_results || existing_results.tellg() == 0;
 	ofstream results(filename, ios::app);

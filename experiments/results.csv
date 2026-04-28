@@ -1,73 +1,73 @@
 Config,Benchmark,Instructions,Cycles,IPC,Branches,Prediction Rate (%)
-Width 1,dot,916,946,0.968,129,98.450
-Width 2,dot,916,553,1.656,129,98.450
-Width 4,dot,916,297,3.084,129,98.450
-Width 8,dot,916,296,3.095,129,98.450
-Width 1,fibonacci,54002,66462,0.813,4414,50.068
-Width 2,fibonacci,54002,44298,1.219,4414,50.068
-Width 4,fibonacci,54002,31696,1.704,4414,50.068
-Width 8,fibonacci,54002,28449,1.898,4414,50.068
-Width 1,gaussian,21383,26626,0.803,3344,68.750
-Width 2,gaussian,21383,18365,1.164,3344,68.750
-Width 4,gaussian,21383,14013,1.526,3344,68.750
-Width 8,gaussian,21383,13755,1.555,3344,68.750
-Width 1,insertionsort,24995,25841,0.967,8241,98.350
-Width 2,insertionsort,24995,17713,1.411,8241,98.350
-Width 4,insertionsort,24995,17707,1.412,8241,98.350
-Width 8,insertionsort,24995,17705,1.412,8241,98.350
-Width 1,matmul,34675,36073,0.961,4368,93.681
-Width 2,matmul,34675,22738,1.525,4368,93.681
-Width 4,matmul,34675,11987,2.893,4368,93.681
-Width 8,matmul,34675,10723,3.234,4368,93.681
-Width 1,quicksort,10127,13398,0.756,2101,77.868
-Width 2,quicksort,10127,9227,1.098,2101,77.868
-Width 4,quicksort,10127,7512,1.348,2101,77.868
-Width 8,quicksort,10127,7151,1.416,2101,77.868
-Width 1,saxpy,916,944,0.970,129,98.450
-Width 2,saxpy,916,652,1.405,129,98.450
-Width 4,saxpy,916,317,2.890,129,98.450
-Width 8,saxpy,916,295,3.105,129,98.450
-Width 2,dot,916,553,1.656,129,98.450
-Vector 128,dot_vec,434,358,1.212,33,93.939
-Vector 256,dot_vec,226,194,1.165,17,88.235
-Vector 512,dot_vec,122,110,1.109,9,77.778
-Width 2,gaussian,21383,18365,1.164,3344,68.750
-Vector 128,gaussian_vec,6252,5009,1.248,848,67.335
-Vector 256,gaussian_vec,3180,2714,1.172,432,62.037
-Vector 512,gaussian_vec,1644,1290,1.274,224,69.643
-Width 2,matmul,34675,22738,1.525,4368,93.681
-Vector 128,matmul_vec,16759,10717,1.564,1552,82.216
-Vector 256,matmul_vec,10103,8148,1.240,1040,48.942
-Vector 512,matmul_vec,6775,3796,1.785,784,97.577
-Width 2,saxpy,916,652,1.405,129,98.450
-Vector 128,saxpy_vec,370,231,1.602,33,93.939
-Vector 256,saxpy_vec,194,135,1.437,17,88.235
-Vector 512,saxpy_vec,106,87,1.218,9,77.778
-Branch Static Not Taken,dot,916,1179,0.777,129,1.550
-Branch Static Taken,dot,916,554,1.653,129,98.450
-Branch One Bit,dot,916,553,1.656,129,98.450
-Branch Two Bit,dot,916,553,1.656,129,98.450
-Branch Static Not Taken,fibonacci,54002,40660,1.328,4414,61.826
-Branch Static Taken,fibonacci,54002,48810,1.106,4414,38.174
-Branch One Bit,fibonacci,54002,47595,1.135,4414,38.355
-Branch Two Bit,fibonacci,54002,44815,1.205,4414,50.068
-Branch Static Not Taken,gaussian,21383,24907,0.859,3344,31.130
-Branch Static Taken,gaussian,21383,18342,1.166,3344,68.870
-Branch One Bit,gaussian,21383,24572,0.870,3344,37.739
-Branch Two Bit,gaussian,21383,18365,1.164,3344,68.750
-Branch Static Not Taken,insertionsort,24995,42461,0.589,8241,48.526
-Branch Static Taken,insertionsort,24995,44749,0.559,8241,51.474
-Branch One Bit,insertionsort,24995,18461,1.354,8241,97.039
-Branch Two Bit,insertionsort,24995,17713,1.411,8241,98.350
-Branch Static Not Taken,matmul,34675,38231,0.907,4368,6.250
-Branch Static Taken,matmul,34675,21699,1.598,4368,93.750
-Branch One Bit,matmul,34675,22313,1.554,4368,87.500
-Branch Two Bit,matmul,34675,21713,1.597,4368,93.681
-Branch Static Not Taken,quicksort,10127,13363,0.758,2101,36.221
-Branch Static Taken,quicksort,10127,11419,0.887,2101,63.779
-Branch One Bit,quicksort,10127,9903,1.023,2101,72.109
-Branch Two Bit,quicksort,10127,8918,1.136,2101,77.868
-Branch Static Not Taken,saxpy,916,1177,0.778,129,1.550
-Branch Static Taken,saxpy,916,595,1.539,129,98.450
-Branch One Bit,saxpy,916,594,1.542,129,98.450
-Branch Two Bit,saxpy,916,594,1.542,129,98.450
+Width 1,dot,7189,7220,0.996,1025,99.805
+Width 2,dot,7189,4138,1.737,1025,99.805
+Width 4,dot,7189,2090,3.440,1025,99.805
+Width 8,dot,7189,2089,3.441,1025,99.805
+Width 1,fibonacci,14920,18373,0.812,1219,50.123
+Width 2,fibonacci,14920,12247,1.218,1219,50.123
+Width 4,fibonacci,14920,8999,1.658,1219,50.123
+Width 8,fibonacci,14920,8102,1.842,1219,50.123
+Width 1,gaussian,21383,26627,0.803,3344,68.750
+Width 2,gaussian,21383,18366,1.164,3344,68.750
+Width 4,gaussian,21383,14014,1.526,3344,68.750
+Width 8,gaussian,21383,13756,1.554,3344,68.750
+Width 1,insertionsort,24995,25972,0.962,8241,98.350
+Width 2,insertionsort,24995,17844,1.401,8241,98.350
+Width 4,insertionsort,24995,17838,1.401,8241,98.350
+Width 8,insertionsort,24995,17836,1.401,8241,98.350
+Width 1,matmul,34675,36074,0.961,4368,93.681
+Width 2,matmul,34675,24018,1.444,4368,93.681
+Width 4,matmul,34675,12500,2.774,4368,93.681
+Width 8,matmul,34675,12499,2.774,4368,93.681
+Width 1,quicksort,10127,13675,0.741,2101,77.868
+Width 2,quicksort,10127,9638,1.051,2101,77.868
+Width 4,quicksort,10127,7956,1.273,2101,77.868
+Width 8,quicksort,10127,7728,1.310,2101,77.868
+Width 1,saxpy,7190,7220,0.996,1025,99.805
+Width 2,saxpy,7190,5157,1.394,1025,99.805
+Width 4,saxpy,7190,2429,2.960,1025,99.805
+Width 8,saxpy,7190,2428,2.961,1025,99.805
+Baseline,dot,7189,4138,1.737,1025,99.805
+VLEN 128,dot_vec,434,265,1.638,33,93.939
+VLEN 256,dot_vec,226,153,1.477,17,88.235
+VLEN 512,dot_vec,122,97,1.258,9,77.778
+Baseline,gaussian,21383,18366,1.164,3344,68.750
+VLEN 128,gaussian_vec,6252,5010,1.248,848,67.335
+VLEN 256,gaussian_vec,3180,2715,1.171,432,62.037
+VLEN 512,gaussian_vec,1644,1291,1.273,224,69.643
+Baseline,matmul,34675,24018,1.444,4368,93.681
+VLEN 128,matmul_vec,16759,10459,1.602,1552,82.216
+VLEN 256,matmul_vec,10103,8150,1.240,1040,48.942
+VLEN 512,matmul_vec,6775,3798,1.784,784,97.577
+Baseline,saxpy,7190,5157,1.394,1025,99.805
+VLEN 128,saxpy_vec,370,232,1.595,33,93.939
+VLEN 256,saxpy_vec,194,136,1.426,17,88.235
+VLEN 512,saxpy_vec,106,88,1.205,9,77.778
+Static Not Taken,dot,7189,9242,0.778,1025,0.195
+Static Taken,dot,7189,4139,1.737,1025,99.805
+BTFNT,dot,7189,4133,1.739,1025,99.902
+Two Bit,dot,7189,4138,1.737,1025,99.805
+Static Not Taken,fibonacci,14920,11246,1.327,1219,61.854
+Static Taken,fibonacci,14920,13268,1.125,1219,38.146
+BTFNT,fibonacci,14920,12259,1.217,1219,49.959
+Two Bit,fibonacci,14920,12247,1.218,1219,50.123
+Static Not Taken,gaussian,21383,25434,0.841,3344,31.130
+Static Taken,gaussian,21383,18343,1.166,3344,68.870
+BTFNT,gaussian,21383,18343,1.166,3344,68.870
+Two Bit,gaussian,21383,18366,1.164,3344,68.750
+Static Not Taken,insertionsort,24995,42466,0.589,8241,48.526
+Static Taken,insertionsort,24995,48745,0.513,8241,51.474
+BTFNT,insertionsort,24995,17785,1.405,8241,98.447
+Two Bit,insertionsort,24995,17844,1.401,8241,98.350
+Static Not Taken,matmul,34675,38218,0.907,4368,6.250
+Static Taken,matmul,34675,24005,1.444,4368,93.750
+BTFNT,matmul,34675,24005,1.444,4368,93.750
+Two Bit,matmul,34675,24018,1.444,4368,93.681
+Static Not Taken,quicksort,10127,13822,0.733,2101,36.221
+Static Taken,quicksort,10127,12563,0.806,2101,63.779
+BTFNT,quicksort,10127,10998,0.921,2101,70.205
+Two Bit,quicksort,10127,9638,1.051,2101,77.868
+Static Not Taken,saxpy,7190,9242,0.778,1025,0.195
+Static Taken,saxpy,7190,5160,1.393,1025,99.805
+BTFNT,saxpy,7190,5154,1.395,1025,99.902
+Two Bit,saxpy,7190,5157,1.394,1025,99.805

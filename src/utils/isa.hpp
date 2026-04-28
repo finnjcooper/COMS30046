@@ -35,8 +35,6 @@ struct Value {
 		vector_value = true;
 		lanes[index] = value;
 	}
-
-	operator uint32_t() const { return as_scalar(); }
 };
 
 struct VectorState {

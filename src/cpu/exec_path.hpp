@@ -32,12 +32,11 @@ public:
 		if (!rs) throw logic_error("Reservation stations full");
 
 		*rs = entry;
-		allocate(entry.op, entry.tag);
 	}
 
 	virtual void issue() {
 		for (auto &rs : stations)
-			if (rs.busy && rs.Qj == -1U && rs.Qk == -1U && rs.Ql == -1U && rs.Qv == -1U)
+			if (rs.busy && can_issue(rs))
 				for (auto &unit : units) {
 					if (unit->busy()) continue;
 					unit->start(rs);
@@ -46,12 +45,10 @@ public:
 				}
 	};
 
-	virtual void allocate(Op op, uint32_t tag) {}
-
 	virtual void execute() {
 		for (auto &unit : units) {
 			auto result = unit->step();
-			if (result) completed.push_back(result.value());
+			if (result) complete(result.value());
 		}
 	};
 
@@ -89,6 +86,14 @@ protected:
 	vector<unique_ptr<ExecUnit>> units;
 	vector<RSEntry> stations;
 	vector<ExecEntry> completed;
+
+	virtual bool can_issue(const RSEntry &entry) const {
+		return entry.Qj == -1U && entry.Qk == -1U && entry.Ql == -1U && entry.Qv == -1U;
+	}
+
+	virtual void complete(const ExecEntry &entry) {
+		completed.push_back(entry);
+	}
 
 	void flush_completed(uint32_t tag) {
 		completed.erase(
