@@ -22,9 +22,10 @@ static int32_t c[N][N];
 NOINLINE void matmul(int32_t a[N][N], int32_t b[N][N], int32_t c[N][N]) {
 	for (int i = 0; i < N; i++) {
 		for (int j = 0; j < N; j++) {
-			c[i][j] = 0;
+			int32_t acc = 0;
 			for (int k = 0; k < N; k++)
-				c[i][j] += a[i][k] * b[k][j];
+				acc += a[i][k] * b[k][j];
+			c[i][j] = acc;
 		}
 	}
 }
