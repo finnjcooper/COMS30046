@@ -91,12 +91,10 @@ enum Op {
 	VSETVLI, VSETIVLI,
 	VLE8_V, VLE16_V, VLE32_V,
 	VSE8_V, VSE16_V, VSE32_V,
-	VADD_VV, VADD_VX, VADD_VI,
-	VMUL_VV, VMUL_VX,
-	VMACC_VV, VMADD_VV,
-	VMV_V_I, VMV_S_X, VMV_X_S,
+	VMUL_VV, VMACC_VV, VMACC_VX,
+	VMV_V_I, VMV_V_X, VMV_S_X, VMV_X_S, VMV1R_V,
 	VREDSUM_VS,
-	VFMV_V_F, VFMACC_VV, VFMADD_VV,
+	VFMV_V_F, VFMACC_VV, VFMACC_VF,
 };
 
 struct Instruction {
@@ -145,12 +143,10 @@ inline ExecType exec_type(Op op) {
 		case FCLASS_S:
 			return ExecType::FLOAT;
 		case VSETVLI: case VSETIVLI:
-		case VADD_VV: case VADD_VX: case VADD_VI:
-		case VMUL_VV: case VMUL_VX:
-		case VMACC_VV: case VMADD_VV:
-		case VMV_V_I: case VMV_S_X: case VMV_X_S:
+		case VMUL_VV: case VMACC_VV: case VMACC_VX:
+		case VMV_V_I: case VMV_V_X: case VMV_S_X: case VMV_X_S: case VMV1R_V:
 		case VREDSUM_VS:
-		case VFMV_V_F: case VFMACC_VV: case VFMADD_VV:
+		case VFMV_V_F: case VFMACC_VV: case VFMACC_VF:
 			return ExecType::VECTOR;
 		default:
 			throw invalid_argument("Invalid operation");
@@ -181,7 +177,7 @@ inline RegType src_type(Op op, uint8_t operand) {
 				case VSETVLI:
 				case VLE8_V: case VLE16_V: case VLE32_V:
 				case VSE8_V: case VSE16_V: case VSE32_V:
-				case VMV_S_X:
+				case VMV_V_X: case VMV_S_X:
 					return RegType::INT;
 				case FADD_S: case FSUB_S: case FMUL_S: case FDIV_S: case FSQRT_S:
 				case FMADD_S: case FMSUB_S: case FNMSUB_S: case FNMADD_S:
@@ -192,12 +188,10 @@ inline RegType src_type(Op op, uint8_t operand) {
 				case FCLASS_S:
 				case VFMV_V_F:
 					return RegType::FLOAT;
-				case VADD_VV: case VADD_VX: case VADD_VI:
-				case VMUL_VV: case VMUL_VX:
-				case VMACC_VV: case VMADD_VV:
-				case VMV_X_S:
+				case VMUL_VV: case VMACC_VV: case VMACC_VX:
+				case VMV_X_S: case VMV1R_V:
 				case VREDSUM_VS:
-				case VFMACC_VV: case VFMADD_VV:
+				case VFMACC_VV: case VFMACC_VF:
 					return RegType::VECTOR;
 				default:
 					return RegType::NONE;
@@ -215,16 +209,15 @@ inline RegType src_type(Op op, uint8_t operand) {
 				case FMIN_S: case FMAX_S: case FEQ_S: case FLT_S: case FLE_S:
 				case FSW:
 					return RegType::FLOAT;
-				case VADD_VV:
-				case VMUL_VV:
-				case VMACC_VV: case VMADD_VV:
+				case VMUL_VV: case VMACC_VV:
 				case VREDSUM_VS:
-				case VFMACC_VV: case VFMADD_VV:
+				case VFMACC_VV:
 				case VSE8_V: case VSE16_V: case VSE32_V:
 					return RegType::VECTOR;
-				case VADD_VX:
-				case VMUL_VX:
+				case VMACC_VX:
 					return RegType::INT;
+				case VFMACC_VF:
+					return RegType::FLOAT;
 				default:
 					return RegType::NONE;
 			}
@@ -232,13 +225,11 @@ inline RegType src_type(Op op, uint8_t operand) {
 			switch (op) {
 				case FMADD_S: case FMSUB_S: case FNMSUB_S: case FNMADD_S:
 					return RegType::FLOAT;
-				case VADD_VV: case VADD_VX: case VADD_VI:
-				case VMUL_VV: case VMUL_VX:
-				case VMACC_VV: case VMADD_VV:
-				case VMV_V_I: case VMV_S_X:
+				case VMUL_VV: case VMACC_VV: case VMACC_VX:
+				case VMV_V_I: case VMV_V_X: case VMV_S_X:
 				case VREDSUM_VS:
 				case VFMV_V_F:
-				case VFMACC_VV: case VFMADD_VV:
+				case VFMACC_VV: case VFMACC_VF:
 					return RegType::VECTOR;
 				default:
 					return RegType::NONE;
@@ -272,12 +263,10 @@ inline RegType dst_type(Op op) {
 		case FMV_W_X:
 			return RegType::FLOAT;
 		case VLE8_V: case VLE16_V: case VLE32_V:
-		case VADD_VV: case VADD_VX: case VADD_VI:
-		case VMUL_VV: case VMUL_VX:
-		case VMACC_VV: case VMADD_VV:
-		case VMV_V_I: case VMV_S_X:
+		case VMUL_VV: case VMACC_VV: case VMACC_VX:
+		case VMV_V_I: case VMV_V_X: case VMV_S_X: case VMV1R_V:
 		case VREDSUM_VS:
-		case VFMV_V_F: case VFMACC_VV: case VFMADD_VV:
+		case VFMV_V_F: case VFMACC_VV: case VFMACC_VF:
 			return RegType::VECTOR;
 		default:
 			return RegType::NONE;

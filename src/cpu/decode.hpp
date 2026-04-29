@@ -187,53 +187,55 @@ public:
 				uint8_t vm = (instruction >> 25) & 0x01;
 				uint8_t f6 = (instruction >> 26) & 0x3F;
 				if (f3 == 0x07) {
-					uint32_t zimm = (instruction >> 20) & 0x7FF;
+					uint8_t vset = (instruction >> 30) & 0x3;
+					uint32_t zimm = vset == 0x3
+						? ((instruction >> 20) & 0x3FF)
+						: ((instruction >> 20) & 0x7FF);
 					uint8_t sew = sew_from_vtype(zimm);
 					if (!sew) return {};
-					if (zimm & 0x400)
+					if (vset == 0x3)
 						return {VSETIVLI, rd, 0, 0, static_cast<int32_t>(rs1), 0, 0, sew};
-					return {VSETVLI, rd, rs1, 0, rs1 == 0 ? -1 : 0, 0, 0, sew};
+					if (vset == 0x0) {
+						int32_t avl = rs1 == 0 ? (rd == 0 ? -2 : -1) : 0;
+						return {VSETVLI, rd, rs1, 0, avl, 0, 0, sew};
+					} return {};
 				} if (!vm) return {};
 
 				switch (f6) {
 					case 0x00:
-						switch(f3) {
-							case 0x00: return {VADD_VV, rd, rs2, rs1, 0, rd};
-							case 0x04: return {VADD_VX, rd, rs2, rs1, 0, rd};
-							case 0x03: return {VADD_VI, rd, rs2, 0, sign_extend(rs1, 5), rd};
-							case 0x02: return {VREDSUM_VS, rd, rs2, rs1, 0, rd};
-						}
+						if (f3 == 0x02) return {VREDSUM_VS, rd, rs2, rs1, 0, rd};
 						return {};
 					case 0x10:
-						switch(f3) {
-							case 0x06:
-								if (rs2 != 0x00) return {};
-								return {VMV_S_X, rd, rs1, 0, 0, rd};
-							case 0x02:
-								if (rs1 != 0x00) return {};
-								return {VMV_X_S, rd, rs2, 0, 0};	
-						}
+						if (f3 == 0x02 && rs1 == 0x00) return {VMV_X_S, rd, rs2, 0, 0};
+						if (f3 == 0x06 && rs2 == 0x00) return {VMV_S_X, rd, rs1, 0, 0, rd};
 						return {};
 					case 0x17:
 						switch(f3) {
 							case 0x03:
 								if (rs2 != 0x00) return {};
 								return {VMV_V_I, rd, 0, 0, sign_extend(rs1, 5), rd};
-							case 0x05: 
+							case 0x04:
+								if (rs2 != 0x00) return {};
+								return {VMV_V_X, rd, rs1, 0, 0, rd};
+							case 0x05:
 								if (rs2 != 0x00) return {};
 								return {VFMV_V_F, rd, rs1, 0, 0, rd};
 						}
 						return {};
 					case 0x25:
-						switch(f3) {
-							case 0x02: return {VMUL_VV, rd, rs2, rs1, 0, rd};
-							case 0x06: return {VMUL_VX, rd, rs2, rs1, 0, rd};
-						}
+						if (f3 == 0x02) return {VMUL_VV, rd, rs2, rs1, 0, rd};
 						return {};
-					case 0x28: if (f3 == 0x01) return {VFMADD_VV, rd, rd, rs1, 0, rs2}; break;
-					case 0x29: if (f3 == 0x02) return {VMADD_VV, rd, rd, rs1, 0, rs2}; break;
-					case 0x2C: if (f3 == 0x01) return {VFMACC_VV, rd, rd, rs1, 0, rs2}; break;
-					case 0x2D: if (f3 == 0x02) return {VMACC_VV, rd, rd, rs1, 0, rs2}; break;
+					case 0x27:
+						if (f3 == 0x03 && rs1 == 0x00) return {VMV1R_V, rd, 0, rs2, 0};
+						return {};
+					case 0x2C:
+						if (f3 == 0x01) return {VFMACC_VV, rd, rd, rs1, 0, rs2};
+						if (f3 == 0x05) return {VFMACC_VF, rd, rd, rs1, 0, rs2};
+						return {};
+					case 0x2D:
+						if (f3 == 0x02) return {VMACC_VV, rd, rd, rs1, 0, rs2};
+						if (f3 == 0x06) return {VMACC_VX, rd, rd, rs1, 0, rs2};
+						return {};
 				}
 				return {};
 			}
@@ -294,7 +296,8 @@ private:
 	}
 
 	static uint8_t sew_from_vtype(uint32_t zimm) {
-		if ((zimm & 0x7) != 0) return 0; // LMUL must be m1.
+		if ((zimm & ~0xFFU) != 0) return 0; // reserved vtype bits must be zero
+		if ((zimm & 0x7) != 0) return 0; // LMUL must be m1
 
 		switch ((zimm >> 3) & 0x7) {
 			case 0: return 8;

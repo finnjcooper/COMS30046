@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include "lib/optim.h"
+#include "lib/bench.h"
 
 static int32_t input = 14;
 static int32_t output;

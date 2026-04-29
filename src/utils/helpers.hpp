@@ -110,7 +110,7 @@ inline bool is_vset(Op op) {
 
 inline bool is_vmul(Op op) {
 	switch(op) {
-		case VMUL_VV: case VMUL_VX: case VMACC_VV: case VMADD_VV: case VREDSUM_VS:
+		case VMUL_VV: case VMACC_VV: case VMACC_VX: case VREDSUM_VS:
 			return true;
 		default:
 			return false;
@@ -119,7 +119,7 @@ inline bool is_vmul(Op op) {
 
 inline bool is_vfmul(Op op) {
 	switch(op) {
-		case VFMACC_VV: case VFMADD_VV: return true;
+		case VFMACC_VV: case VFMACC_VF: return true;
 		default: return false;
 	}
 }

@@ -34,13 +34,16 @@ public:
 		data[addr + 3] = (value >> 24) & 0xFF;
 	}
 
-	uint8_t loadb(uint32_t addr) const { if (addr >= data.size()) throw out_of_range("Memory access out of range"); return data[addr]; }
+	uint8_t loadb(uint32_t addr) const {
+		if (addr >= data.size()) return 0;
+		return data[addr];
+	}
 	uint16_t loadh(uint32_t addr) const {
-		if (addr + 1 >= data.size()) throw out_of_range("Memory access out of range");
+		if (addr + 1 >= data.size()) return 0;
 		return static_cast<uint16_t>(static_cast<uint16_t>(data[addr]) | (static_cast<uint16_t>(data[addr + 1]) << 8));
 	}
 	uint32_t loadw(uint32_t addr) const {
-		if (addr + 3 >= data.size()) throw out_of_range("Memory access out of range");
+		if (addr + 3 >= data.size()) return 0;
 		return static_cast<uint32_t>(data[addr])
 			| (static_cast<uint32_t>(data[addr + 1]) << 8)
 			| (static_cast<uint32_t>(data[addr + 2]) << 16)

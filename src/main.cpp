@@ -18,15 +18,15 @@ int main(int argc, char* argv[]) {
 	}
 
 	string elfPath = program.get<string>("elf");
-	// string asmPath = elfPath.substr(0, elfPath.size() - 4) + ".asm";
+	string asmPath = elfPath.substr(0, elfPath.size() - 4) + ".asm";
 
 	auto prog = Loader::ELF(elfPath);
 	if (prog.instrs.empty()) return 1;
-	// auto disasm = Loader::ASM(asmPath);
+	auto disasm = Loader::ASM(asmPath);
 	auto config = Loader::config(program.get<string>("--config"));
 
 	CPU cpu(prog, config);
-	TUI tui(cpu, map<uint32_t, string>());
+	TUI tui(cpu, disasm);
 
 	if (program.get<bool>("--headless"))
 		while (cpu.running()) cpu.step();

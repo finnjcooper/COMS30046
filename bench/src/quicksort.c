@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include "lib/optim.h"
+#include "lib/bench.h"
 
 #define N 128
 #define VALUE(index) ((((index) * 37 + 23) & 127) + 1)
@@ -51,6 +51,6 @@ NOINLINE void quicksort(int32_t values[N], int low, int high) {
 int main() {
 	quicksort(values, 0, N - 1);
 
-	KEEP_ALIVE(values[N - 1]);
+	KEEP_ALIVE(values);
 	return 0;
 }

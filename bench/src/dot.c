@@ -1,25 +1,7 @@
 #include <stdint.h>
-#include "lib/optim.h"
+#include "lib/bench.h"
 
 #define N 1024
-#define INT32_ASC(base) \
-	(base) + 0, (base) + 1, (base) + 2, (base) + 3, \
-	(base) + 4, (base) + 5, (base) + 6, (base) + 7, \
-	(base) + 8, (base) + 9, (base) + 10, (base) + 11, \
-	(base) + 12, (base) + 13, (base) + 14, (base) + 15, \
-	(base) + 16, (base) + 17, (base) + 18, (base) + 19, \
-	(base) + 20, (base) + 21, (base) + 22, (base) + 23, \
-	(base) + 24, (base) + 25, (base) + 26, (base) + 27, \
-	(base) + 28, (base) + 29, (base) + 30, (base) + 31
-#define INT32_DESC(base) \
-	(base) - 0, (base) - 1, (base) - 2, (base) - 3, \
-	(base) - 4, (base) - 5, (base) - 6, (base) - 7, \
-	(base) - 8, (base) - 9, (base) - 10, (base) - 11, \
-	(base) - 12, (base) - 13, (base) - 14, (base) - 15, \
-	(base) - 16, (base) - 17, (base) - 18, (base) - 19, \
-	(base) - 20, (base) - 21, (base) - 22, (base) - 23, \
-	(base) - 24, (base) - 25, (base) - 26, (base) - 27, \
-	(base) - 28, (base) - 29, (base) - 30, (base) - 31
 
 static int32_t a[N] = {
 	INT32_ASC(1),   INT32_ASC(33),  INT32_ASC(65),  INT32_ASC(97),
@@ -57,7 +39,7 @@ NOINLINE int32_t dot_product(int32_t a[N], int32_t b[N], int n) {
 
 int main() {
 	c = dot_product(a, b, N);
-	
+
 	KEEP_ALIVE(c);
 	return 0;
 }

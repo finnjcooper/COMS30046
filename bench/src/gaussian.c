@@ -1,31 +1,11 @@
 #include <stdint.h>
-#include "lib/optim.h"
+#include "lib/bench.h"
 
 #define IN_H 18
 #define IN_W 18
 #define K 3
 #define OUT_H (IN_H - K + 1)
 #define OUT_W (IN_W - K + 1)
-#define INPUT_ROW(row) { \
-	(float)((row) * IN_W + ((row) + 1) * 0), \
-	(float)((row) * IN_W + ((row) + 1) * 1), \
-	(float)((row) * IN_W + ((row) + 1) * 2), \
-	(float)((row) * IN_W + ((row) + 1) * 3), \
-	(float)((row) * IN_W + ((row) + 1) * 4), \
-	(float)((row) * IN_W + ((row) + 1) * 5), \
-	(float)((row) * IN_W + ((row) + 1) * 6), \
-	(float)((row) * IN_W + ((row) + 1) * 7), \
-	(float)((row) * IN_W + ((row) + 1) * 8), \
-	(float)((row) * IN_W + ((row) + 1) * 9), \
-	(float)((row) * IN_W + ((row) + 1) * 10), \
-	(float)((row) * IN_W + ((row) + 1) * 11), \
-	(float)((row) * IN_W + ((row) + 1) * 12), \
-	(float)((row) * IN_W + ((row) + 1) * 13), \
-	(float)((row) * IN_W + ((row) + 1) * 14), \
-	(float)((row) * IN_W + ((row) + 1) * 15), \
-	(float)((row) * IN_W + ((row) + 1) * 16), \
-	(float)((row) * IN_W + ((row) + 1) * 17) \
-}
 
 static float input[IN_H][IN_W] = {
 	INPUT_ROW(0), INPUT_ROW(1), INPUT_ROW(2), INPUT_ROW(3),
@@ -60,6 +40,6 @@ NOINLINE void gaussian_blur(float input[IN_H][IN_W], float output[OUT_H][OUT_W])
 int main() {
 	gaussian_blur(input, output);
 
-	KEEP_ALIVE(output[OUT_H - 1][OUT_W - 1]);
+	KEEP_ALIVE(output);
 	return 0;
 }

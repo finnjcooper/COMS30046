@@ -1,49 +1,37 @@
 #include <stdint.h>
-#include "lib/optim.h"
+#include "lib/bench.h"
 
 #define N 16
-#define ROW16(base) { \
-	(base) + 0, (base) + 1, (base) + 2, (base) + 3, \
-	(base) + 4, (base) + 5, (base) + 6, (base) + 7, \
-	(base) + 8, (base) + 9, (base) + 10, (base) + 11, \
-	(base) + 12, (base) + 13, (base) + 14, (base) + 15 \
-}
-#define BT_ROW(row) { \
-	256 - (row), 240 - (row), 224 - (row), 208 - (row), \
-	192 - (row), 176 - (row), 160 - (row), 144 - (row), \
-	128 - (row), 112 - (row), 96 - (row), 80 - (row), \
-	64 - (row), 48 - (row), 32 - (row), 16 - (row) \
-}
 
 static int32_t a[N][N] = {
-	ROW16(1), ROW16(17), ROW16(33), ROW16(49),
-	ROW16(65), ROW16(81), ROW16(97), ROW16(113),
-	ROW16(129), ROW16(145), ROW16(161), ROW16(177),
-	ROW16(193), ROW16(209), ROW16(225), ROW16(241)
+	{ INT16_ASC(1) }, { INT16_ASC(17) }, { INT16_ASC(33) }, { INT16_ASC(49) },
+	{ INT16_ASC(65) }, { INT16_ASC(81) }, { INT16_ASC(97) }, { INT16_ASC(113) },
+	{ INT16_ASC(129) }, { INT16_ASC(145) }, { INT16_ASC(161) }, { INT16_ASC(177) },
+	{ INT16_ASC(193) }, { INT16_ASC(209) }, { INT16_ASC(225) }, { INT16_ASC(241) }
 };
 
-static int32_t bt[N][N] = {
-	BT_ROW(0), BT_ROW(1), BT_ROW(2), BT_ROW(3),
-	BT_ROW(4), BT_ROW(5), BT_ROW(6), BT_ROW(7),
-	BT_ROW(8), BT_ROW(9), BT_ROW(10), BT_ROW(11),
-	BT_ROW(12), BT_ROW(13), BT_ROW(14), BT_ROW(15)
+static int32_t b[N][N] = {
+	{ INT16_DESC(256) }, { INT16_DESC(240) }, { INT16_DESC(224) }, { INT16_DESC(208) },
+	{ INT16_DESC(192) }, { INT16_DESC(176) }, { INT16_DESC(160) }, { INT16_DESC(144) },
+	{ INT16_DESC(128) }, { INT16_DESC(112) }, { INT16_DESC(96) }, { INT16_DESC(80) },
+	{ INT16_DESC(64) }, { INT16_DESC(48) }, { INT16_DESC(32) }, { INT16_DESC(16) }
 };
 
 static int32_t c[N][N];
 
-NOINLINE void mat_mul(int32_t a[N][N], int32_t bt[N][N], int32_t c[N][N]) {
+NOINLINE void matmul(int32_t a[N][N], int32_t b[N][N], int32_t c[N][N]) {
 	for (int i = 0; i < N; i++) {
 		for (int j = 0; j < N; j++) {
 			c[i][j] = 0;
 			for (int k = 0; k < N; k++)
-				c[i][j] += a[i][k] * bt[j][k];
+				c[i][j] += a[i][k] * b[k][j];
 		}
 	}
 }
 
 int main() {
-	mat_mul(a, bt, c);
+	matmul(a, b, c);
 
-	KEEP_ALIVE(c[N-1][N-1]);
+	KEEP_ALIVE(c);
 	return 0;
 }
