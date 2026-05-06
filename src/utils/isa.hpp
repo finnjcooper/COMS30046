@@ -76,7 +76,6 @@ enum Op {
 	BEQ, BNE, BLT, BGE, BLTU, BGEU,
 	JAL, JALR,
 	LUI, AUIPC,
-	ECALL,
 	// rv32m
 	MUL, MULH, MULHSU, MULHU, DIV, DIVU, REM, REMU,
 	//rv32f
@@ -126,7 +125,6 @@ inline ExecType exec_type(Op op) {
 			return ExecType::MULDIV;
 		case BEQ: case BNE: case BLT: case BGE: case BLTU: case BGEU:
 		case JAL: case JALR:
-		case ECALL:
 			return ExecType::CTRL;
 		case LB: case LH: case LW: case LBU: case LHU:
 		case SB: case SH: case SW:

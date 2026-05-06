@@ -226,7 +226,7 @@ public:
 						if (f3 == 0x02) return {VMUL_VV, rd, rs2, rs1, 0, rd};
 						return {};
 					case 0x27:
-						if (f3 == 0x03 && rs1 == 0x00) return {VMV1R_V, rd, 0, rs2, 0};
+						if (f3 == 0x03 && rs1 == 0x00) return {VMV1R_V, rd, rs2, 0, 0};
 						return {};
 					case 0x2C:
 						if (f3 == 0x01) return {VFMACC_VV, rd, rd, rs1, 0, rs2};
@@ -273,7 +273,7 @@ public:
 			case 0x17:
 				return {AUIPC, rd, 0, 0, (int32_t)(instruction & 0xFFFFF000)};
 			case 0x73:
-				if (instruction == 0x00000073) return {ECALL, 0, 0, 0, 0};
+				// if (instruction == 0x00000073) return {ECALL, 0, 0, 0, 0};
 				// if (instruction >> 20 == 0x001) return {EBREAK, 0, 0, 0, 0};
 				return {};
 		}

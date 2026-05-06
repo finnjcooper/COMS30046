@@ -93,7 +93,7 @@ private:
 	}
 
 	Value vmv1r_v() {
-		Value result = current.Vk;
+		Value result = current.Vj;
 		result.vector_value = true;
 		return result;
 	}

@@ -143,7 +143,7 @@ inline bool is_vec(Op op) {
 }
 
 inline bool is_ctrl(Op op) {
-	return is_branch(op) || is_jump(op) || op == ECALL;
+	return is_branch(op) || is_jump(op);
 }
 
 inline bool writes_register(Op op) {
