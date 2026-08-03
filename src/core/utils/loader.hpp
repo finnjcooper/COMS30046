@@ -3,6 +3,8 @@
 #include <vector>
 #include <map>
 #include <cstdint>
+#include <cctype>
+#include <sstream>
 #include <iostream>
 #include <fstream>
 #include <elfio/elfio.hpp>
@@ -43,7 +45,8 @@ struct Config {
 
 class Loader {
 public:
-	static Program ELF(const string &filename);
-	static map<uint32_t, string> ASM(const string &filename);
+	static Program elf(const string &filename);
+	static Program elf_bytes(const vector<uint8_t> &bytes);
 	static Config config(const string &filename);
+	static Config config_text(const string &json_text);
 };

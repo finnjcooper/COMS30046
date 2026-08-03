@@ -1,10 +1,16 @@
 #include "loader.hpp"
 
-Program Loader::ELF(const string &filename) {
+namespace {
+
+Program empty_program() {
+	return { vector<uint8_t>(), 0, 0 };
+}
+
+Program load_elf_stream(istream &stream, const string &source_name) {
 	ELFIO::elfio elf;
-	if (!elf.load(filename)) {
-		cerr << "Could not open ELF file: " << filename << endl;
-		return { vector<uint8_t>(), 0, 0 };
+	if (!elf.load(stream)) {
+		cerr << "Could not open ELF data: " << source_name << endl;
+		return empty_program();
 	}
 
 	uint32_t mem_size = 0;
@@ -13,8 +19,8 @@ Program Loader::ELF(const string &filename) {
 			uint32_t vaddr = seg->get_virtual_address();
 			uint32_t seg_size = seg->get_memory_size();
 			if (vaddr > MEM_SIZE || seg_size > MEM_SIZE - vaddr) {
-				cerr << "ELF segment does not fit in simulator memory: " << filename << endl;
-				return { vector<uint8_t>(), 0, 0 };
+				cerr << "ELF segment does not fit in simulator memory: " << source_name << endl;
+				return empty_program();
 			}
 			mem_size = max(mem_size, vaddr + seg_size);
 		}
@@ -26,8 +32,8 @@ Program Loader::ELF(const string &filename) {
 		uint32_t text_addr = section->get_address();
 		uint32_t text_size = section->get_size();
 		if (text_addr > MEM_SIZE || text_size > MEM_SIZE - text_addr) {
-			cerr << "ELF executable section does not fit in simulator memory: " << filename << endl;
-			return { vector<uint8_t>(), 0, 0 };
+			cerr << "ELF executable section does not fit in simulator memory: " << source_name << endl;
+			return empty_program();
 		}
 		code_end = max(code_end, text_addr + text_size);
 	}
@@ -51,12 +57,11 @@ Program Loader::ELF(const string &filename) {
 	return { memory, static_cast<uint32_t>(elf.get_entry()), code_end };
 }
 
-map<uint32_t, string> Loader::ASM(const string &filename) {
+map<uint32_t, string> load_asm_stream(istream &stream) {
 	map<uint32_t, string> disasm;
-	ifstream file(filename);
 	string line;
 
-	while (getline(file, line)) {
+	while (getline(stream, line)) {
 		auto colon = line.find(':');
 		if (colon == string::npos) continue;
 
@@ -80,20 +85,15 @@ map<uint32_t, string> Loader::ASM(const string &filename) {
 		string instr = line.substr(mnemonic_end);
 		disasm[addr] = instr;
 	}
-	
+
 	return disasm;
 }
 
-Config Loader::config(const string &filename) {
+Config load_config_text(const string &json_text, const string &source_name) {
 	Config config;
-	ifstream file(filename);
-	if (!file.is_open()) {
-		cerr << "Could not open config file: " << filename << ". Using default config." << endl;
-		return config;
-	}
 
 	try {
-		auto json = nlohmann::json::parse(file);
+		auto json = nlohmann::json::parse(json_text);
 		config.name = json.value("name", config.name);
 		config.pipe_width = json.value("pipe_width", config.pipe_width);
 		config.rs_size = json.value("rs_size", config.rs_size);
@@ -107,8 +107,41 @@ Config Loader::config(const string &filename) {
 		config.vector_bits = json.value("vector_bits", config.vector_bits);
 		config.branch_pred = json.value("branch_pred", config.branch_pred);
 	} catch (const nlohmann::json::exception &e) {
-		cerr << "Could not parse config file: " << filename << " (" << e.what() << "). Using default config." << endl;
+		cerr << "Could not parse config data: " << source_name << " (" << e.what() << "). Using default config." << endl;
 	}
 
 	return config;
+}
+
+}
+
+Program Loader::elf(const string &filename) {
+	ifstream file(filename, ios::binary);
+	if (!file.is_open()) {
+		cerr << "Could not open ELF file: " << filename << endl;
+		return empty_program();
+	}
+
+	return load_elf_stream(file, filename);
+}
+
+Program Loader::elf_bytes(const vector<uint8_t> &bytes) {
+	istringstream stream(string(bytes.begin(), bytes.end()), ios::in | ios::binary);
+	return load_elf_stream(stream, "in-memory ELF data");
+}
+
+Config Loader::config(const string &filename) {
+	ifstream file(filename);
+	if (!file.is_open()) {
+		cerr << "Could not open config file: " << filename << ". Using default config." << endl;
+		return Config{};
+	}
+
+	ostringstream buffer;
+	buffer << file.rdbuf();
+	return config_text(buffer.str());
+}
+
+Config Loader::config_text(const string &json_text) {
+	return load_config_text(json_text, "in-memory config JSON");
 }
