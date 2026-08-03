@@ -1,0 +1,48 @@
+@import "tailwindcss";
+@plugin "daisyui" { themes: false; }
+@plugin "./mocha.ts";
+@plugin "./latte.ts";
+
+@font-face {
+	font-family: "Geist";
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url("https://fonts.gstatic.com/s/geist/v5/gyByhwUxId8gMEwcGFU.woff2") format("woff2");
+}
+
+@font-face {
+	font-family: "Geist Mono";
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url("https://fonts.gstatic.com/s/geistmono/v6/or3nQ6H-1_WfwkMZI_qYFrcdmg.woff2") format("woff2");
+}
+
+@theme {
+	--font-sans: "Geist", sans-serif;
+	--font-mono: "Geist Mono", monospace;
+}
+
+@layer base {
+	html {
+		scroll-behavior: smooth;
+		font-family: var(--font-sans);
+	}
+
+	h1 {
+		@apply text-4xl font-bold;
+	}
+
+	h2 {
+		@apply text-2xl font-bold;
+	}
+
+	p {
+		@apply text-base;
+	}
+
+	ul {
+		@apply text-base list-disc list-outside pl-4;
+	}
+}
