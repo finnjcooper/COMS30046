@@ -37,7 +37,7 @@ export default function Simulator() {
 
 	if (!simulator) return <div className="loading loading-spinner loading-xl"></div>;
 
-	const ok = simulator.loadElf(binary);
+	simulator.loadElf(binary);
 	simulator.loadConfig(config);
 	simulator.build();
 
