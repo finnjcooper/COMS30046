@@ -4,6 +4,13 @@
 using namespace emscripten;
 
 EMSCRIPTEN_BINDINGS(simulator) {
+	value_object<Stats>("Stats")
+		.field("instructionCount", &Stats::instruction_count)
+		.field("cycleCount", &Stats::cycle_count)
+		.field("branchCount", &Stats::branch_count)
+		.field("mispredCount", &Stats::mispred_count);
+
+
 	class_<Simulator>("Simulator")
 		.constructor<>()
 
@@ -23,11 +30,6 @@ EMSCRIPTEN_BINDINGS(simulator) {
 		)
 
 		.function(
-			"reset",
-			&Simulator::reset
-		)
-
-		.function(
 			"step",
 			&Simulator::step
 		)
@@ -38,17 +40,12 @@ EMSCRIPTEN_BINDINGS(simulator) {
 		)
 
 		.function(
-			"pc",
-			&Simulator::pc
+			"reset",
+			&Simulator::reset
 		)
 
 		.function(
-			"registerValue",
-			&Simulator::registerValue
-		)
-
-		.function(
-			"readout",
-			&Simulator::readout
+			"setStepCallback",
+			&Simulator::setStepCallback
 		);
 }

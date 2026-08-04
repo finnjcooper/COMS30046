@@ -23,6 +23,13 @@ struct FetchEntry {
 	uint32_t instr = 0;
 };
 
+struct Stats {
+	int instruction_count = 0;
+	int cycle_count = 0;
+	int branch_count = 0;
+	int mispred_count = 0;
+};
+
 class CPU {
 public:
 	~CPU() = default;
@@ -34,13 +41,13 @@ public:
 	const RegisterFile& get_registers() const { return regs; }
 	const Memory& get_memory() const { return mem; }
 	uint32_t get_pc() const { return pc; }
-	int get_instruction_count() const { return instruction_count; }
-	int get_cycle_count() const { return cycle_count; }
-	int get_branch_count() const { return branch_count; }
-	int get_mispred_count() const { return mispred_count; }
+	const Stats& get_stats() const { return stats; }
 	const CommitLog& get_commit_log() const { return log; }
 
-	void set_step_callback(function<void(bool, bool, const CommitLog &, const string &)> callback) { on_step_callback = callback; }
+	void set_step_callback(function<void(bool, bool, uint32_t, const Stats &, const CommitLog &, const string &)> callback) {
+		on_step_callback = callback;
+		on_step_callback(jumped, stalled, pc, stats, log, readout());
+	}
 
 	string readout();
 
@@ -51,16 +58,11 @@ private:
 	bool halted = false;
 	bool fetch_stopped = false;
 
-	int instruction_count = 0;
-	int cycle_count = 0;
-	int branch_count = 0;
-	int mispred_count = 0;
+	Stats stats;
 
 	size_t width = 0;
 
-	CommitLog log;
-	CommitLog flog;
-	CommitLog vlog;
+	CommitLog log, flog, vlog;
 	Memory mem;
 	IntegerRegisterFile regs;
 	FloatRegisterFile fregs;
@@ -77,7 +79,7 @@ private:
 	deque<DecodeEntry> decode_q;
 
 	ostringstream out;
-	function<void(bool, bool, const CommitLog &, const string &)> on_step_callback;
+	function<void(bool, bool, uint32_t, const Stats &, const CommitLog &, const string &)> on_step_callback;
 
 	void read_operand(uint8_t rs, RegType type, Value &V, uint32_t &Q);
 	ExecPath& get_path(Op op);

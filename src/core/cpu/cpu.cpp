@@ -46,7 +46,7 @@ CPU::CPU(const Program &prog, const Config &config) :
 
 void CPU::step() {
 	log.clear();
-	cycle_count++;
+	stats.cycle_count++;
 	jumped = false;
 	stalled = false;
 
@@ -64,7 +64,7 @@ void CPU::step() {
 	}
 
 	check_halt();
-	if (on_step_callback) on_step_callback(jumped, stalled, log, readout());
+	if (on_step_callback) on_step_callback(jumped, stalled, pc, stats, log, readout());
 }
 
 ExecPath& CPU::get_path(Op op) {
@@ -275,7 +275,7 @@ void CPU::writeback() {
 		if (!entry.ready) return;
 
 		entry.ctrl_handled = true;
-		if (is_branch(entry.op)) branch_count++;
+		if (is_branch(entry.op)) stats.branch_count++;
 
 		bool taken = entry.jumped;
 		uint32_t target = taken ? entry.target : entry.pc + WORD_BYTES;
@@ -287,7 +287,7 @@ void CPU::writeback() {
 			target != entry.pred_target;
 
 		if (mispred) {
-			if (is_branch(entry.op)) mispred_count++;
+			if (is_branch(entry.op)) stats.mispred_count++;
 			flush(entry.tag);
 			jumped = true;
 			fetch_stopped = false;
@@ -327,6 +327,6 @@ void CPU::commit() {
 		}
 
 		rob.pop();
-		instruction_count++;
+		stats.instruction_count++;
 	}
 }

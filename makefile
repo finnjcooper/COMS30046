@@ -19,3 +19,5 @@ native:
 
 wasm:
 	emcmake cmake -S src -B build/wasm -G Ninja
+	cp build/wasm/sim.mjs web/public/sim.mjs
+	cp build/wasm/sim.wasm web/public/sim.wasm
