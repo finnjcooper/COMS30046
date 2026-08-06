@@ -2349,69 +2349,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
   
   
   
-  
-  
-  
-  
-  
-    /**
-   * @param {number} ptr
-   * @param {string} type
-   */
-  function getValue(ptr, type = 'i8') {
-    if (type.endsWith('*')) type = '*';
-    switch (type) {
-      case 'i1': return HEAP8[ptr];
-      case 'i8': return HEAP8[ptr];
-      case 'i16': return HEAP16[((ptr)>>1)];
-      case 'i32': return HEAP32[((ptr)>>2)];
-      case 'i64': return HEAP64[((ptr)>>3)];
-      case 'float': return HEAPF32[((ptr)>>2)];
-      case 'double': return HEAPF64[((ptr)>>3)];
-      case '*': return HEAPU32[((ptr)>>2)];
-      default: abort(`invalid type for getValue: ${type}`);
-    }
-  }
-  var installIndexedIterator = (proto, sizeMethodName, getMethodName) => {
-      const makeIterator = (size, getValue) => {
-        let index = 0;
-        return {
-          next() {
-            if (index >= size) {
-              return { done: true };
-            }
-            const current = index;
-            index++;
-            const value = getValue(current);
-            return { value, done: false };
-          },
-          [Symbol.iterator]() {
-            return this;
-          },
-        };
-      };
-  
-      if (!proto[Symbol.iterator]) {
-        proto[Symbol.iterator] = function() {
-          const size = this[sizeMethodName]();
-          return makeIterator(size, (i) => this[getMethodName](i));
-        };
-      }
-    };
-  
-  var __embind_register_iterable = (rawClassType, rawElementType, sizeMethodName, getMethodName) => {
-      sizeMethodName = AsciiToString(sizeMethodName);
-      getMethodName = AsciiToString(getMethodName);
-      whenDependentTypesAreResolved([], [rawClassType, rawElementType], (types) => {
-        const classType = types[0];
-        installIndexedIterator(classType.registeredClass.instancePrototype, sizeMethodName, getMethodName);
-        return [];
-      });
-    };
-
-  
-  
-  
   var __embind_register_memory_view = (rawType, dataTypeIndex, name) => {
       var typeMapping = [
         Int8Array,
@@ -2442,12 +2379,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
       }, {
         ignoreDuplicateRegistrations: true,
       });
-    };
-
-  
-  var EmValOptionalType = Object.assign({optional: true}, EmValType);;
-  var __embind_register_optional = (rawOptionalType, rawType) => {
-      registerType(rawOptionalType, EmValOptionalType);
     };
 
   
@@ -2925,21 +2856,12 @@ ${functionBody}
   
   var __emval_new_cstring = (v) => Emval.toHandle(getStringOrSymbol(v));
 
-  var __emval_new_object = () => Emval.toHandle({});
-
   
   
   var __emval_run_destructors = (handle) => {
       var destructors = Emval.toValue(handle);
       runDestructors(destructors);
       __emval_decref(handle);
-    };
-
-  var __emval_set_property = (handle, key, value) => {
-      handle = Emval.toValue(handle);
-      key = Emval.toValue(key);
-      value = Emval.toValue(value);
-      handle[key] = value;
     };
 
   
@@ -3317,6 +3239,7 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'addFunction',
   'removeFunction',
   'setValue',
+  'getValue',
   'intArrayFromString',
   'intArrayToString',
   'stringToAscii',
@@ -3433,6 +3356,7 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'getInheritedInstanceCount',
   'getLiveInheritedInstances',
   'enumReadValueFromPointer',
+  'installIndexedIterator',
   'setDelayFunction',
   'validateThis',
   'count_emval_handles',
@@ -3484,7 +3408,6 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'addOnPostRun',
   'freeTableIndexes',
   'functionsInTableMap',
-  'getValue',
   'PATH',
   'PATH_FS',
   'UTF8Decoder',
@@ -3578,7 +3501,6 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'floatReadValueFromPointer',
   'assertIntegerRange',
   'readPointer',
-  'installIndexedIterator',
   'runDestructors',
   'craftInvokerFunction',
   'embind__requireFunction',
@@ -3658,8 +3580,8 @@ function checkIncomingModuleAPI() {
 
 // Imports from the Wasm binary.
 var ___getTypeName = makeInvalidEarlyAccess('___getTypeName');
-var _malloc = makeInvalidEarlyAccess('_malloc');
 var _fflush = makeInvalidEarlyAccess('_fflush');
+var _malloc = makeInvalidEarlyAccess('_malloc');
 var _emscripten_stack_get_end = makeInvalidEarlyAccess('_emscripten_stack_get_end');
 var _emscripten_stack_get_base = makeInvalidEarlyAccess('_emscripten_stack_get_base');
 var _free = makeInvalidEarlyAccess('_free');
@@ -3675,8 +3597,8 @@ var wasmTable = makeInvalidEarlyAccess('wasmTable');
 
 function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['__getTypeName'] != 'undefined', 'missing Wasm export: __getTypeName');
-  assert(typeof wasmExports['malloc'] != 'undefined', 'missing Wasm export: malloc');
   assert(typeof wasmExports['fflush'] != 'undefined', 'missing Wasm export: fflush');
+  assert(typeof wasmExports['malloc'] != 'undefined', 'missing Wasm export: malloc');
   assert(typeof wasmExports['emscripten_stack_get_end'] != 'undefined', 'missing Wasm export: emscripten_stack_get_end');
   assert(typeof wasmExports['emscripten_stack_get_base'] != 'undefined', 'missing Wasm export: emscripten_stack_get_base');
   assert(typeof wasmExports['free'] != 'undefined', 'missing Wasm export: free');
@@ -3688,8 +3610,8 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['memory'] != 'undefined', 'missing Wasm export: memory');
   assert(typeof wasmExports['__indirect_function_table'] != 'undefined', 'missing Wasm export: __indirect_function_table');
   ___getTypeName = createExportWrapper('__getTypeName', wasmExports['__getTypeName'], 1);
-  _malloc = createExportWrapper('malloc', wasmExports['malloc'], 1);
   _fflush = createExportWrapper('fflush', wasmExports['fflush'], 1);
+  _malloc = createExportWrapper('malloc', wasmExports['malloc'], 1);
   _emscripten_stack_get_end = wasmExports['emscripten_stack_get_end'];
   _emscripten_stack_get_base = wasmExports['emscripten_stack_get_base'];
   _free = createExportWrapper('free', wasmExports['free'], 1);
@@ -3728,11 +3650,7 @@ var wasmImports = {
   /** @export */
   _embind_register_integer: __embind_register_integer,
   /** @export */
-  _embind_register_iterable: __embind_register_iterable,
-  /** @export */
   _embind_register_memory_view: __embind_register_memory_view,
-  /** @export */
-  _embind_register_optional: __embind_register_optional,
   /** @export */
   _embind_register_std_string: __embind_register_std_string,
   /** @export */
@@ -3756,11 +3674,7 @@ var wasmImports = {
   /** @export */
   _emval_new_cstring: __emval_new_cstring,
   /** @export */
-  _emval_new_object: __emval_new_object,
-  /** @export */
   _emval_run_destructors: __emval_run_destructors,
-  /** @export */
-  _emval_set_property: __emval_set_property,
   /** @export */
   _tzset_js: __tzset_js,
   /** @export */

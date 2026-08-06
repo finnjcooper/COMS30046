@@ -1,21 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import useSimulator from '@hooks/useSimulator';
-
-type StepSnapshot = {
-	jumped: boolean;
-	stalled: boolean;
-	pc: number;
-	stats: any;
-	// log: any;
-	readout: string;
-};
+import Pipeline from './Pipeline';
+import Controls from './Controls';
+import Config from './Config';
 
 export default function Simulator() {
 	const url = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`;
-	const { simulator, loading, error } = useSimulator();
-	const [binary, setBinary] = useState<Uint8Array | null>(null);
-	const [config, setConfig] = useState<string | null>(null);
-	const [snapshot, setSnapshot] = useState<StepSnapshot | null>(null);
+	const { loading, load, configure } = useSimulator();
 
 	useEffect(() => {
 		async function fetchStuff() {
@@ -24,46 +15,25 @@ export default function Simulator() {
 				fetch(url('config.json')).then(res => res.text()),
 			]);
 
-			setBinary(binary);
-			setConfig(config);
+			configure(config);
+			load(binary);
 		}
 
+		if (loading) return;
 		void fetchStuff();
-	}, []);
+	}, [loading]);
 
-	useEffect(() => {
-		if (!simulator || !binary || !config) return;
-
-		simulator.loadElf(binary);
-		simulator.loadConfig(config);
-		simulator.build();
-		simulator.setStepCallback((nextSnapshot: StepSnapshot) => {
-			setSnapshot(nextSnapshot);
-		});
-	}, [simulator, binary, config]);
-
-	if (loading || !binary || !config) return <div className="loading loading-spinner loading-xl"></div>;
-	if (error) return <h3 className="text-error">Failed to load simulator.</h3>;
-	if (!simulator) return <div className="loading loading-spinner loading-xl"></div>;
+	if (loading) return <div className="loading loading-spinner loading-xl"/>;
 
 	return (
-		<div className="space-y-4">
-			<div className="space-x-4">
-				<button className="btn btn-info" onClick={() => { simulator.run(1000); }}>Run</button>
-				<button className="btn btn-primary" onClick={() => { simulator.step(); }}>Step</button>
-				<button className="btn btn-error" onClick={() => { simulator.reset(); }}>Reset</button>
+		<div className="flex gap-4 w-full px-32">
+			<div className="flex-1">
+				<Config/>
 			</div>
-		
-			{snapshot && (
-				<div>
-					<h2>Simulator Stats</h2>
-					<p>{snapshot.stats.instructionCount} instructions</p>
-					<p>{snapshot.stats.cycleCount} cycles</p>
-					<p>{snapshot.stats.branchCount} branches</p>
-					<p>{snapshot.stats.mispredCount} mispredictions</p>
-					<p>{snapshot.readout}</p>
-				</div>
-			)}
+			<div className="space-y-4">
+				<Controls/>
+				<Pipeline/>
+			</div>
 		</div>
 	);
 }
