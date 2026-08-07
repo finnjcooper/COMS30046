@@ -23,6 +23,7 @@ FetchContent_MakeAvailable(elfio nlohmann_json)
 add_library(simcore
 	core/cpu/cpu.cpp
 	core/utils/loader.cpp
+	core/utils/simulator.cpp
 )
 
 target_include_directories(simcore PUBLIC
@@ -38,21 +39,21 @@ target_link_libraries(simcore PUBLIC
 if (NOT EMSCRIPTEN)
 	add_executable(simnative native/main.cpp)
 	target_link_libraries(simnative PRIVATE simcore)
+	set_target_properties(simnative PROPERTIES OUTPUT_NAME "sim")
 else ()
-	add_executable(simwasm wasm/bindings.cpp wasm/simulator.cpp)
+	add_executable(simwasm wasm/bindings.cpp)
 	target_link_libraries(simwasm PRIVATE simcore)
 	target_link_options(simwasm PRIVATE
 		"-lembind"
-
-		"SHELL:-sMODULARIZE=1"
-		"SHELL:-sEXPORT_ES6=1"
-		"SHELL:-sENVIRONMENT=web"
-		"SHELL:-sALLOW_MEMORY_GROWTH=1"
-		"SHELL:-sFILESYSTEM=0"
-		"SHELL:-sEXPORT_NAME=createModule"
+		"--emit-tsd"
+		"${CMAKE_CURRENT_SOURCE_DIR}/../../web/src/wasm/sim.d.ts"
+		"-sMODULARIZE=1"
+		"-sEXPORT_ES6=1"
+		"-sENVIRONMENT=web"
+		"-sALLOW_MEMORY_GROWTH=1"
+		"-sFILESYSTEM=0"
+		"-sEXPORT_NAME=createModule"
+		"-o${CMAKE_CURRENT_SOURCE_DIR}/../../web/src/wasm/sim.mjs"
 	)
-	set_target_properties(simwasm PROPERTIES
-		OUTPUT_NAME "sim"
-		SUFFIX ".mjs"
-	)
+	set_target_properties(simwasm PROPERTIES OUTPUT_NAME "sim")
 endif ()

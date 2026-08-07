@@ -30,7 +30,7 @@ export default function Simulator() {
 			<div className="flex-1">
 				<Config/>
 			</div>
-			<div className="space-y-4">
+			<div className="flex-1 space-y-4">
 				<Controls/>
 				<Pipeline/>
 			</div>

@@ -1,8 +1,7 @@
 #include "cpu.hpp"
 
-CPU::CPU(const Program &prog, const Config &config) : 
-	pc(prog.entry_point), end(prog.end_point),
-	mem(prog.instrs, MEM_SIZE), regs(NUM_REGISTERS, log), fregs(NUM_FLOAT_REGISTERS, flog),
+CPU::CPU(const Config &config) : 
+	mem(MEM_SIZE), regs(NUM_REGISTERS, log), fregs(NUM_FLOAT_REGISTERS, flog),
 	vregs(NUM_VECTOR_REGISTERS, vlog),
 	width(config.pipe_width), rob(NUM_REGISTERS * 2), rat(NUM_REGISTERS), frat(NUM_FLOAT_REGISTERS),
 	vrat(NUM_VECTOR_REGISTERS), vec_state(config.vector_bits),
@@ -40,6 +39,12 @@ CPU::CPU(const Program &prog, const Config &config) :
 	exec_paths {&alus, &muls, &ctrls, &lsus, &fpus, &vecs} {
 	if (config.vector_bits != 128 && config.vector_bits != 256 && config.vector_bits != 512)
 		throw invalid_argument("Invalid vector register width");
+}
+
+void CPU::load(const Program &program) {
+	pc = program.entry_point;
+	end = program.end_point;
+	mem = Memory(program.instrs, MEM_SIZE);
 	regs.write(2, Value::scalar(MEM_SIZE - WORD_BYTES)); // stack pointer
 	regs.write(1, Value::scalar(end)); // return address
 }
@@ -64,7 +69,6 @@ void CPU::step() {
 	}
 
 	check_halt();
-	if (on_step_callback) on_step_callback(jumped, stalled, pc, stats, log, readout());
 }
 
 ExecPath& CPU::get_path(Op op) {
@@ -135,13 +139,6 @@ void CPU::flush(uint32_t tag) {
 	frat.rebuild(rob, RegType::FLOAT);
 	vrat.rebuild(rob, RegType::VECTOR);
 	if (vec_state.tag != -1U && vec_state.tag > tag) vec_state.tag = -1U;
-}
-
-string CPU::readout() {
-	string s = out.str();
-	out.str("");
-	out.clear();
-	return s;
 }
 
 void CPU::fetch() {

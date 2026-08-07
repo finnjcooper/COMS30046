@@ -30,26 +30,33 @@ struct Stats {
 	int mispred_count = 0;
 };
 
+struct Snapshot {
+	uint32_t pc = 0;
+	Stats stats = {};
+};
+
 class CPU {
 public:
 	~CPU() = default;
-	CPU(const Program &prog, const Config &config);
+	CPU(const Config &config);
 
+	void load(const Program &program);
 	void step();
-
 	bool running() const { return !halted; }
-	const RegisterFile& get_registers() const { return regs; }
-	const Memory& get_memory() const { return mem; }
-	uint32_t get_pc() const { return pc; }
-	const Stats& get_stats() const { return stats; }
-	const CommitLog& get_commit_log() const { return log; }
 
-	void set_step_callback(function<void(bool, bool, uint32_t, const Stats &, const CommitLog &, const string &)> callback) {
-		on_step_callback = callback;
-		on_step_callback(jumped, stalled, pc, stats, log, readout());
+	string readout() {
+		string s = out.str();
+		out.str("");
+		out.clear();
+		return s;
+	};
+
+	Snapshot snapshot() {
+		return Snapshot {
+			pc,
+			stats,
+		};
 	}
-
-	string readout();
 
 private:
 	uint32_t pc = 0, end = 0;
@@ -79,7 +86,6 @@ private:
 	deque<DecodeEntry> decode_q;
 
 	ostringstream out;
-	function<void(bool, bool, uint32_t, const Stats &, const CommitLog &, const string &)> on_step_callback;
 
 	void read_operand(uint8_t rs, RegType type, Value &V, uint32_t &Q);
 	ExecPath& get_path(Op op);
