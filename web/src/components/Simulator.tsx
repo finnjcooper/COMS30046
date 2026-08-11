@@ -5,9 +5,11 @@ import Config from './Config';
 import Loader from './Loader';
 
 export default function Simulator() {
-	const { loading } = useSimulator();
+	const { snapshot, loading } = useSimulator();
 
 	if (loading) return <div className="loading loading-spinner loading-xl"/>;
+
+	console.log(snapshot);
 
 	return (
 		<div className="flex gap-4 w-full px-32">

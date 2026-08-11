@@ -2361,6 +2361,92 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
     };
 
   
+  
+  
+  
+  
+  
+  
+  var validateThis = (this_, classType, humanName) => {
+      if (!(this_ instanceof Object)) {
+        throwBindingError(`${humanName} with invalid "this": ${this_}`);
+      }
+      if (!(this_ instanceof classType.registeredClass.constructor)) {
+        throwBindingError(`${humanName} incompatible with "this" of type ${this_.constructor.name}`);
+      }
+      if (!this_.$$.ptr) {
+        throwBindingError(`cannot call emscripten binding method ${humanName} on deleted object`);
+      }
+  
+      // todo: kill this
+      return upcastPointer(this_.$$.ptr,
+                           this_.$$.ptrType.registeredClass,
+                           classType.registeredClass);
+    };
+  var __embind_register_class_property = (classType,
+                                      fieldName,
+                                      getterReturnType,
+                                      getterSignature,
+                                      getter,
+                                      getterContext,
+                                      setterArgumentType,
+                                      setterSignature,
+                                      setter,
+                                      setterContext) => {
+      fieldName = AsciiToString(fieldName);
+      getter = embind__requireFunction(getterSignature, getter);
+  
+      whenDependentTypesAreResolved([], [classType], (classType) => {
+        classType = classType[0];
+        var humanName = `${classType.name}.${fieldName}`;
+        var desc = {
+          get() {
+            throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [getterReturnType, setterArgumentType]);
+          },
+          enumerable: true,
+          configurable: true
+        };
+        if (setter) {
+          desc.set = () => throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [getterReturnType, setterArgumentType]);
+        } else {
+          desc.set = (v) => throwBindingError(humanName + ' is a read-only property');
+        }
+  
+        Object.defineProperty(classType.registeredClass.instancePrototype, fieldName, desc);
+  
+        whenDependentTypesAreResolved(
+          [],
+          (setter ? [getterReturnType, setterArgumentType] : [getterReturnType]),
+        (types) => {
+          var getterReturnType = types[0];
+          var desc = {
+            get() {
+              var ptr = validateThis(this, classType, humanName + ' getter');
+              return getterReturnType.fromWireType(getter(getterContext, ptr));
+            },
+            enumerable: true
+          };
+  
+          if (setter) {
+            setter = embind__requireFunction(setterSignature, setter);
+            var setterArgumentType = types[1];
+            desc.set = function(v) {
+              var ptr = validateThis(this, classType, humanName + ' setter');
+              var destructors = [];
+              setter(setterContext, ptr, setterArgumentType.toWireType(destructors, v));
+              runDestructors(destructors);
+            };
+          }
+  
+          Object.defineProperty(classType.registeredClass.instancePrototype, fieldName, desc);
+          return [];
+        });
+  
+        return [];
+      });
+    };
+
+  
   var emval_freelist = [];
   
   var emval_handles = [0,1,,1,null,1,true,1,false,1];
@@ -2424,6 +2510,145 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
       // emval is passed into JS via an interface
     };
   var __embind_register_emval = (rawType) => registerType(rawType, EmValType);
+
+  
+  
+  
+  
+  
+  
+  var enumReadValueFromPointer = (name, width, signed) => {
+      switch (width) {
+        case 1: return signed ?
+          function(pointer) { return this.fromWireType(HEAP8[pointer]) } :
+          function(pointer) { return this.fromWireType(HEAPU8[pointer]) };
+        case 2: return signed ?
+          function(pointer) { return this.fromWireType(HEAP16[((pointer)>>1)]) } :
+          function(pointer) { return this.fromWireType(HEAPU16[((pointer)>>1)]) };
+        case 4: return signed ?
+          function(pointer) { return this.fromWireType(HEAP32[((pointer)>>2)]) } :
+          function(pointer) { return this.fromWireType(HEAPU32[((pointer)>>2)]) };
+        default:
+          throw new TypeError(`invalid integer width (${width}): ${name}`);
+      }
+    };
+  
+  
+  
+  function getEnumValueType(rawValueType) {
+      // This must match the values of enum_value_type in wire.h
+      return rawValueType === 0 ? 'object' : (rawValueType === 1 ? 'number' : 'string');
+    }
+  /** @suppress {globalThis} */
+  var __embind_register_enum = (rawType, name, size, isSigned, rawValueType) => {
+      name = AsciiToString(name);
+      const valueType = getEnumValueType(rawValueType);
+  
+      switch (valueType) {
+        case 'object': {
+          function ctor() {}
+          ctor.values = {};
+  
+          registerType(rawType, {
+            name,
+            constructor: ctor,
+            valueType,
+            fromWireType: function(c) {
+              return this.constructor.values[c];
+            },
+            toWireType: (destructors, c) => c.value,
+            readValueFromPointer: enumReadValueFromPointer(name, size, isSigned),
+            destructorFunction: null,
+          });
+  
+          exposePublicSymbol(name, ctor);
+          break;
+        }
+        case 'number': {
+          var keysMap = {};
+  
+          registerType(rawType, {
+            name: name,
+            keysMap,
+            valueType,
+            fromWireType: (c) => c,
+            toWireType: (destructors, c) => c,
+            readValueFromPointer: enumReadValueFromPointer(name, size, isSigned),
+            destructorFunction: null,
+          });
+  
+          exposePublicSymbol(name, keysMap);
+          // Just exposes a simple dict. argCount is meaningless here,
+          delete Module[name].argCount;
+          break;
+        }
+        case 'string': {
+          var valuesMap = {};
+          var reverseMap = {};
+          var keysMap = {};
+  
+          registerType(rawType, {
+            name: name,
+            valuesMap,
+            reverseMap,
+            keysMap,
+            valueType,
+            fromWireType: function(c) {
+              return this.reverseMap[c];
+            },
+            toWireType: function(destructors, c) {
+              return this.valuesMap[c];
+            },
+            readValueFromPointer: enumReadValueFromPointer(name, size, isSigned),
+            destructorFunction: null,
+          });
+  
+          exposePublicSymbol(name, keysMap);
+          // Just exposes a simple dict. argCount is meaningless here,
+          delete Module[name].argCount;
+          break;
+        }
+      }
+    };
+
+  
+  
+  
+  
+  var requireRegisteredType = (rawType, humanName) => {
+      var impl = registeredTypes[rawType];
+      if (undefined === impl) {
+        throwBindingError(`${humanName} has unknown type ${getTypeName(rawType)}`);
+      }
+      return impl;
+    };
+  var __embind_register_enum_value = (rawEnumType, name, enumValue) => {
+      var enumType = requireRegisteredType(rawEnumType, 'enum');
+      name = AsciiToString(name);
+  
+      switch (enumType.valueType) {
+        case 'object': {
+          var Enum = enumType.constructor;
+          var Value = Object.create(enumType.constructor.prototype, {
+            value: {value: enumValue},
+            constructor: {value: createNamedFunction(`${enumType.name}_${name}`, function() {})},
+          });
+          Enum.values[enumValue] = Value;
+          Enum[name] = Value;
+          break;
+        }
+        case 'number': {
+          enumType.keysMap[name] = enumValue;
+          break;
+        }
+        case 'string': {
+          enumType.valuesMap[name] = enumValue;
+          enumType.reverseMap[enumValue] = name;
+          enumType.keysMap[name] = name;
+          break;
+        }
+      }
+    };
 
   /** @type {!Float32Array} */
   var HEAPF32;
@@ -2967,15 +3192,6 @@ Originally allocated`); // `.stack` will add "at ..." after this sentence
       return id;
     };
   
-  
-  
-  var requireRegisteredType = (rawType, humanName) => {
-      var impl = registeredTypes[rawType];
-      if (undefined === impl) {
-        throwBindingError(`${humanName} has unknown type ${getTypeName(rawType)}`);
-      }
-      return impl;
-    };
   
   var emval_lookupTypes = (argCount, argTypes) => {
       var a = new Array(argCount);
@@ -3566,15 +3782,12 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'getNativeTypeSize',
   'getFunctionArgsName',
   'createJsInvokerSignature',
-  'getEnumValueType',
   'PureVirtualError',
   'registerInheritedInstance',
   'unregisterInheritedInstance',
   'getInheritedInstanceCount',
   'getLiveInheritedInstances',
-  'enumReadValueFromPointer',
   'setDelayFunction',
-  'validateThis',
   'count_emval_handles',
   'isCppExceptionObject',
 ];
@@ -3708,6 +3921,7 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'requireRegisteredType',
   'usesDestructorStack',
   'checkArgCount',
+  'getEnumValueType',
   'getRequiredArgCount',
   'createJsInvoker',
   'UnboundTypeError',
@@ -3724,6 +3938,7 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'registeredPointers',
   'registerType',
   'integerReadValueFromPointer',
+  'enumReadValueFromPointer',
   'floatReadValueFromPointer',
   'assertIntegerRange',
   'readPointer',
@@ -3754,6 +3969,7 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'shallowCopyInternalPointer',
   'downcastPointer',
   'upcastPointer',
+  'validateThis',
   'char_0',
   'char_9',
   'makeLegalFunctionName',
@@ -3907,7 +4123,13 @@ var wasmImports = {
   /** @export */
   _embind_register_class_function: __embind_register_class_function,
   /** @export */
+  _embind_register_class_property: __embind_register_class_property,
+  /** @export */
   _embind_register_emval: __embind_register_emval,
+  /** @export */
+  _embind_register_enum: __embind_register_enum,
+  /** @export */
+  _embind_register_enum_value: __embind_register_enum_value,
   /** @export */
   _embind_register_float: __embind_register_float,
   /** @export */

@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import useSimulator, { url } from "@hooks/useSimulator";
 
-
-
 export default function Loader() {
 	const { snapshot, simulator } = useSimulator();
 	const [programs, setPrograms] = useState<Record<string, Uint8Array>>({});

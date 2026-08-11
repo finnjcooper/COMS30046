@@ -7,6 +7,7 @@
 struct ExecPathSnapshot {
 	vector<ExecSnapshot> units;
 	vector<RSEntry> stations;
+	// completed?
 };
 
 class ExecPath {
