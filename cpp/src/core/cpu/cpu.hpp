@@ -31,8 +31,16 @@ struct Stats {
 };
 
 struct Snapshot {
+	string program_name;
+	string config_name;
+	string msg;
+	bool halted = false;
+	bool stalled = false;
+	bool jumped = false;
+	Stats stats = Stats();
 	uint32_t pc = 0;
-	Stats stats = {};
+	vector<FetchEntry> fetch_q;
+	vector<DecodeEntry> decode_q;
 };
 
 class CPU {
@@ -40,32 +48,25 @@ public:
 	~CPU() = default;
 	CPU(const Config &config);
 
+	void reset();
 	void load(const Program &program);
 	void step();
-	bool running() const { return !halted; }
-
-	string readout() {
-		string s = out.str();
-		out.str("");
-		out.clear();
-		return s;
-	};
-
-	Snapshot snapshot() {
-		return Snapshot {
-			pc,
-			stats,
-		};
-	}
+	bool get_halted() const { return halted; }
+	string get_program_name() const { return program_name; }
+	string get_config_name() const { return config_name; }
+	Snapshot snapshot();
 
 private:
-	uint32_t pc = 0, end = 0;
+	uint32_t pc = 0, entry = 0, end = 0;
 	bool jumped = false;
 	bool stalled = false;
 	bool halted = false;
 	bool fetch_stopped = false;
 
 	Stats stats;
+
+	string program_name;
+	string config_name;
 
 	size_t width = 0;
 
@@ -86,6 +87,7 @@ private:
 	deque<DecodeEntry> decode_q;
 
 	ostringstream out;
+	string readout();
 
 	void read_operand(uint8_t rs, RegType type, Value &V, uint32_t &Q);
 	ExecPath& get_path(Op op);

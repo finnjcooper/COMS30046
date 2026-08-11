@@ -26,45 +26,40 @@ class SimulatorService {
 		const Module = await createModule();
 		this.sim = new Module.Simulator();
 		this.update();
+		console.log("Simulator initialized");
 	}
 
-	subscribe(listener: () => void) {
+	subscribe = (listener: () => void) => {
 		this.listeners.add(listener);
 		return () => this.listeners.delete(listener);
 	}
 
-	snapshot(): Snapshot {
+	snapshot = (): Snapshot => {
 		return this.ss!;
 	}
 
-	running(): boolean {
-		return this.simulator().running();
-	}
-
-	readout(): string {
-		return this.simulator().readout();
-	}
-
-	load(program: Uint8Array) {
-		this.simulator().load(program);
+	load = (program: Uint8Array, name: string) => {
+		this.simulator().load(program, name);
 		this.update();
 	}
 
-	configure(config: string) {
+	configure = (config: string) => {
 		this.simulator().configure(config);
 		this.update();
 	}
 
-	step() {
+	reset = () => {
+		this.simulator().reset();
+		this.update();
+	}
+
+	step = () => {
 		this.simulator().step();
 		this.update();
 	}
 
-	run() {
-		while (this.running()) {
-			this.simulator().step();
-		}
-
+	run = () => {
+		this.simulator().run();
 		this.update();
 	}
 }

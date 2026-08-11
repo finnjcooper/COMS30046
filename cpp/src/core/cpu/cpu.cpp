@@ -1,6 +1,7 @@
 #include "cpu.hpp"
 
 CPU::CPU(const Config &config) : 
+	config_name(config.name),
 	mem(MEM_SIZE), regs(NUM_REGISTERS, log), fregs(NUM_FLOAT_REGISTERS, flog),
 	vregs(NUM_VECTOR_REGISTERS, vlog),
 	width(config.pipe_width), rob(NUM_REGISTERS * 2), rat(NUM_REGISTERS), frat(NUM_FLOAT_REGISTERS),
@@ -41,16 +42,55 @@ CPU::CPU(const Config &config) :
 		throw invalid_argument("Invalid vector register width");
 }
 
-void CPU::load(const Program &program) {
-	pc = program.entry_point;
-	end = program.end_point;
-	mem = Memory(program.instrs, MEM_SIZE);
+void CPU::reset() {
+	fetch_stopped = false;
+	stalled = false;
+	halted = false;
+	jumped = false;
+	pc = entry;
+
+	stats = Stats();
+	out.str("");
+	out.clear();
+
+	branch_pred->clear();
+	vec_state.clear();
+
+	fetch_q.clear();
+	decode_q.clear();
+
+	rob.clear();
+	rat.clear();
+	frat.clear();
+	vrat.clear();
+	for(const auto &path : exec_paths)
+		path->clear();
+
+	regs.clear();
+	fregs.clear();
+	vregs.clear();
+	log.clear();
+	flog.clear();
+	vlog.clear();
+
+	// mem.clear();
 	regs.write(2, Value::scalar(MEM_SIZE - WORD_BYTES)); // stack pointer
 	regs.write(1, Value::scalar(end)); // return address
 }
 
+void CPU::load(const Program &program) {
+	program_name = program.name;
+	entry = program.entry_point;
+	end = program.end_point;
+	mem = Memory(program.instrs, MEM_SIZE);
+	reset();
+}
+
 void CPU::step() {
-	log.clear();
+	if (halted) return;
+
+	out << "\n";
+	log.clear(); flog.clear(); vlog.clear();
 	stats.cycle_count++;
 	jumped = false;
 	stalled = false;
@@ -58,11 +98,11 @@ void CPU::step() {
 	commit();
 	writeback();
 
-	if (!(jumped || halted)) {
+	if (!jumped) {
 		execute();
 		issue();
 		dispatch();
-		if (!stalled) {
+		if (!(stalled || halted)) {
 			decode();
 			fetch();
 		}
@@ -127,6 +167,29 @@ void CPU::read_operand(uint8_t rs, RegType type, Value &V, uint32_t &Q) {
 		V = Value::scalar(0);
 		Q = src_tag;
 	}
+}
+
+string CPU::readout() {
+	string s = out.str();
+	out.str("");
+	out.clear();
+	return s;
+}
+
+Snapshot CPU::snapshot() {
+	Snapshot s;
+	s.program_name = program_name;
+	s.config_name = config_name;
+	s.msg = readout();
+	s.stats = stats;
+	s.halted = halted;
+	s.stalled = stalled;
+	s.jumped = jumped;
+	s.pc = pc;
+	s.fetch_q.assign(fetch_q.begin(), fetch_q.end());
+	s.decode_q.assign(decode_q.begin(), decode_q.end());
+
+	return s;
 }
 
 void CPU::flush(uint32_t tag) {

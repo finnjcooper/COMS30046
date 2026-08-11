@@ -12,6 +12,10 @@ public:
 	BranchPredictor(size_t btb_size = 256) : btb(btb_size) {}
 	virtual ~BranchPredictor() = default;
 
+	virtual void clear() {
+		fill(btb.begin(), btb.end(), BTBEntry());
+	}
+
 	Prediction predict(uint32_t pc, const Instruction &instr) {
 		uint32_t fallthrough = pc + WORD_BYTES;
 
@@ -77,7 +81,12 @@ public:
 
 class OneBitPredictor : public BranchPredictor {
 public:
-	OneBitPredictor(size_t size = 256, bool init_taken = false) : history(size, init_taken) {}
+	OneBitPredictor(size_t size = 256, bool init_taken = false) : history(size, init_taken), init_taken(init_taken) {}
+
+	void clear() override {
+		BranchPredictor::clear();
+		fill(history.begin(), history.end(), init_taken);
+	}
 
 	bool predict_direction(uint32_t pc, const Instruction &) override {
 		return history[index(pc)];
@@ -89,6 +98,7 @@ public:
 
 private:
 	vector<bool> history;
+	bool init_taken;
 	size_t index(uint32_t pc) {
 		return (pc >> 2) % history.size();
 	}
@@ -96,7 +106,12 @@ private:
 
 class TwoBitPredictor : public BranchPredictor {
 public:
-	TwoBitPredictor(size_t size = 256, uint8_t init_state = 1U) : history(size, init_state) {}
+	TwoBitPredictor(size_t size = 256, uint8_t init_state = 1U) : history(size, init_state), init_state(init_state) {}
+
+	void clear() override {
+		BranchPredictor::clear();
+		fill(history.begin(), history.end(), init_state);
+	}
 
 	bool predict_direction(uint32_t pc, const Instruction &) override {
 		return history[index(pc)] >= 2;
@@ -113,6 +128,7 @@ public:
 
 private:
 	vector<uint8_t> history;
+	uint8_t init_state;
 	size_t index(uint32_t pc) {
 		return (pc >> 2) % history.size();
 	}

@@ -26,6 +26,10 @@ class LoadStoreQueue {
 public:
 	LoadStoreQueue(size_t size) : max_size(size) {}
 
+	void clear() {
+		entries.clear();
+	}
+
 	bool can_allocate() const {
 		return entries.size() < max_size;
 	}

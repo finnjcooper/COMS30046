@@ -12,6 +12,22 @@ export interface ClassHandle {
   [Symbol.dispose](): void;
   clone(): this;
 }
+export interface FetchQueue extends ClassHandle, Iterable<FetchEntry> {
+  size(): number;
+  get(_0: number): FetchEntry | undefined;
+  push_back(_0: FetchEntry): void;
+  resize(_0: number, _1: FetchEntry): void;
+  set(_0: number, _1: FetchEntry): boolean;
+}
+
+export interface DecodeQueue extends ClassHandle, Iterable<DecodeEntry> {
+  size(): number;
+  get(_0: number): DecodeEntry | undefined;
+  push_back(_0: DecodeEntry): void;
+  resize(_0: number, _1: DecodeEntry): void;
+  set(_0: number, _1: DecodeEntry): boolean;
+}
+
 export type Stats = {
   instructionCount: number,
   cycleCount: number,
@@ -19,21 +35,46 @@ export type Stats = {
   mispredCount: number
 };
 
-export type Snapshot = {
+export type FetchEntry = {
   pc: number,
-  stats: Stats
+  instr: number
+};
+
+export type DecodeEntry = {
+  pc: number,
+  predTaken: boolean,
+  predTarget: number
+};
+
+export type Snapshot = {
+  program: EmbindString,
+  config: EmbindString,
+  msg: EmbindString,
+  stats: Stats,
+  halted: boolean,
+  stalled: boolean,
+  jumped: boolean,
+  pc: number,
+  fetchQ: FetchQueue,
+  decodeQ: DecodeQueue
 };
 
 export interface Simulator extends ClassHandle {
-  load(_0: any): boolean;
-  configure(_0: EmbindString): boolean;
-  step(): boolean;
-  running(): boolean;
-  readout(): string;
+  load(_0: any, _1: EmbindString): void;
+  configure(_0: EmbindString): void;
+  reset(): void;
+  step(): void;
+  run(): void;
   snapshot(): Snapshot;
 }
 
 interface EmbindModule {
+  FetchQueue: {
+    new(): FetchQueue;
+  };
+  DecodeQueue: {
+    new(): DecodeQueue;
+  };
   Simulator: {
     new(): Simulator;
   };

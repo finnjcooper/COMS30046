@@ -3,7 +3,7 @@
 namespace {
 
 Program empty_program() {
-	return { vector<uint8_t>(), 0, 0 };
+	return { "", vector<uint8_t>(), 0, 0 };
 }
 
 Program load_elf_stream(istream &stream, const string &source_name) {
@@ -54,7 +54,7 @@ Program load_elf_stream(istream &stream, const string &source_name) {
 		}
 	}
 
-	return { memory, static_cast<uint32_t>(elf.get_entry()), code_end };
+	return { source_name, memory, static_cast<uint32_t>(elf.get_entry()), code_end };
 }
 
 map<uint32_t, string> load_asm_stream(istream &stream) {
@@ -125,9 +125,9 @@ Program Loader::elf(const string &filename) {
 	return load_elf_stream(file, filename);
 }
 
-Program Loader::elf_bytes(const vector<uint8_t> &bytes) {
+Program Loader::elf_bytes(const vector<uint8_t> &bytes, const string &name) {
 	istringstream stream(string(bytes.begin(), bytes.end()), ios::in | ios::binary);
-	return load_elf_stream(stream, "in-memory ELF data");
+	return load_elf_stream(stream, name);
 }
 
 Config Loader::config(const string &filename) {

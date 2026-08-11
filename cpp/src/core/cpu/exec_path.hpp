@@ -15,6 +15,12 @@ public:
 			units.emplace_back(make_unit());
 	}
 
+	virtual void clear() {
+		for (auto &unit : units) unit->clear();
+		fill(stations.begin(), stations.end(), RSEntry());
+		completed.clear();
+	}
+
 	virtual bool can_allocate() const {
 		for (const auto &rs : stations)
 			if (!rs.busy) return true;

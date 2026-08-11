@@ -47,6 +47,12 @@ struct VectorState {
 		vl = vlmax();
 	}
 
+	void clear() {
+		tag = -1U;
+		vsew_bits = 32;
+		vl = vlmax();
+	}
+
 	uint8_t vlmax() const {
 		return vlmax(vsew_bits);
 	}

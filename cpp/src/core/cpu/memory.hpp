@@ -15,6 +15,10 @@ public:
 		for (size_t i = 0; i < init.size() && i < size; i++) data[i] = init[i];
 	}
 
+	void clear() {
+		fill(data.begin(), data.end(), 0);
+	}
+
 	void storeb(uint32_t addr, uint8_t value) {
 		if (addr >= data.size()) throw out_of_range("Memory access out of range");
 		data[addr] = value;

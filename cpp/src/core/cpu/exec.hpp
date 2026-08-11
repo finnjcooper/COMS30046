@@ -36,7 +36,9 @@ class ExecUnit {
 public:
 	virtual ~ExecUnit() = default;
 	virtual optional<ExecEntry> step() = 0;
-	
+
+	void clear() { busy_ = false; }
+
 	void start(const RSEntry &entry) {
 		current = entry;
 		cycles_remaining = latency(current);

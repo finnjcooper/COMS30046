@@ -36,6 +36,8 @@ public:
 		return current_tag;
 	}
 
+	void clear() { busy_ = false; }
+
 	void start(const LSQEntry &entry) {
 		current_tag = entry.tag;
 		cycles_remaining = cycles(entry.op);
@@ -63,6 +65,12 @@ public:
 		lsus(agu_count),
 		lsq(queue_size),
 		mem(mem) {}
+
+	void clear() override {
+		ExecPath::clear();
+		for (auto &unit : lsus) unit.clear();
+		lsq.clear();
+	}
 
 	bool can_allocate() const override {
 		return ExecPath::can_allocate() && lsq.can_allocate();

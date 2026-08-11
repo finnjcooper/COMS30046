@@ -47,13 +47,16 @@ else ()
 		"-lembind"
 		"--emit-tsd"
 		"${CMAKE_CURRENT_SOURCE_DIR}/../../web/src/wasm/sim.d.ts"
+		"-sNO_DISABLE_EXCEPTION_CATCHING"
 		"-sMODULARIZE=1"
 		"-sEXPORT_ES6=1"
 		"-sENVIRONMENT=web"
 		"-sALLOW_MEMORY_GROWTH=1"
 		"-sFILESYSTEM=0"
 		"-sEXPORT_NAME=createModule"
-		"-o${CMAKE_CURRENT_SOURCE_DIR}/../../web/src/wasm/sim.mjs"
 	)
-	set_target_properties(simwasm PROPERTIES OUTPUT_NAME "sim")
+	set_target_properties(simwasm PROPERTIES
+		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../../web/src/wasm"
+		OUTPUT_NAME "sim"
+	)
 endif ()

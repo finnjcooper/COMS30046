@@ -17,49 +17,44 @@ vector<uint8_t> to_vector(val bytes) {
 }
 
 EMSCRIPTEN_BINDINGS(simulator) {
+	register_vector<FetchEntry>("FetchQueue");
+	register_vector<DecodeEntry>("DecodeQueue");
+
 	value_object<Stats>("Stats")
 		.field("instructionCount", &Stats::instruction_count)
 		.field("cycleCount", &Stats::cycle_count)
 		.field("branchCount", &Stats::branch_count)
 		.field("mispredCount", &Stats::mispred_count);
 	
+	value_object<FetchEntry>("FetchEntry")
+		.field("pc", &FetchEntry::pc)
+		.field("instr", &FetchEntry::instr);
+	
+	value_object<DecodeEntry>("DecodeEntry")
+		.field("pc", &DecodeEntry::pc)
+		// .field("instr", &DecodeEntry::instr)
+		.field("predTaken", &DecodeEntry::pred_taken)
+		.field("predTarget", &DecodeEntry::pred_target);
+
 	value_object<Snapshot>("Snapshot")
+		.field("program", &Snapshot::program_name)
+		.field("config", &Snapshot::config_name)
+		.field("msg", &Snapshot::msg)
+		.field("stats", &Snapshot::stats)
+		.field("halted", &Snapshot::halted)
+		.field("stalled", &Snapshot::stalled)
+		.field("jumped", &Snapshot::jumped)
 		.field("pc", &Snapshot::pc)
-		.field("stats", &Snapshot::stats);
+		.field("fetchQ", &Snapshot::fetch_q)
+		.field("decodeQ", &Snapshot::decode_q);
 
 
 	class_<Simulator>("Simulator")
 		.constructor<>()
-
-		.function(
-			"load",
-			optional_override([](Simulator& sim, val bytes) {
-				return sim.load(to_vector(bytes));
-			})
-		)
-
-		.function(
-			"configure",
-			&Simulator::configure
-		)
-
-		.function(
-			"step",
-			&Simulator::step
-		)
-
-		.function(
-			"running",
-			&Simulator::running
-		)
-
-		.function(
-			"readout",
-			&Simulator::readout
-		)
-
-		.function(
-			"snapshot",
-			&Simulator::snapshot
-		);
+		.function("load", optional_override([](Simulator &sim, val bytes, string name) { return sim.load(to_vector(bytes), name); }))
+		.function("configure", &Simulator::configure)
+		.function("reset", &Simulator::reset)
+		.function("step", &Simulator::step)
+		.function("run", &Simulator::run)
+		.function("snapshot", &Simulator::snapshot);
 }

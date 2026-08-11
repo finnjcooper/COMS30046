@@ -1,36 +1,31 @@
 #include "simulator.hpp"
 
-Simulator::Simulator() {}
-
-bool Simulator::load(const vector<uint8_t> &bytes) {
-	Program program = Loader::elf_bytes(bytes);
-	cpu->load(program);
-	return !program.instrs.empty();
+Simulator::Simulator() {
+	cpu = make_unique<CPU>(Config());
 }
 
-bool Simulator::configure(const string &text) {
+void Simulator::load(const vector<uint8_t> &bytes, const string &name) {
+	Program program = Loader::elf_bytes(bytes, name);
+	cpu->load(program);
+}
+
+void Simulator::configure(const string &text) {
 	Config config = Loader::config_text(text);
 	cpu = make_unique<CPU>(config);
-	return config.name != "Baseline";
 }
 
-bool Simulator::step() {
-	if (!cpu || !cpu->running()) return false;
+void Simulator::reset() {
+	cpu->reset();
+}
+
+void Simulator::step() {
 	cpu->step();
-	return true;
 }
 
-bool Simulator::running() const {
-	if (!cpu) return false;
-	return cpu->running();
+void Simulator::run() {
+	while (!cpu->get_halted()) cpu->step();
 }
 
-string Simulator::readout() {
-	if (!cpu) return "";
-	return cpu->readout();
-}
-
-Snapshot Simulator::snapshot() const {
-	if (!cpu) return Snapshot{};
+Snapshot Simulator::snapshot() {
 	return cpu->snapshot();
 }

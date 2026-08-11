@@ -9,6 +9,9 @@ public:
 	virtual Value read(uint8_t index) const = 0;
 	virtual void write(uint8_t index, Value value) = 0;
 	virtual string name(uint8_t index) const = 0;
+	virtual void clear() {
+		fill(regs.begin(), regs.end(), Value::scalar(0U));
+	}
 protected:
 	uint8_t num_regs;
 	CommitLog &log;
@@ -78,6 +81,10 @@ class VectorRegisterFile : public RegisterFile {
 public:
 	VectorRegisterFile(uint8_t num_regs, CommitLog &log) : RegisterFile(num_regs, log) {
 		for (auto &reg : regs) reg = Value::vector_zero();
+	}
+
+	void clear() override {
+		fill(regs.begin(), regs.end(), Value::vector_zero());
 	}
 
 	Value read(uint8_t index) const {

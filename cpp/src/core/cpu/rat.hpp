@@ -5,6 +5,10 @@ class RegisterAliasTable {
 public:
 	RegisterAliasTable(size_t num_regs) : table(num_regs, -1U) {}
 
+	void clear() {
+		fill(table.begin(), table.end(), -1U);
+	}
+
 	uint32_t get(uint32_t reg) const {
 		return table[reg];
 	}

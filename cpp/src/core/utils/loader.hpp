@@ -14,6 +14,7 @@
 using namespace std;
 
 struct Program {
+	string name;
 	vector<uint8_t> instrs;
 	uint32_t entry_point;
 	uint32_t end_point;
@@ -46,7 +47,7 @@ struct Config {
 class Loader {
 public:
 	static Program elf(const string &filename);
-	static Program elf_bytes(const vector<uint8_t> &bytes);
+	static Program elf_bytes(const vector<uint8_t> &bytes, const string &name);
 	static Config config(const string &filename);
 	static Config config_text(const string &json_text);
 };

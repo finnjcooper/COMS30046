@@ -27,8 +27,8 @@ public:
 	ReOrderBuffer(uint32_t size) : max_size(size) {}
 
 	deque<ROBEntry>& get_entries() { return entries; }
-	const deque<ROBEntry>& get_entries() const { return entries; }
 	bool empty() const { return entries.empty(); }
+	void clear() { entries.clear(); next_tag = 0; }
 
 	uint32_t allocate(DecodeEntry decode) {
 		if (entries.size() == max_size) return -1U;

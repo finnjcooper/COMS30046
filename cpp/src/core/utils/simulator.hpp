@@ -6,13 +6,13 @@
 class Simulator {
 public:
 	Simulator();
-	bool load(const vector<uint8_t> &bytes);
+	void load(const vector<uint8_t> &bytes, const string &name);
 	// get program name?
-	bool configure(const string &text);
-	bool step();
-	bool running() const;
-	string readout();
-	Snapshot snapshot() const;
+	void configure(const string &text);
+	void reset();
+	void step();
+	void run();
+	Snapshot snapshot();
 
 private:
 	unique_ptr<CPU> cpu;
