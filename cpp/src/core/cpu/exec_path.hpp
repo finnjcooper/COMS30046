@@ -4,6 +4,11 @@
 #include <utility>
 #include "exec.hpp"
 
+struct ExecPathSnapshot {
+	vector<ExecSnapshot> units;
+	vector<RSEntry> stations;
+};
+
 class ExecPath {
 public:
 	virtual ~ExecPath() = default;
@@ -19,6 +24,14 @@ public:
 		for (auto &unit : units) unit->clear();
 		fill(stations.begin(), stations.end(), RSEntry());
 		completed.clear();
+	}
+
+	ExecPathSnapshot snapshot() const {
+		ExecPathSnapshot s;
+		for (const auto &unit : units)
+			s.units.push_back(unit->snapshot());
+		s.stations = stations;
+		return s;
 	}
 
 	virtual bool can_allocate() const {

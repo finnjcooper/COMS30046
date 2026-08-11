@@ -22,6 +22,11 @@ struct ROBEntry {
 	uint32_t tag = -1U;
 };
 
+struct ROBSnapshot {
+	uint32_t next_tag = 0;
+	vector<ROBEntry> entries;
+};
+
 class ReOrderBuffer {
 public:
 	ReOrderBuffer(uint32_t size) : max_size(size) {}
@@ -29,6 +34,13 @@ public:
 	deque<ROBEntry>& get_entries() { return entries; }
 	bool empty() const { return entries.empty(); }
 	void clear() { entries.clear(); next_tag = 0; }
+
+	ROBSnapshot snapshot() const {
+		ROBSnapshot s;
+		s.next_tag = next_tag;
+		s.entries = vector<ROBEntry>(entries.begin(), entries.end());
+		return s;
+	}
 
 	uint32_t allocate(DecodeEntry decode) {
 		if (entries.size() == max_size) return -1U;

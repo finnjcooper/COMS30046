@@ -3,6 +3,10 @@
 #include "isa.hpp"
 #include "trace.hpp"
 
+struct RegisterFileSnapshot {
+	vector<Value> regs;
+};
+
 class RegisterFile {
 public:
 	RegisterFile(uint8_t num_regs, CommitLog &log) : num_regs(num_regs), log(log), regs(num_regs, Value::scalar(0U)) {}
@@ -11,6 +15,9 @@ public:
 	virtual string name(uint8_t index) const = 0;
 	virtual void clear() {
 		fill(regs.begin(), regs.end(), Value::scalar(0U));
+	}
+	RegisterFileSnapshot snapshot() const {
+		return { regs };
 	}
 protected:
 	uint8_t num_regs;

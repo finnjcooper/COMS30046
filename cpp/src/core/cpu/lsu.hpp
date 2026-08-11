@@ -26,6 +26,12 @@ private:
 	}
 };
 
+struct LSUSnapshot {
+	bool busy = false;
+	size_t cycles_remaining = 0;
+	uint32_t current_tag = -1U;
+};
+
 class LoadStoreUnit {
 public:
 	optional<uint32_t> step() {
@@ -37,6 +43,14 @@ public:
 	}
 
 	void clear() { busy_ = false; }
+
+	LSUSnapshot snapshot() const {
+		LSUSnapshot s;
+		s.busy = busy_;
+		s.cycles_remaining = cycles_remaining;
+		s.current_tag = current_tag;
+		return s;
+	}
 
 	void start(const LSQEntry &entry) {
 		current_tag = entry.tag;
@@ -56,6 +70,12 @@ private:
 	bool busy_ = false;
 };
 
+struct LoadStorePathSnapshot {
+	ExecPathSnapshot agus;
+	vector<LSUSnapshot> lsus;
+	vector<LSQEntry> lsq;
+};
+
 class LoadStorePath : public ExecPath {
 public:
 	LoadStorePath(size_t agu_count, size_t rs_size, size_t queue_size, Memory &mem) :
@@ -70,6 +90,15 @@ public:
 		ExecPath::clear();
 		for (auto &unit : lsus) unit.clear();
 		lsq.clear();
+	}
+
+	LoadStorePathSnapshot snapshot() const {
+		LoadStorePathSnapshot s;
+		s.agus = ExecPath::snapshot();
+		for (const auto &unit : lsus)
+			s.lsus.push_back(unit.snapshot());
+		s.lsq = lsq.snapshot();
+		return s;
 	}
 
 	bool can_allocate() const override {

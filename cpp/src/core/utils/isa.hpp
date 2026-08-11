@@ -37,6 +37,13 @@ struct Value {
 	}
 };
 
+struct VectorStateSnapshot {
+	uint32_t tag = -1U;
+	uint32_t vector_bits = 128;
+	uint8_t vsew_bits = 32;
+	uint8_t vl = 4;
+};
+
 struct VectorState {
 	uint32_t tag = -1U;
 	uint32_t vector_bits = 128;
@@ -51,6 +58,10 @@ struct VectorState {
 		tag = -1U;
 		vsew_bits = 32;
 		vl = vlmax();
+	}
+
+	VectorStateSnapshot snapshot() const {
+		return { tag, vector_bits, vsew_bits, vl };
 	}
 
 	uint8_t vlmax() const {

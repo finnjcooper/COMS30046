@@ -30,6 +30,10 @@ public:
 		entries.clear();
 	}
 
+	vector<LSQEntry> snapshot() const {
+		return vector<LSQEntry>(entries.begin(), entries.end());
+	}
+
 	bool can_allocate() const {
 		return entries.size() < max_size;
 	}

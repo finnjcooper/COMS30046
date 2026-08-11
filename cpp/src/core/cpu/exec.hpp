@@ -32,12 +32,26 @@ struct RSEntry {
 	uint32_t tag = -1U;
 };
 
+struct ExecSnapshot {
+	bool busy = false;
+	size_t cycles_remaining = 0;
+	RSEntry current;
+};
+
 class ExecUnit {
 public:
 	virtual ~ExecUnit() = default;
 	virtual optional<ExecEntry> step() = 0;
 
 	void clear() { busy_ = false; }
+
+	ExecSnapshot snapshot() const {
+		ExecSnapshot s;
+		s.busy = busy_;
+		s.cycles_remaining = cycles_remaining;
+		s.current = current;
+		return s;
+	}
 
 	void start(const RSEntry &entry) {
 		current = entry;

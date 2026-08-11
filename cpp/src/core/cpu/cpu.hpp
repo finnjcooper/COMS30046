@@ -33,14 +33,34 @@ struct Stats {
 struct Snapshot {
 	string program_name;
 	string config_name;
-	string msg;
+
 	bool halted = false;
 	bool stalled = false;
 	bool jumped = false;
+
+	string msg;
 	Stats stats = Stats();
+
 	uint32_t pc = 0;
+	VectorStateSnapshot vec_state;
 	vector<FetchEntry> fetch_q;
 	vector<DecodeEntry> decode_q;
+
+	ROBSnapshot rob;
+	RATSnapshot rat;
+	RATSnapshot frat;
+	RATSnapshot vrat;
+
+	ExecPathSnapshot alus;
+	ExecPathSnapshot muls;
+	ExecPathSnapshot ctrls;
+	ExecPathSnapshot fpus;
+	ExecPathSnapshot vecs;
+	LoadStorePathSnapshot lsus;
+
+	RegisterFileSnapshot regs;
+	RegisterFileSnapshot fregs;
+	RegisterFileSnapshot vregs;
 };
 
 class CPU {

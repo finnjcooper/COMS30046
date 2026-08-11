@@ -86,6 +86,49 @@ void CPU::load(const Program &program) {
 	reset();
 }
 
+string CPU::readout() {
+	string s = out.str();
+	out.str("");
+	out.clear();
+	return s;
+}
+
+Snapshot CPU::snapshot() {
+	Snapshot s;
+	s.program_name = program_name;
+	s.config_name = config_name;
+
+	s.halted = halted;
+	s.stalled = stalled;
+	s.jumped = jumped;
+
+	s.msg = readout();
+	s.stats = stats;
+
+	s.pc = pc;
+	s.vec_state = vec_state.snapshot();
+	s.fetch_q.assign(fetch_q.begin(), fetch_q.end());
+	s.decode_q.assign(decode_q.begin(), decode_q.end());
+
+	s.rob = rob.snapshot();
+	s.rat = rat.snapshot();
+	s.frat = frat.snapshot();
+	s.vrat = vrat.snapshot();
+
+	s.alus = alus.snapshot();
+	s.muls = muls.snapshot();
+	s.ctrls = ctrls.snapshot();
+	s.fpus = fpus.snapshot();
+	s.vecs = vecs.snapshot();
+	s.lsus = lsus.snapshot();
+
+	s.regs = regs.snapshot();
+	s.fregs = fregs.snapshot();
+	s.vregs = vregs.snapshot();
+
+	return s;
+}
+
 void CPU::step() {
 	if (halted) return;
 
@@ -167,29 +210,6 @@ void CPU::read_operand(uint8_t rs, RegType type, Value &V, uint32_t &Q) {
 		V = Value::scalar(0);
 		Q = src_tag;
 	}
-}
-
-string CPU::readout() {
-	string s = out.str();
-	out.str("");
-	out.clear();
-	return s;
-}
-
-Snapshot CPU::snapshot() {
-	Snapshot s;
-	s.program_name = program_name;
-	s.config_name = config_name;
-	s.msg = readout();
-	s.stats = stats;
-	s.halted = halted;
-	s.stalled = stalled;
-	s.jumped = jumped;
-	s.pc = pc;
-	s.fetch_q.assign(fetch_q.begin(), fetch_q.end());
-	s.decode_q.assign(decode_q.begin(), decode_q.end());
-
-	return s;
 }
 
 void CPU::flush(uint32_t tag) {

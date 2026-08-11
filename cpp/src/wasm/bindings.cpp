@@ -19,6 +19,13 @@ vector<uint8_t> to_vector(val bytes) {
 EMSCRIPTEN_BINDINGS(simulator) {
 	register_vector<FetchEntry>("FetchQueue");
 	register_vector<DecodeEntry>("DecodeQueue");
+	register_vector<Value>("Regs");
+	register_vector<uint32_t>("RAT");
+	register_vector<ROBEntry>("ROB");
+	register_vector<LSQEntry>("LSQ");
+	register_vector<RSEntry>("ReservationStations");
+	register_vector<ExecSnapshot>("ExecUnits");
+	register_vector<LSUSnapshot>("LSUs");
 
 	value_object<Stats>("Stats")
 		.field("instructionCount", &Stats::instruction_count)
@@ -39,14 +46,28 @@ EMSCRIPTEN_BINDINGS(simulator) {
 	value_object<Snapshot>("Snapshot")
 		.field("program", &Snapshot::program_name)
 		.field("config", &Snapshot::config_name)
-		.field("msg", &Snapshot::msg)
-		.field("stats", &Snapshot::stats)
 		.field("halted", &Snapshot::halted)
 		.field("stalled", &Snapshot::stalled)
 		.field("jumped", &Snapshot::jumped)
+		.field("msg", &Snapshot::msg)
+		.field("stats", &Snapshot::stats)
 		.field("pc", &Snapshot::pc)
+		.field("vecState", &Snapshot::vec_state)
 		.field("fetchQ", &Snapshot::fetch_q)
-		.field("decodeQ", &Snapshot::decode_q);
+		.field("decodeQ", &Snapshot::decode_q)
+		.field("rob", &Snapshot::rob)
+		.field("rat", &Snapshot::rat)
+		.field("frat", &Snapshot::frat)
+		.field("vrat", &Snapshot::vrat)
+		.field("alus", &Snapshot::alus)
+		.field("muls", &Snapshot::muls)
+		.field("ctrls", &Snapshot::ctrls)
+		.field("fpus", &Snapshot::fpus)
+		.field("vecs", &Snapshot::vecs)
+		.field("lsus", &Snapshot::lsus)
+		.field("regs", &Snapshot::regs)
+		.field("fregs", &Snapshot::fregs)
+		.field("vregs", &Snapshot::vregs);
 
 
 	class_<Simulator>("Simulator")
