@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
-import useSimulator from '@hooks/useSimulator';
+import { useSimulatorControls } from '@hooks/useSimulator';
 
 export default function Config() {
-	const { simulator } = useSimulator();
+	const { configure } = useSimulatorControls();
 
 	const defaultConfig = {
 		"name": "Width 2",
@@ -19,12 +19,12 @@ export default function Config() {
 	};
 
 	const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-		simulator.configure(event.target.value);
+		configure(event.target.value);
 	};
 
 	useEffect(() => {
-		simulator.configure(JSON.stringify(defaultConfig, null, 2));
-	}, [simulator]);
+		configure(JSON.stringify(defaultConfig, null, 2));
+	}, [configure]);
 
 	return (
 		<div>

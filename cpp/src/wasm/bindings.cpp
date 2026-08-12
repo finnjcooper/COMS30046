@@ -17,23 +17,14 @@ vector<uint8_t> to_vector(val bytes) {
 }
 
 EMSCRIPTEN_BINDINGS(simulator) {
-	register_vector<FetchEntry>("FetchQueue");
-	register_vector<DecodeEntry>("DecodeQueue");
-	register_vector<Value>("Regs");
-	register_vector<uint32_t>("RAT");
-	register_vector<ROBEntry>("ROB");
-	register_vector<LSQEntry>("LSQ");
-	register_vector<RSEntry>("ReservationStations");
-	register_vector<ExecSnapshot>("ExecUnits");
-	register_vector<LSUSnapshot>("LSUs");
-
-	class_<Value>("Value")
-		.constructor<uint32_t>()
-		.property("vector_value", &Value::vector_value)
-		.function("is_vector", &Value::is_vector)
-		.function("as_scalar", &Value::as_scalar)
-		.function("lane", &Value::lane)
-		.function("set_lane", &Value::set_lane);
+	register_vector<FetchState>("FetchQueue");
+	register_vector<DecodeState>("DecodeQueue");
+	register_vector<Register>("Registers");
+	register_vector<VectorRegister>("VectorRegisters");
+	register_vector<ROBState>("ROB");
+	register_vector<LSQState>("LSQ");
+	register_vector<RSState>("ReservationStations");
+	register_vector<ExecState>("ExecUnits");
 
 	enum_<Op>("Op")
 		.value("INVALID", Op::INVALID)
@@ -133,119 +124,95 @@ EMSCRIPTEN_BINDINGS(simulator) {
 		.value("VFMACC_VV", Op::VFMACC_VV)
 		.value("VFMACC_VF", Op::VFMACC_VF);
 
-	value_object<Instruction>("Instruction")
-		.field("op", &Instruction::op)
-		.field("rd", &Instruction::rd)
-		.field("rs1", &Instruction::rs1)
-		.field("rs2", &Instruction::rs2)
-		.field("imm", &Instruction::imm)
-		.field("rs3", &Instruction::rs3)
-		.field("rm", &Instruction::rm)
-		.field("sew", &Instruction::sew);
-
-	value_object<VectorStateSnapshot>("VectorState")
-		.field("tag", &VectorStateSnapshot::tag)
-		.field("vector_bits", &VectorStateSnapshot::vector_bits)
-		.field("vsew_bits", &VectorStateSnapshot::vsew_bits)
-		.field("vl", &VectorStateSnapshot::vl);
-
 	value_object<Stats>("Stats")
 		.field("instructionCount", &Stats::instruction_count)
 		.field("cycleCount", &Stats::cycle_count)
 		.field("branchCount", &Stats::branch_count)
 		.field("mispredCount", &Stats::mispred_count);
 
-	value_object<ROBEntry>("ROBEntry")
-		.field("ready", &ROBEntry::ready)
-		.field("jumped", &ROBEntry::jumped)
-		.field("ctrl_handled", &ROBEntry::ctrl_handled)
-		.field("pred_taken", &ROBEntry::pred_taken)
-		.field("pred_target", &ROBEntry::pred_target)
-		.field("op", &ROBEntry::op)
-		.field("rd", &ROBEntry::rd)
-		.field("value", &ROBEntry::value)
-		.field("target", &ROBEntry::target)
-		.field("pc", &ROBEntry::pc)
-		.field("vl", &ROBEntry::vl)
-		.field("sew", &ROBEntry::sew)
-		.field("tag", &ROBEntry::tag);
+	value_object<VectorState>("VectorState")
+		.field("tag", &VectorState::tag)
+		.field("vector_bits", &VectorState::vector_bits)
+		.field("vsew_bits", &VectorState::vsew_bits)
+		.field("vl", &VectorState::vl);
 
-	value_object<RSEntry>("RSEntry")
-		.field("busy", &RSEntry::busy)
-		.field("op", &RSEntry::op)
-		.field("Vj", &RSEntry::Vj)
-		.field("Vk", &RSEntry::Vk)
-		.field("Vl", &RSEntry::Vl)
-		.field("Qj", &RSEntry::Qj)
-		.field("Qk", &RSEntry::Qk)
-		.field("Ql", &RSEntry::Ql)
-		.field("Qv", &RSEntry::Qv)
-		.field("pc", &RSEntry::pc)
-		.field("imm", &RSEntry::imm)
-		.field("rm", &RSEntry::rm)
-		.field("vl", &RSEntry::vl)
-		.field("sew", &RSEntry::sew)
-		.field("tag", &RSEntry::tag);
+	value_object<VectorRegister>("VectorRegister")
+		.field("lanes", &VectorRegister::lanes);
 
-	value_object<LSQEntry>("LSQEntry")
-		.field("op", &LSQEntry::op)
-		.field("tag", &LSQEntry::tag)
-		.field("V", &LSQEntry::V)
-		.field("Va", &LSQEntry::Va)
-		.field("Q", &LSQEntry::Q)
-		.field("Qa", &LSQEntry::Qa)
-		.field("vl", &LSQEntry::vl)
-		.field("sew", &LSQEntry::sew)
-		.field("issued", &LSQEntry::issued)
-		.field("done", &LSQEntry::done);
+	value_object<RSState>("RSState")
+		.field("op", &RSState::op)
+		.field("Vj", &RSState::Vj)
+		.field("Vk", &RSState::Vk)
+		.field("Vl", &RSState::Vl)
+		.field("Qj", &RSState::Qj)
+		.field("Qk", &RSState::Qk)
+		.field("Ql", &RSState::Ql)
+		.field("Qv", &RSState::Qv)
+		.field("pc", &RSState::pc)
+		.field("tag", &RSState::tag);
 
-	value_object<ExecEntry>("ExecEntry")
-		.field("op", &ExecEntry::op)
-		.field("value", &ExecEntry::value)
-		.field("target", &ExecEntry::target)
-		.field("jumped", &ExecEntry::jumped)
-		.field("tag", &ExecEntry::tag)
-		.field("vl", &ExecEntry::vl)
-		.field("sew", &ExecEntry::sew);
+	value_object<LSQState>("LSQState")
+		.field("op", &LSQState::op)
+		.field("tag", &LSQState::tag)
+		.field("V", &LSQState::V)
+		.field("Va", &LSQState::Va)
+		.field("Q", &LSQState::Q)
+		.field("Qa", &LSQState::Qa);
 
-	value_object<ExecSnapshot>("ExecSnapshot")
-		.field("busy", &ExecSnapshot::busy)
-		.field("cycles_remaining", &ExecSnapshot::cycles_remaining)
-		.field("current", &ExecSnapshot::current);
+	value_object<ExecState>("ExecState")
+		.field("busy", &ExecState::busy)
+		.field("op", &ExecState::op)
+		.field("tag", &ExecState::tag)
+		.field("cycles_remaining", &ExecState::cycles_remaining);
 
-	value_object<LSUSnapshot>("LSUSnapshot")
-		.field("busy", &LSUSnapshot::busy)
-		.field("cycles_remaining", &LSUSnapshot::cycles_remaining)
-		.field("current_tag", &LSUSnapshot::current_tag);
+	value_object<ExecPathState>("ExecPathState")
+		.field("units", &ExecPathState::units)
+		.field("stations", &ExecPathState::stations);
 
-	value_object<ExecPathSnapshot>("ExecPathSnapshot")
-		.field("units", &ExecPathSnapshot::units)
-		.field("stations", &ExecPathSnapshot::stations);
+	value_object<LoadStoreState>("LoadStoreState")
+		.field("agus", &LoadStoreState::agus)
+		.field("lsus", &LoadStoreState::lsus)
+		.field("stations", &LoadStoreState::stations)
+		.field("lsq", &LoadStoreState::lsq);
 
-	value_object<LoadStorePathSnapshot>("LoadStorePathSnapshot")
-		.field("agus", &LoadStorePathSnapshot::agus)
-		.field("lsus", &LoadStorePathSnapshot::lsus)
-		.field("lsq", &LoadStorePathSnapshot::lsq);
+	value_object<ROBState>("ROBState")
+		.field("jumped", &ROBState::jumped)
+		.field("target", &ROBState::target)
+		.field("pred_taken", &ROBState::pred_taken)
+		.field("pred_target", &ROBState::pred_target)
+		.field("op", &ROBState::op)
+		.field("pc", &ROBState::pc)
+		.field("tag", &ROBState::tag);
 
-	value_object<RATSnapshot>("RATSnapshot")
-		.field("table", &RATSnapshot::table);
+	value_object<FetchState>("FetchState")
+		.field("pc", &FetchState::pc)
+		.field("instr", &FetchState::instr);
 
-	value_object<ROBSnapshot>("ROBSnapshot")
-		.field("next_tag", &ROBSnapshot::next_tag)
-		.field("entries", &ROBSnapshot::entries);
+	value_object<DecodeState>("DecodeState")
+		.field("pc", &DecodeState::pc)
+		.field("op", &DecodeState::op)
+		.field("predTaken", &DecodeState::pred_taken)
+		.field("predTarget", &DecodeState::pred_target);
 
-	value_object<RegisterFileSnapshot>("RegisterFileSnapshot")
-		.field("regs", &RegisterFileSnapshot::regs);
-	
-	value_object<FetchEntry>("FetchEntry")
-		.field("pc", &FetchEntry::pc)
-		.field("instr", &FetchEntry::instr);
-	
-	value_object<DecodeEntry>("DecodeEntry")
-		.field("pc", &DecodeEntry::pc)
-		.field("instr", &DecodeEntry::instr)
-		.field("predTaken", &DecodeEntry::pred_taken)
-		.field("predTarget", &DecodeEntry::pred_target);
+	value_object<RegisterState>("RegisterState")
+		.field("vec_state", &RegisterState::vec_state)
+		.field("rat", &RegisterState::rat)
+		.field("frat", &RegisterState::frat)
+		.field("vrat", &RegisterState::vrat)
+		.field("regs", &RegisterState::regs)
+		.field("fregs", &RegisterState::fregs)
+		.field("vregs", &RegisterState::vregs);
+
+	value_object<PipelineState>("PipelineState")
+		.field("fetch_q", &PipelineState::fetch_q)
+		.field("decode_q", &PipelineState::decode_q)
+		.field("rob", &PipelineState::rob)
+		.field("alus", &PipelineState::alus)
+		.field("muls", &PipelineState::muls)
+		.field("ctrls", &PipelineState::ctrls)
+		.field("fpus", &PipelineState::fpus)
+		.field("vecs", &PipelineState::vecs)
+		.field("lsus", &PipelineState::lsus);
 
 	value_object<Snapshot>("Snapshot")
 		.field("program", &Snapshot::program_name)
@@ -253,25 +220,10 @@ EMSCRIPTEN_BINDINGS(simulator) {
 		.field("halted", &Snapshot::halted)
 		.field("stalled", &Snapshot::stalled)
 		.field("jumped", &Snapshot::jumped)
-		.field("msg", &Snapshot::msg)
-		.field("stats", &Snapshot::stats)
 		.field("pc", &Snapshot::pc)
-		.field("vecState", &Snapshot::vec_state)
-		.field("fetchQ", &Snapshot::fetch_q)
-		.field("decodeQ", &Snapshot::decode_q)
-		.field("rob", &Snapshot::rob)
-		.field("rat", &Snapshot::rat)
-		.field("frat", &Snapshot::frat)
-		.field("vrat", &Snapshot::vrat)
-		.field("alus", &Snapshot::alus)
-		.field("muls", &Snapshot::muls)
-		.field("ctrls", &Snapshot::ctrls)
-		.field("fpus", &Snapshot::fpus)
-		.field("vecs", &Snapshot::vecs)
-		.field("lsus", &Snapshot::lsus)
-		.field("regs", &Snapshot::regs)
-		.field("fregs", &Snapshot::fregs)
-		.field("vregs", &Snapshot::vregs);
+		.field("stats", &Snapshot::stats)
+		.field("registers", &Snapshot::registers)
+		.field("pipeline", &Snapshot::pipeline);
 
 
 	class_<Simulator>("Simulator")

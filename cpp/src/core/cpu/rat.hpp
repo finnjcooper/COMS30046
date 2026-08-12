@@ -1,10 +1,6 @@
 #pragma once
 #include "rob.hpp"
 
-struct RATSnapshot {
-	vector<uint32_t> table;
-};
-
 class RegisterAliasTable {
 public:
 	RegisterAliasTable(size_t num_regs) : table(num_regs, -1U) {}
@@ -13,8 +9,8 @@ public:
 		fill(table.begin(), table.end(), -1U);
 	}
 
-	RATSnapshot snapshot() const {
-		return { table };
+	vector<uint32_t> snapshot() const {
+		return table;
 	}
 
 	uint32_t get(uint32_t reg) const {

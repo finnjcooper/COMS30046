@@ -1,14 +1,14 @@
 import createModule, { type Simulator, type Snapshot } from '@wasm/sim.js';
 
 class SimulatorService {
-	private sim: Simulator | null = null;
-	private ss: Snapshot | null = null;
-
+	private simulator_: Simulator | null = null;
+	private snapshot_: Snapshot | null = null;
+	private promise: Promise<void> | null = null;
 	private listeners = new Set<() => void>;
 
 	private simulator(): Simulator {
-		if (!this.sim) throw new Error("Simulator not loaded");
-		return this.sim;
+		if (!this.simulator_) throw new Error("Simulator not loaded");
+		return this.simulator_;
 	}
 
 	private notify() {
@@ -16,17 +16,21 @@ class SimulatorService {
 	}
 
 	private update() {
-		this.ss = this.simulator().snapshot();
+		this.snapshot_ = this.simulator().snapshot();
 		this.notify();
 	}
 
 	async init() {
-		if (this.sim) return;
+		if (this.simulator_) return;
+		if (!this.promise) {
+			this.promise = createModule()
+			.then(Module => {
+				this.simulator_ = new Module.Simulator();
+				this.update();
+			});
+		}
 
-		const Module = await createModule();
-		this.sim = new Module.Simulator();
-		this.update();
-		console.log("Simulator initialized");
+		return this.promise;
 	}
 
 	subscribe = (listener: () => void) => {
@@ -34,8 +38,8 @@ class SimulatorService {
 		return () => this.listeners.delete(listener);
 	}
 
-	snapshot = (): Snapshot => {
-		return this.ss!;
+	snapshot = (): Snapshot | null => {
+		return this.snapshot_;
 	}
 
 	load = (program: Uint8Array, name: string) => {

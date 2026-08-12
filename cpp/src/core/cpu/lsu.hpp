@@ -26,12 +26,6 @@ private:
 	}
 };
 
-struct LSUSnapshot {
-	bool busy = false;
-	size_t cycles_remaining = 0;
-	uint32_t current_tag = -1U;
-};
-
 class LoadStoreUnit {
 public:
 	optional<uint32_t> step() {
@@ -44,11 +38,12 @@ public:
 
 	void clear() { busy_ = false; }
 
-	LSUSnapshot snapshot() const {
-		LSUSnapshot s;
+	ExecState snapshot() const {
+		ExecState s;
 		s.busy = busy_;
+		s.op = INVALID;
 		s.cycles_remaining = cycles_remaining;
-		s.current_tag = current_tag;
+		s.tag = current_tag;
 		return s;
 	}
 
@@ -70,10 +65,11 @@ private:
 	bool busy_ = false;
 };
 
-struct LoadStorePathSnapshot {
-	ExecPathSnapshot agus;
-	vector<LSUSnapshot> lsus;
-	vector<LSQEntry> lsq;
+struct LoadStoreState {
+	vector<ExecState> agus;
+	vector<ExecState> lsus;
+	vector<RSState> stations;
+	vector<LSQState> lsq;
 };
 
 class LoadStorePath : public ExecPath {
@@ -92,9 +88,15 @@ public:
 		lsq.clear();
 	}
 
-	LoadStorePathSnapshot snapshot() const {
-		LoadStorePathSnapshot s;
-		s.agus = ExecPath::snapshot();
+	LoadStoreState snapshot() const {
+		LoadStoreState s;
+
+		for (const auto &unit : units)
+			s.agus.push_back(unit->snapshot());
+
+		for (const auto &rs : stations)
+			s.stations.push_back(RSState(rs));
+
 		for (const auto &unit : lsus)
 			s.lsus.push_back(unit.snapshot());
 		s.lsq = lsq.snapshot();

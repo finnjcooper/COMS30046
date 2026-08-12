@@ -3,10 +3,6 @@
 #include "isa.hpp"
 #include "trace.hpp"
 
-struct RegisterFileSnapshot {
-	vector<Value> regs;
-};
-
 class RegisterFile {
 public:
 	RegisterFile(uint8_t num_regs, CommitLog &log) : num_regs(num_regs), log(log), regs(num_regs, Value::scalar(0U)) {}
@@ -16,8 +12,8 @@ public:
 	virtual void clear() {
 		fill(regs.begin(), regs.end(), Value::scalar(0U));
 	}
-	RegisterFileSnapshot snapshot() const {
-		return { regs };
+	vector<Value> snapshot() const {
+		return regs;
 	}
 protected:
 	uint8_t num_regs;
@@ -29,12 +25,12 @@ class IntegerRegisterFile : public RegisterFile {
 public:
 	IntegerRegisterFile(uint8_t num_regs, CommitLog &log) : RegisterFile(num_regs, log) {}
 
-	Value read(uint8_t index) const {
+	Value read(uint8_t index) const override {
 		if (index >= num_regs) throw out_of_range("Register index out of range");
 		return regs[index];
 	}
 
-	void write(uint8_t index, Value value) {
+	void write(uint8_t index, Value value) override {
 		if (index >= num_regs) throw out_of_range("Register index out of range");
 		else if (index == 0) return; // discard writes to x0
 
@@ -44,7 +40,7 @@ public:
 		regs[index] = Value::scalar(next);
 	}
 
-	string name(uint8_t index) const {
+	string name(uint8_t index) const override {
 		if (index >= num_regs) throw out_of_range("Register index out of range");
 		if (index >= NUM_NAMES) return "x" + to_string(index);
 		return NAMES[index];
@@ -64,12 +60,12 @@ class FloatRegisterFile : public RegisterFile {
 public:
 	FloatRegisterFile(uint8_t num_regs, CommitLog &log) : RegisterFile(num_regs, log) {}
 
-	Value read(uint8_t index) const {
+	Value read(uint8_t index) const override {
 		if (index >= num_regs) throw out_of_range("Float register index out of range");
 		return regs[index];
 	}
 
-	void write(uint8_t index, Value value) {
+	void write(uint8_t index, Value value) override {
 		if (index >= num_regs) throw out_of_range("Float register index out of range");
 
 		uint32_t old = regs[index].as_scalar();
@@ -78,7 +74,7 @@ public:
 		regs[index] = Value::scalar(next);
 	}
 
-	string name(uint8_t index) const {
+	string name(uint8_t index) const override {
 		if (index >= num_regs) throw out_of_range("Float register index out of range");
 		return "f" + to_string(index);
 	}
@@ -94,12 +90,12 @@ public:
 		fill(regs.begin(), regs.end(), Value::vector_zero());
 	}
 
-	Value read(uint8_t index) const {
+	Value read(uint8_t index) const override {
 		if (index >= num_regs) throw out_of_range("Vector register index out of range");
 		return regs[index];
 	}
 
-	void write(uint8_t index, Value value) {
+	void write(uint8_t index, Value value) override {
 		if (index >= num_regs) throw out_of_range("Vector register index out of range");
 
 		log.record_reg_write(index, regs[index].as_scalar(), value.as_scalar());
@@ -107,7 +103,7 @@ public:
 		regs[index] = value;
 	}
 
-	string name(uint8_t index) const {
+	string name(uint8_t index) const override {
 		if (index >= num_regs) throw out_of_range("Vector register index out of range");
 		return "v" + to_string(index);
 	}

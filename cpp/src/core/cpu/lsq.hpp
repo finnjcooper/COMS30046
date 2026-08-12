@@ -22,6 +22,16 @@ struct LSQEntry {
 	bool done = false;
 };
 
+struct LSQState {
+	LSQState() = default;
+	LSQState(const LSQEntry &e) : op(e.op), V(e.V.as_scalar()), Va(e.Va), Q(e.Q), Qa(e.Qa), tag(e.tag) {}
+
+	Op op = INVALID;
+	uint32_t V = 0, Va = 0;
+	uint32_t Q = -1U, Qa = -1U;
+	uint32_t tag = -1U;
+};
+
 class LoadStoreQueue {
 public:
 	LoadStoreQueue(size_t size) : max_size(size) {}
@@ -30,8 +40,12 @@ public:
 		entries.clear();
 	}
 
-	vector<LSQEntry> snapshot() const {
-		return vector<LSQEntry>(entries.begin(), entries.end());
+	vector<LSQState> snapshot() const {
+		vector<LSQState> states;
+		for (const auto &entry : entries) {
+			states.push_back(LSQState(entry));
+		}
+		return states;
 	}
 
 	bool can_allocate() const {

@@ -23,11 +23,52 @@ struct FetchEntry {
 	uint32_t instr = 0;
 };
 
+struct FetchState {
+	FetchState() = default;
+	FetchState(const FetchEntry &e) : pc(e.pc), instr(e.instr) {}
+	uint32_t pc = 0;
+	uint32_t instr = 0;
+};
+
 struct Stats {
 	int instruction_count = 0;
 	int cycle_count = 0;
 	int branch_count = 0;
 	int mispred_count = 0;
+};
+
+typedef uint32_t Register;
+
+struct VectorRegister {
+	VectorRegister() = default;
+	VectorRegister(array<uint32_t, MAX_VECTOR_LANES> lanes) { this->lanes.assign(lanes.begin(), lanes.end()); }
+	vector<uint32_t> lanes;
+};
+
+struct RegisterState {
+	vector<Register> rat;
+	vector<Register> frat;
+	vector<Register> vrat;
+
+	vector<Register> regs;
+	vector<Register> fregs;
+	vector<VectorRegister> vregs;
+
+	VectorState vec_state;
+};
+
+struct PipelineState {
+	vector<FetchState> fetch_q;
+	vector<DecodeState> decode_q;
+
+	vector<ROBState> rob;
+
+	ExecPathState alus;
+	ExecPathState muls;
+	ExecPathState ctrls;
+	ExecPathState fpus;
+	ExecPathState vecs;
+	LoadStoreState lsus;
 };
 
 struct Snapshot {
@@ -37,30 +78,12 @@ struct Snapshot {
 	bool halted = false;
 	bool stalled = false;
 	bool jumped = false;
-
-	string msg;
-	Stats stats = Stats();
-
 	uint32_t pc = 0;
-	VectorStateSnapshot vec_state;
-	vector<FetchEntry> fetch_q;
-	vector<DecodeEntry> decode_q;
 
-	ROBSnapshot rob;
-	RATSnapshot rat;
-	RATSnapshot frat;
-	RATSnapshot vrat;
+	Stats stats;
 
-	ExecPathSnapshot alus;
-	ExecPathSnapshot muls;
-	ExecPathSnapshot ctrls;
-	ExecPathSnapshot fpus;
-	ExecPathSnapshot vecs;
-	LoadStorePathSnapshot lsus;
-
-	RegisterFileSnapshot regs;
-	RegisterFileSnapshot fregs;
-	RegisterFileSnapshot vregs;
+	RegisterState registers;
+	PipelineState pipeline;
 };
 
 class CPU {
@@ -71,16 +94,17 @@ public:
 	void reset();
 	void load(const Program &program);
 	void step();
-	bool get_halted() const { return halted; }
+	bool halted() const { return halted_; }
 	string get_program_name() const { return program_name; }
 	string get_config_name() const { return config_name; }
-	Snapshot snapshot();
+	Snapshot snapshot() const;
+	string readout();
 
 private:
 	uint32_t pc = 0, entry = 0, end = 0;
 	bool jumped = false;
 	bool stalled = false;
-	bool halted = false;
+	bool halted_ = false;
 	bool fetch_stopped = false;
 
 	Stats stats;
@@ -97,7 +121,7 @@ private:
 	VectorRegisterFile vregs;
 	ReOrderBuffer rob;
 	RegisterAliasTable rat, frat, vrat;
-	VectorState vec_state;
+	VectorConfig vec_config;
 	ExecPath alus, muls, ctrls, fpus, vecs;
 	LoadStorePath lsus;
 	array<ExecPath*, 6ULL> exec_paths;
@@ -107,7 +131,6 @@ private:
 	deque<DecodeEntry> decode_q;
 
 	ostringstream out;
-	string readout();
 
 	void read_operand(uint8_t rs, RegType type, Value &V, uint32_t &Q);
 	ExecPath& get_path(Op op);

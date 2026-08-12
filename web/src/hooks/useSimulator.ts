@@ -1,20 +1,51 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { simulator } from '@hooks/simulator';
 
-export default function useSimulator() {
+export function useSimulator() {
 	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<unknown>(null);
 
 	useEffect(() => {
-		simulator.init().finally(() => setLoading(false));
+		simulator.init()
+		.catch(setError)
+		.finally(() => setLoading(false));
 	}, []);
 
-	const snapshot = useSyncExternalStore(simulator.subscribe, simulator.snapshot);
+	const snapshot = useSyncExternalStore(simulator.subscribe, () => simulator.snapshot()!, () => simulator.snapshot()!);
 
 	return {
 		loading,
-		snapshot,
-		simulator: simulator
+		error,
+		snapshot
 	};
 }
 
-export const url = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`;
+export function useSimulatorControls() {
+	const load = useCallback(
+		(program: Uint8Array, name: string) => simulator.load(program, name),
+	[]);
+
+	const configure = useCallback(
+		(config: string) => simulator.configure(config),
+	[]);
+
+	const reset = useCallback(
+		() => simulator.reset(),
+	[]);
+
+	const step = useCallback(
+		() => simulator.step(),
+	[]);
+
+	const run = useCallback(
+		() => simulator.run(),
+	[]);
+
+	return {
+		load,
+		configure,
+		reset,
+		step,
+		run
+	}
+}

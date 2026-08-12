@@ -32,10 +32,22 @@ struct RSEntry {
 	uint32_t tag = -1U;
 };
 
-struct ExecSnapshot {
+struct ExecState {
 	bool busy = false;
+	Op op = INVALID;
+	uint32_t tag = -1U;
 	size_t cycles_remaining = 0;
-	RSEntry current;
+};
+
+struct RSState {
+	RSState() = default;
+	RSState(const RSEntry &rs) : op(rs.op), Vj(rs.Vj.as_scalar()), Vk(rs.Vk.as_scalar()), Vl(rs.Vl.as_scalar()), Qj(rs.Qj), Qk(rs.Qk), Ql(rs.Ql), Qv(rs.Qv), pc(rs.pc), tag(rs.tag) {}
+
+	Op op = INVALID;
+	uint32_t Vj = 0, Vk = 0, Vl = 0;
+	uint32_t Qj = -1U, Qk = -1U, Ql = -1U, Qv = -1U;
+	uint32_t pc = 0;
+	uint32_t tag = -1U;
 };
 
 class ExecUnit {
@@ -45,11 +57,12 @@ public:
 
 	void clear() { busy_ = false; }
 
-	ExecSnapshot snapshot() const {
-		ExecSnapshot s;
+	ExecState snapshot() const {
+		ExecState s;
 		s.busy = busy_;
+		s.op = current.op;
+		s.tag = current.tag;
 		s.cycles_remaining = cycles_remaining;
-		s.current = current;
 		return s;
 	}
 

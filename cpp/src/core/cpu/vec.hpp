@@ -7,7 +7,7 @@
 
 class VectorUnit : public ExecUnit {
 public:
-	VectorUnit(VectorState &state) : state(state) {}
+	VectorUnit(VectorConfig &state) : state(state) {}
 
 	optional<ExecEntry> step() override {
 		if (!busy_) return nullopt;
@@ -39,7 +39,7 @@ public:
 	}
 
 private:
-	VectorState &state;
+	VectorConfig &state;
 
 	Value exec(Op op, Value v1, Value v2, Value v3) override {
 		switch (op) {

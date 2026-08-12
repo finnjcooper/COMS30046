@@ -23,7 +23,7 @@ void Simulator::step() {
 }
 
 void Simulator::run() {
-	while (!cpu->get_halted()) cpu->step();
+	while (!cpu->halted()) cpu->step();
 }
 
 Snapshot Simulator::snapshot() {

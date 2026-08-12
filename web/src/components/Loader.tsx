@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import useSimulator, { url } from "@hooks/useSimulator";
+import { useSimulatorControls } from "@hooks/useSimulator";
+
+const url = (path: string) => `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`;
 
 export default function Loader() {
-	const { snapshot, simulator } = useSimulator();
+	const { load } = useSimulatorControls();
 	const [programs, setPrograms] = useState<Record<string, Uint8Array>>({});
 	const [programName, setProgramName] = useState<string | null>(null);
 
@@ -14,8 +16,12 @@ export default function Loader() {
 	useEffect(() => {
 		async function fetchPrograms() {
 			const programs = await Promise.all([
+				getProgram("dot.elf"),
 				getProgram("fibonacci.elf"),
-				getProgram("dot.elf")
+				getProgram("gaussian.elf"),
+				getProgram("matmul.elf"),
+				getProgram("quicksort.elf"),
+				getProgram("saxpy.elf")
 			]);
 			setPrograms(programs.reduce((acc, curr) => ({ ...acc, ...curr }), {}));
 		}
@@ -24,18 +30,19 @@ export default function Loader() {
 	}, [])
 
 	return (
-		<div>
-			<p>Loaded: {snapshot.program.toString()}</p>
-			<div className="join w-full">
-				<select className="select join-item" defaultValue={""} onChange={(e) => {setProgramName(e.target.value);}}>
-					<option value={""} disabled>Select a program</option>
-					<option value={"fibonacci.elf"}>Fibonacci</option>
-					<option value={"dot.elf"}>Dot Product</option>
-				</select>
-				<button className="btn btn-info join-item" onClick={() => simulator.load(programs[programName!], programName!)} disabled={!programName}>
-					Load
-				</button>
-			</div>
+		<div className="join w-full">
+			<select className="select join-item w-full" defaultValue={""} onChange={(e) => {setProgramName(e.target.value);}}>
+				<option value={""} disabled>Select a program</option>
+				<option value={"dot.elf"}>Dot Product</option>
+				<option value={"fibonacci.elf"}>Fibonacci</option>
+				<option value={"gaussian.elf"}>Gaussian Blur</option>
+				<option value={"matmul.elf"}>Matrix Multiplication</option>
+				<option value={"quicksort.elf"}>Quicksort</option>
+				<option value={"saxpy.elf"}>SAXPY</option>
+			</select>
+			<button className="btn btn-info join-item" onClick={() => load(programs[programName!], programName!)} disabled={!programName}>
+				Load
+			</button>
 		</div>
 	)
 }

@@ -4,10 +4,9 @@
 #include <utility>
 #include "exec.hpp"
 
-struct ExecPathSnapshot {
-	vector<ExecSnapshot> units;
-	vector<RSEntry> stations;
-	// completed?
+struct ExecPathState {
+	vector<ExecState> units;
+	vector<RSState> stations;
 };
 
 class ExecPath {
@@ -27,11 +26,12 @@ public:
 		completed.clear();
 	}
 
-	ExecPathSnapshot snapshot() const {
-		ExecPathSnapshot s;
+	ExecPathState snapshot() const {
+		ExecPathState s;
 		for (const auto &unit : units)
 			s.units.push_back(unit->snapshot());
-		s.stations = stations;
+		s.stations.assign(stations.begin(), stations.end());
+
 		return s;
 	}
 

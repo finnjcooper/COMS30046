@@ -5,7 +5,7 @@ CPU::CPU(const Config &config) :
 	mem(MEM_SIZE), regs(NUM_REGISTERS, log), fregs(NUM_FLOAT_REGISTERS, flog),
 	vregs(NUM_VECTOR_REGISTERS, vlog),
 	width(config.pipe_width), rob(NUM_REGISTERS * 2), rat(NUM_REGISTERS), frat(NUM_FLOAT_REGISTERS),
-	vrat(NUM_VECTOR_REGISTERS), vec_state(config.vector_bits),
+	vrat(NUM_VECTOR_REGISTERS), vec_config(config.vector_bits),
 	branch_pred([config]() -> unique_ptr<BranchPredictor> {
 		if (config.branch_pred == "static_taken") {
 			return make_unique<StaticBranchPredictor>(true);
@@ -34,7 +34,7 @@ CPU::CPU(const Config &config) :
 		return make_unique<FloatingPointUnit>();
 	}),
 	vecs(config.vec_count, config.rs_size, [this] {
-		return make_unique<VectorUnit>(vec_state);
+		return make_unique<VectorUnit>(vec_config);
 	}),
 	lsus(config.lsu_count, config.rs_size, config.lsq_size, mem),
 	exec_paths {&alus, &muls, &ctrls, &lsus, &fpus, &vecs} {
@@ -45,7 +45,7 @@ CPU::CPU(const Config &config) :
 void CPU::reset() {
 	fetch_stopped = false;
 	stalled = false;
-	halted = false;
+	halted_ = false;
 	jumped = false;
 	pc = entry;
 
@@ -54,7 +54,7 @@ void CPU::reset() {
 	out.clear();
 
 	branch_pred->clear();
-	vec_state.clear();
+	vec_config.clear();
 
 	fetch_q.clear();
 	decode_q.clear();
@@ -93,44 +93,51 @@ string CPU::readout() {
 	return s;
 }
 
-Snapshot CPU::snapshot() {
+Snapshot CPU::snapshot() const {
+	RegisterState r;
+	PipelineState p;
+
+	r.vec_state = vec_config.snapshot();
+	r.rat = rat.snapshot();
+	r.frat = frat.snapshot();
+	r.vrat = vrat.snapshot();
+
+	for (const auto &reg : regs.snapshot())
+		r.regs.push_back(reg.as_scalar());
+	for (const auto &reg : fregs.snapshot())
+		r.fregs.push_back(reg.as_scalar());
+	for (const auto &reg : vregs.snapshot())
+		r.vregs.push_back(VectorRegister(reg.lanes));
+
+	p.rob = rob.snapshot();
+	p.alus = alus.snapshot();
+	p.muls = muls.snapshot();
+	p.ctrls = ctrls.snapshot();
+	p.fpus = fpus.snapshot();
+	p.vecs = vecs.snapshot();
+	p.lsus = lsus.snapshot();
+	p.fetch_q.assign(fetch_q.begin(), fetch_q.end());
+	p.decode_q.assign(decode_q.begin(), decode_q.end());
+
 	Snapshot s;
 	s.program_name = program_name;
 	s.config_name = config_name;
 
-	s.halted = halted;
+	s.halted = halted_;
 	s.stalled = stalled;
 	s.jumped = jumped;
+	s.pc = pc;
 
-	s.msg = readout();
 	s.stats = stats;
 
-	s.pc = pc;
-	s.vec_state = vec_state.snapshot();
-	s.fetch_q.assign(fetch_q.begin(), fetch_q.end());
-	s.decode_q.assign(decode_q.begin(), decode_q.end());
-
-	s.rob = rob.snapshot();
-	s.rat = rat.snapshot();
-	s.frat = frat.snapshot();
-	s.vrat = vrat.snapshot();
-
-	s.alus = alus.snapshot();
-	s.muls = muls.snapshot();
-	s.ctrls = ctrls.snapshot();
-	s.fpus = fpus.snapshot();
-	s.vecs = vecs.snapshot();
-	s.lsus = lsus.snapshot();
-
-	s.regs = regs.snapshot();
-	s.fregs = fregs.snapshot();
-	s.vregs = vregs.snapshot();
+	s.registers = r;
+	s.pipeline = p;
 
 	return s;
 }
 
 void CPU::step() {
-	if (halted) return;
+	if (halted_) return;
 
 	out << "\n";
 	log.clear(); flog.clear(); vlog.clear();
@@ -145,7 +152,7 @@ void CPU::step() {
 		execute();
 		issue();
 		dispatch();
-		if (!(stalled || halted)) {
+		if (!(stalled || halted_)) {
 			decode();
 			fetch();
 		}
@@ -221,7 +228,7 @@ void CPU::flush(uint32_t tag) {
 	rat.rebuild(rob, RegType::INT);
 	frat.rebuild(rob, RegType::FLOAT);
 	vrat.rebuild(rob, RegType::VECTOR);
-	if (vec_state.tag != -1U && vec_state.tag > tag) vec_state.tag = -1U;
+	if (vec_config.tag != -1U && vec_config.tag > tag) vec_config.tag = -1U;
 }
 
 void CPU::fetch() {
@@ -278,7 +285,7 @@ void CPU::dispatch() {
 		int32_t imm = decode.instr.imm;
 
 		if (op == INVALID) {
-			halted = true;
+			halted_ = true;
 			out << "Invalid instruction at 0x" << hex << pc << dec << ". Halting CPU. ";
 			return;
 		}
@@ -303,22 +310,22 @@ void CPU::dispatch() {
 		read_operand(rs2, src_type(op, 1), Vk, Qk);
 		read_operand(rs3, src_type(op, 2), Vl, Ql);
 
-		uint8_t vl = vec_state.vl;
-		uint8_t sew = vec_state.vsew_bits;
+		uint8_t vl = vec_config.vl;
+		uint8_t sew = vec_config.vsew_bits;
 		if (is_vset(op)) sew = decode.instr.sew;
-		if (is_vec(op) && !is_vset(op) && vec_state.tag != -1U) {
-			auto &vset = rob.get(vec_state.tag);
+		if (is_vec(op) && !is_vset(op) && vec_config.tag != -1U) {
+			auto &vset = rob.get(vec_config.tag);
 			if (vset.ready) {
 				vl = vset.vl;
 				sew = vset.sew;
 			} else {
-				Qv = vec_state.tag;
+				Qv = vec_config.tag;
 			}
 		}
 
 		path.dispatch({true, op, Vj, Vk, Vl, Qj, Qk, Ql, Qv, pc, imm, rm, vl, sew, tag});
 
-		if (is_vset(op)) vec_state.tag = tag;
+		if (is_vset(op)) vec_config.tag = tag;
 
 		RegType dst = dst_type(op);
 		if (dst != RegType::NONE && !(dst == RegType::INT && rd == 0))
@@ -380,7 +387,7 @@ void CPU::writeback() {
 
 void CPU::check_halt() {
 	if (fetch_stopped && fetch_q.empty() && decode_q.empty() && rob.empty()) {
-		halted = true;
+		halted_ = true;
 		out << "Pipeline drained. Halting CPU. ";
 	}
 }
@@ -401,9 +408,9 @@ void CPU::commit() {
 		}
 
 		if (is_vset(entry.op)) {
-			vec_state.apply(entry.vl, entry.sew);
-			if (vec_state.tag == entry.tag)
-				vec_state.tag = -1U;
+			vec_config.apply(entry.vl, entry.sew);
+			if (vec_config.tag == entry.tag)
+				vec_config.tag = -1U;
 		}
 
 		rob.pop();

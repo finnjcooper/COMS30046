@@ -8,6 +8,16 @@ struct DecodeEntry {
 	uint32_t pred_target = 0;
 };
 
+struct DecodeState {
+	DecodeState() = default;
+	DecodeState(const DecodeEntry &e) : pc(e.pc), op(e.instr.op), pred_taken(e.pred_taken), pred_target(e.pred_target) {}
+
+	uint32_t pc = 0;
+	Op op = INVALID;
+	bool pred_taken = false;
+	uint32_t pred_target = 0;
+};
+
 class Decoder {
 public:
 	static Instruction decode(uint32_t instruction) {

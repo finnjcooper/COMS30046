@@ -22,9 +22,20 @@ struct ROBEntry {
 	uint32_t tag = -1U;
 };
 
-struct ROBSnapshot {
-	uint32_t next_tag = 0;
-	vector<ROBEntry> entries;
+struct ROBState {
+	ROBState() = default;
+	ROBState(const ROBEntry &e) : jumped(e.jumped), target(e.target),
+		pred_taken(e.pred_taken), pred_target(e.pred_target),
+		op(e.op), pc(e.pc), tag(e.tag) {}
+
+	bool jumped = false;
+	uint32_t target = 0;
+	bool pred_taken = false;
+	uint32_t pred_target = 0;
+
+	Op op = INVALID;
+	uint32_t pc = 0;
+	uint32_t tag = -1U;
 };
 
 class ReOrderBuffer {
@@ -35,11 +46,8 @@ public:
 	bool empty() const { return entries.empty(); }
 	void clear() { entries.clear(); next_tag = 0; }
 
-	ROBSnapshot snapshot() const {
-		ROBSnapshot s;
-		s.next_tag = next_tag;
-		s.entries = vector<ROBEntry>(entries.begin(), entries.end());
-		return s;
+	vector<ROBState> snapshot() const {
+		return vector<ROBState>(entries.begin(), entries.end());
 	}
 
 	uint32_t allocate(DecodeEntry decode) {
