@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
-import { simulator } from '@hooks/simulator';
+import { simulator } from './simulator';
+import type { Config } from '@wasm/sim';
 
 export function useSimulator() {
 	const [loading, setLoading] = useState(true);
@@ -26,7 +27,7 @@ export function useSimulatorControls() {
 	[]);
 
 	const configure = useCallback(
-		(config: string) => simulator.configure(config),
+		(config: Config) => simulator.configure(config),
 	[]);
 
 	const reset = useCallback(

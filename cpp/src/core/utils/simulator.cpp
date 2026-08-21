@@ -1,16 +1,11 @@
 #include "simulator.hpp"
 
-Simulator::Simulator() {
-	cpu = make_unique<CPU>(Config());
-}
-
 void Simulator::load(const vector<uint8_t> &bytes, const string &name) {
 	Program program = Loader::elf_bytes(bytes, name);
 	cpu->load(program);
 }
 
-void Simulator::configure(const string &text) {
-	Config config = Loader::config_text(text);
+void Simulator::configure(const Config &config) {
 	cpu = make_unique<CPU>(config);
 }
 

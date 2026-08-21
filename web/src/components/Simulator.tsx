@@ -1,9 +1,10 @@
-import { useSimulator } from '@hooks/useSimulator';
+import { useSimulator } from '@simulator/useSimulator';
 
 import Controls from './Controls';
 import Config from './Config';
 import Loader from './Loader';
 import Pipeline from './Pipeline';
+import Stats from './Stats';
 
 export default function Simulator() {
 	const { loading, error } = useSimulator();
@@ -12,13 +13,16 @@ export default function Simulator() {
 	if (loading) return <div className="loading loading-spinner loading-xl"/>;
 
 	return (
-		<div className="grid grid-cols-3 flex-1 h-full w-full gap-4 p-16">
-			<div className="col-span-2">
-				<h1>RISC-V Simulator</h1>
+		<div className="grid grid-cols-4 flex-1 h-full w-full gap-4 p-16">
+			<div className="col-span-3">
+				<h1 className="font-mono">RISC-V Simulator</h1>
 				<Pipeline />
 			</div>
 			<div className="flex flex-col gap-4 col-span-1">
-				<Controls />
+				<div className="flex gap-4">
+					<Stats />
+					<Controls />
+				</div>
 				<Loader />
 				<Config />
 			</div>

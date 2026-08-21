@@ -89,7 +89,7 @@ map<uint32_t, string> load_asm_stream(istream &stream) {
 	return disasm;
 }
 
-Config load_config_text(const string &json_text, const string &source_name) {
+Config load_config_text(const string &json_text) {
 	Config config;
 
 	try {
@@ -107,7 +107,7 @@ Config load_config_text(const string &json_text, const string &source_name) {
 		config.vector_bits = json.value("vector_bits", config.vector_bits);
 		config.branch_pred = json.value("branch_pred", config.branch_pred);
 	} catch (const nlohmann::json::exception &e) {
-		cerr << "Could not parse config data: " << source_name << " (" << e.what() << "). Using default config." << endl;
+		cerr << "Could not parse config data" << " (" << e.what() << "). Using default config." << endl;
 	}
 
 	return config;
@@ -139,9 +139,9 @@ Config Loader::config(const string &filename) {
 
 	ostringstream buffer;
 	buffer << file.rdbuf();
-	return config_text(buffer.str());
+	return load_config_text(buffer.str());
 }
 
 Config Loader::config_text(const string &json_text) {
-	return load_config_text(json_text, "in-memory config JSON");
+	return load_config_text(json_text);
 }

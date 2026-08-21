@@ -5,10 +5,9 @@
 
 class Simulator {
 public:
-	Simulator();
+	Simulator() = default;
 	void load(const vector<uint8_t> &bytes, const string &name);
-	// get program name?
-	void configure(const string &text);
+	void configure(const Config &config);
 	void reset();
 	void step();
 	void run();

@@ -26,6 +26,27 @@ EMSCRIPTEN_BINDINGS(simulator) {
 	register_vector<RSState>("ReservationStations");
 	register_vector<ExecState>("ExecUnits");
 
+	enum_<PredictorType>("PredictorType")
+		.value("TAKEN", PredictorType::TAKEN)
+		.value("NOT_TAKEN", PredictorType::NOT_TAKEN)
+		.value("ONE_BIT", PredictorType::ONE_BIT)
+		.value("TWO_BIT", PredictorType::TWO_BIT)
+		.value("BTFNT", PredictorType::BTFNT);
+
+	value_object<Config>("Config")
+		.field("name", &Config::name)
+		.field("pipe_width", &Config::pipe_width)
+		.field("rs_size", &Config::rs_size)
+		.field("lsq_size", &Config::lsq_size)
+		.field("alu_count", &Config::alu_count)
+		.field("mul_count", &Config::mul_count)
+		.field("ctrl_count", &Config::ctrl_count)
+		.field("fpu_count", &Config::fpu_count)
+		.field("vec_count", &Config::vec_count)
+		.field("lsu_count", &Config::lsu_count)
+		.field("vector_bits", &Config::vector_bits)
+		.field("branch_pred", &Config::branch_pred);
+
 	enum_<Op>("Op")
 		.value("INVALID", Op::INVALID)
 		// RV32I

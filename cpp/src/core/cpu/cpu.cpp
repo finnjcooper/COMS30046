@@ -7,15 +7,15 @@ CPU::CPU(const Config &config) :
 	width(config.pipe_width), rob(NUM_REGISTERS * 2), rat(NUM_REGISTERS), frat(NUM_FLOAT_REGISTERS),
 	vrat(NUM_VECTOR_REGISTERS), vec_config(config.vector_bits),
 	branch_pred([config]() -> unique_ptr<BranchPredictor> {
-		if (config.branch_pred == "static_taken") {
+		if (config.branch_pred == PredictorType::TAKEN) {
 			return make_unique<StaticBranchPredictor>(true);
-		} else if (config.branch_pred == "static_not_taken") {
+		} else if (config.branch_pred == PredictorType::NOT_TAKEN) {
 			return make_unique<StaticBranchPredictor>(false);
-		} else if (config.branch_pred == "btfnt") {
+		} else if (config.branch_pred == PredictorType::BTFNT) {
 			return make_unique<BTFNT>();
-		} else if (config.branch_pred == "one_bit") {
+		} else if (config.branch_pred == PredictorType::ONE_BIT) {
 			return make_unique<OneBitPredictor>();
-		} else if (config.branch_pred == "two_bit") {
+		} else if (config.branch_pred == PredictorType::TWO_BIT) {
 			return make_unique<TwoBitPredictor>();
 		} else {
 			throw invalid_argument("Invalid branch prediction strategy");

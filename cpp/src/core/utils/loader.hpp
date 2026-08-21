@@ -21,11 +21,11 @@ struct Program {
 };
 
 struct Config {
-	string name = "Baseline";
+	string name = "Default";
 	size_t pipe_width = 2, rs_size = 8, lsq_size = 8;
 	size_t alu_count = 2, mul_count = 2, ctrl_count = 2, fpu_count = 2, vec_count = 2, lsu_count = 2;
 	uint32_t vector_bits = 128;
-	string branch_pred = "two_bit";
+	PredictorType branch_pred = PredictorType::TWO_BIT;
 
 	friend ostream& operator<<(ostream& os, const Config& config) {
 		os << "Config:\n";

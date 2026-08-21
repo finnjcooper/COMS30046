@@ -1,9 +1,9 @@
-import { useSimulator } from '@hooks/useSimulator';
+import { useSimulator } from '@simulator/useSimulator';
 import type { FetchState } from '@wasm/sim';
 
 export default function Fetch() {
 	const { snapshot } = useSimulator();
-	const fetch = snapshot.pipeline.fetch_q;
+	const fetch = Array.from(snapshot.pipeline.fetch_q);
 
 	const render = (s: FetchState) => {
 		return (
@@ -15,10 +15,10 @@ export default function Fetch() {
 	}
 
 	return (
-		<div className="space-y-4">
-			<h2>Fetch</h2>
+		<div className="space-y-4 font-mono">
+			<h2>Fetch Queue</h2>
 			<div className="grid grid-cols-2 gap-2">
-				{Array.from(fetch).map(render)}
+				{!fetch.length ? <p className="h-14">Empty</p> : fetch.map(render)}
 			</div>
 		</div>
 	);

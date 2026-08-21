@@ -1,4 +1,4 @@
-import type { Op } from '@wasm/sim.js';
+import type { Op } from '@wasm/sim';
 
 const OP_NAMES = [
 	'INVALID',
@@ -95,6 +95,6 @@ const OP_NAMES = [
 	'VFMACC.VF',
 ] as const;
 
-export function opName(op: Op): string {
+export function name(op: Op): string {
 	return OP_NAMES[op.value] ?? `OP(${op.value})`;
 }

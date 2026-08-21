@@ -10,6 +10,30 @@ static constexpr size_t MEM_SIZE = 64 * 1024ULL;
 static constexpr uint8_t WORD_BYTES = 4ULL, NUM_REGISTERS = 32ULL, NUM_FLOAT_REGISTERS = 32ULL;
 static constexpr uint8_t NUM_VECTOR_REGISTERS = 32ULL, MAX_VECTOR_LANES = 64ULL;
 
+enum class PredictorType {
+	TAKEN,
+	NOT_TAKEN,
+	ONE_BIT,
+	TWO_BIT,
+	BTFNT
+};
+
+inline string to_string(PredictorType type) {
+	switch (type) {
+		case PredictorType::TAKEN: return "static_taken";
+		case PredictorType::NOT_TAKEN: return "static_not_taken";
+		case PredictorType::ONE_BIT: return "one_bit";
+		case PredictorType::TWO_BIT: return "two_bit";
+		case PredictorType::BTFNT: return "btfnt";
+		default: throw invalid_argument("Invalid predictor type");
+	}
+}
+
+inline ostream& operator<<(ostream& ost, const PredictorType& type) {
+	ost << to_string(type);
+	return ost;
+}
+
 struct Value {
 	bool vector_value = false;
 	array<uint32_t, MAX_VECTOR_LANES> lanes {};

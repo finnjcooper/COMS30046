@@ -24,7 +24,7 @@
 
     "paths": {
       "@components/*": ["./src/components/*"],
-      "@hooks/*": ["./src/hooks/*"],
+      "@simulator/*": ["./src/simulator/*"],
       "@styles/*": ["./src/styles/*"],
       "@wasm/*": ["./src/wasm/*"]
     }

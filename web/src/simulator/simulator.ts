@@ -1,4 +1,4 @@
-import createModule, { type Simulator, type Snapshot } from '@wasm/sim.js';
+import createModule, { type Config, type Simulator, type Snapshot } from '@wasm/sim';
 
 class SimulatorService {
 	private simulator_: Simulator | null = null;
@@ -47,7 +47,7 @@ class SimulatorService {
 		this.update();
 	}
 
-	configure = (config: string) => {
+	configure = (config: Config) => {
 		this.simulator().configure(config);
 		this.update();
 	}

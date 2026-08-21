@@ -76,6 +76,26 @@ export interface ExecUnits extends ClassHandle, Iterable<ExecState> {
   set(_0: number, _1: ExecState): boolean;
 }
 
+export interface PredictorTypeValue<T extends number> {
+  value: T;
+}
+export type PredictorType = PredictorTypeValue<0>|PredictorTypeValue<1>|PredictorTypeValue<2>|PredictorTypeValue<3>|PredictorTypeValue<4>;
+
+export type Config = {
+  name: EmbindString,
+  pipe_width: number,
+  rs_size: number,
+  lsq_size: number,
+  alu_count: number,
+  mul_count: number,
+  ctrl_count: number,
+  fpu_count: number,
+  vec_count: number,
+  lsu_count: number,
+  vector_bits: number,
+  branch_pred: PredictorType
+};
+
 export interface OpValue<T extends number> {
   value: T;
 }
@@ -198,7 +218,7 @@ export type Snapshot = {
 
 export interface Simulator extends ClassHandle {
   load(_0: any, _1: EmbindString): void;
-  configure(_0: EmbindString): void;
+  configure(_0: Config): void;
   reset(): void;
   step(): void;
   run(): void;
@@ -230,6 +250,7 @@ interface EmbindModule {
   ExecUnits: {
     new(): ExecUnits;
   };
+  PredictorType: {TAKEN: PredictorTypeValue<0>, NOT_TAKEN: PredictorTypeValue<1>, ONE_BIT: PredictorTypeValue<2>, TWO_BIT: PredictorTypeValue<3>, BTFNT: PredictorTypeValue<4>};
   Op: {INVALID: OpValue<0>, ADD: OpValue<1>, SUB: OpValue<2>, SLL: OpValue<3>, SLT: OpValue<4>, SLTU: OpValue<5>, XOR: OpValue<6>, SRL: OpValue<7>, SRA: OpValue<8>, OR: OpValue<9>, AND: OpValue<10>, ADDI: OpValue<11>, SLTI: OpValue<12>, SLTIU: OpValue<13>, XORI: OpValue<14>, ORI: OpValue<15>, ANDI: OpValue<16>, SLLI: OpValue<17>, SRLI: OpValue<18>, SRAI: OpValue<19>, LB: OpValue<20>, LH: OpValue<21>, LW: OpValue<22>, LBU: OpValue<23>, LHU: OpValue<24>, SB: OpValue<25>, SH: OpValue<26>, SW: OpValue<27>, BEQ: OpValue<28>, BNE: OpValue<29>, BLT: OpValue<30>, BGE: OpValue<31>, BLTU: OpValue<32>, BGEU: OpValue<33>, JAL: OpValue<34>, JALR: OpValue<35>, LUI: OpValue<36>, AUIPC: OpValue<37>, MUL: OpValue<38>, MULH: OpValue<39>, MULHSU: OpValue<40>, MULHU: OpValue<41>, DIV: OpValue<42>, DIVU: OpValue<43>, REM: OpValue<44>, REMU: OpValue<45>, FADD_S: OpValue<46>, FSUB_S: OpValue<47>, FMUL_S: OpValue<48>, FDIV_S: OpValue<49>, FSQRT_S: OpValue<50>, FMADD_S: OpValue<51>, FMSUB_S: OpValue<52>, FNMSUB_S: OpValue<53>, FNMADD_S: OpValue<54>, FSGNJ_S: OpValue<55>, FSGNJN_S: OpValue<56>, FSGNJX_S: OpValue<57>, FMIN_S: OpValue<58>, FMAX_S: OpValue<59>, FEQ_S: OpValue<60>, FLT_S: OpValue<61>, FLE_S: OpValue<62>, FLW: OpValue<63>, FSW: OpValue<64>, FMV_X_W: OpValue<65>, FMV_W_X: OpValue<66>, FCVT_W_S: OpValue<67>, FCVT_WU_S: OpValue<68>, FCVT_S_W: OpValue<69>, FCVT_S_WU: OpValue<70>, FCLASS_S: OpValue<71>, VSETVLI: OpValue<72>, VSETIVLI: OpValue<73>, VLE8_V: OpValue<74>, VLE16_V: OpValue<75>, VLE32_V: OpValue<76>, VSE8_V: OpValue<77>, VSE16_V: OpValue<78>, VSE32_V: OpValue<79>, VMUL_VV: OpValue<80>, VMACC_VV: OpValue<81>, VMACC_VX: OpValue<82>, VMV_V_I: OpValue<83>, VMV_V_X: OpValue<84>, VMV_S_X: OpValue<85>, VMV_X_S: OpValue<86>, VMV1R_V: OpValue<87>, VREDSUM_VS: OpValue<88>, VFMV_V_F: OpValue<89>, VFMACC_VV: OpValue<90>, VFMACC_VF: OpValue<91>};
   Simulator: {
     new(): Simulator;

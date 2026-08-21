@@ -10,9 +10,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@components': path.resolve(import.meta.dirname, 'src/components'),
-      '@hooks': path.resolve(import.meta.dirname, 'src/hooks'),
       '@styles': path.resolve(import.meta.dirname, 'src/styles'),
       '@wasm': path.resolve(import.meta.dirname, 'src/wasm'),
+      '@simulator': path.resolve(import.meta.dirname, 'src/simulator'),
     },
   },
 })
