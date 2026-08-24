@@ -5,6 +5,7 @@ import Config from './Config';
 import Loader from './Loader';
 import Pipeline from './Pipeline';
 import Stats from './Stats';
+import ASM from './ASM';
 
 export default function Simulator() {
 	const { loading, error } = useSimulator();
@@ -14,8 +15,10 @@ export default function Simulator() {
 
 	return (
 		<div className="grid grid-cols-4 flex-1 h-full w-full gap-4 p-16">
-			<div className="col-span-3">
-				<h1 className="font-mono">RISC-V Simulator</h1>
+			<div className="col-span-1">
+				<ASM />
+			</div>
+			<div className="col-span-2">
 				<Pipeline />
 			</div>
 			<div className="flex flex-col gap-4 col-span-1">
